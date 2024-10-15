@@ -10,7 +10,12 @@ defmodule Bonfire.PanDoRa.RuntimeConfig do
   def config do
     import Config
 
-    # config :bonfire_pan_do_ra,
+    # config :bonfire_pandora,
     #   modularity: :disabled
+
+    config :bonfire_pandora, PanDoRa.API.Client,
+      username: System.get_env("PANDORA_USER"),
+      password: System.get_env("PANDORA_PW")
+
   end
 end

@@ -16,7 +16,7 @@ defmodule Bonfire.PanDoRa.MixProject do
     end
     ++
     [
-      app: :bonfire_pan_do_ra,
+      app: :bonfire_pandora,
       version: "0.0.1",
       elixir: "~> 1.10",
       elixirc_paths: elixirc_paths(Mix.env()),

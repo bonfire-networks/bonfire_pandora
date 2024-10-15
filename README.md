@@ -6,13 +6,13 @@ A template for creating custom extensions for [Bonfire](https://bonfire.cafe/)
 - Clone the repository on your `/extensions` folder
 ```
 cd extensions
-git clone https://github.com/bonfire-networks/bonfire_pan_do_ra.git {your-extension-name-here}
+git clone https://github.com/bonfire-networks/bonfire_pandora.git {your-extension-name-here}
 cd {your-extension-name-here} 
 ```
 - Rename all the modules names to match your extension name:
     - Find & replace Bonfire.PanDoRa -> Bonfire.YourExtensionName 
-    - Find & replace bonfire_pan_do_ra -> bonfire_your_extension_name
-- Rename the `bonfire_pan_do_ra.exs` config file to match your extension name `bonfire_your_extension_name.exs`
+    - Find & replace bonfire_pandora -> bonfire_your_extension_name
+- Rename the `bonfire_pandora.exs` config file to match your extension name `bonfire_your_extension_name.exs`
 - Add paths to the router if you need it. If you add paths you will need to include the route module on [bonfire-app router module](https://github.com/bonfire-networks/bonfire-app/blob/main/lib/web/router.ex#L51) 
 - Add extension specific Fake functions
 - Add extension specific migrations
@@ -64,7 +64,7 @@ declare_extension(
 ```
 declare_nav_link(l("About"),
     page: "About",
-    href: "/bonfire_pan_do_ra/about",
+    href: "/bonfire_pandora/about",
     icon: "typcn:info-large"
   )
 ```
