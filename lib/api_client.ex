@@ -68,16 +68,6 @@ defmodule PanDoRa.API.Client do
   defp build_query([]), do: %{}
   defp build_query(conditions), do: %{conditions: conditions}
 
-  def sign_in() do
-    case get_auth_credentials() do
-      {username, password} when is_binary(username) and is_binary(password) ->
-        sign_in(username, password)
-
-      _ ->
-        error("No username/password found")
-    end
-  end
-
   @doc """
   Signs in a user with the given username and password.
 
@@ -86,8 +76,8 @@ defmodule PanDoRa.API.Client do
   * password - The user's password
 
   ## Returns
-  * :ok - On successful sign-in
-  * {:error, error} - On failed sign-in, returns error
+  * {:ok, %{"user"=>user} = data} - On successful sign-in
+  * {:error, errors} - On failed sign-in, returns error map
 
   ## Examples
       iex> sign_in("johndoe", "password123")
@@ -104,9 +94,16 @@ defmodule PanDoRa.API.Client do
       password: password
     }
 
-    case make_request("signin", payload) do
-      {:ok, _} -> :ok
-      {:error, _} = error -> error
+    make_request("signin", payload)
+  end
+
+  def sign_in do
+    case get_auth_credentials() do
+      {username, password} when is_binary(username) and is_binary(password) ->
+        sign_in(username, password)
+
+      _ ->
+        error("No username/password found")
     end
   end
 
@@ -129,18 +126,19 @@ defmodule PanDoRa.API.Client do
 
     case Req.post(req, form: form_data) do
       {:ok, %Req.Response{status: 200, body: body, headers: headers}} ->
+        debug(body)
+
         cookie = extract_session_cookie(headers)
 
         if cookie do
           set_session_cookie(username, cookie)
-          {:ok, body}
         else
           if action == "signin" do
             error(headers, "No session cookie received")
-          else
-            {:ok, body}
           end
         end
+
+        maybe_return_data(body)
 
       {:ok, %Req.Response{status: 401}} ->
         {:error, :unauthorized}
@@ -153,6 +151,30 @@ defmodule PanDoRa.API.Client do
         error(error, "API request failed")
         {:error, :request_failed}
     end
+  end
+
+  defp maybe_return_data(%{"data" => %{"errors" => errors} = data}) do
+    error(errors)
+  end
+
+  defp maybe_return_data(%{"data" => data, "status" => %{"code" => 200}}) do
+    {:ok, data}
+  end
+
+  defp maybe_return_data(%{"data" => data, "status" => %{"code" => status, "text" => error}}) do
+    error(data, "API request failed with status #{status} and error: #{error}")
+  end
+
+  defp maybe_return_data(%{"data" => data, "status" => %{"code" => status}}) do
+    error(data, "API request failed with status #{status}")
+  end
+
+  defp maybe_return_data(%{} = data) do
+    {:ok, data}
+  end
+
+  defp maybe_return_data(body) do
+    error(body, "API data not recognised")
   end
 
   defp extract_session_cookie(headers) do
