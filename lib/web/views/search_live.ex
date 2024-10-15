@@ -85,6 +85,4 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   defp search(""), do: Client.find() |> debug()
   defp search(term), do: Client.find(search_term: term) |> debug()
-
-
 end

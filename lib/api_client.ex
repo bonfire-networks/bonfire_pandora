@@ -46,11 +46,11 @@ defmodule PanDoRa.API.Client do
     conditions = build_conditions(search_term) ++ extra_conditions
 
     payload = %{
-          query: build_query(conditions),
-          keys: keys,
-          range: [starts, ends],
-          sort: sort
-        }
+      query: build_query(conditions),
+      keys: keys,
+      range: [starts, ends],
+      sort: sort
+    }
 
     make_request(opts[:action] || "find", payload)
   end
@@ -68,8 +68,6 @@ defmodule PanDoRa.API.Client do
   defp build_query([]), do: %{}
   defp build_query(conditions), do: %{conditions: conditions}
 
-
-
   def sign_in() do
     case get_auth_credentials() do
       {username, password} when is_binary(username) and is_binary(password) ->
@@ -80,7 +78,7 @@ defmodule PanDoRa.API.Client do
     end
   end
 
- @doc """
+  @doc """
   Signs in a user with the given username and password.
 
   ## Parameters
@@ -116,11 +114,13 @@ defmodule PanDoRa.API.Client do
     username = opts[:username] || get_auth_default_user()
     url = get_api_url()
     req = Req.new(url: url)
-    req = case get_session_cookie(username) do
-      nil -> req
-      cookie ->  Req.Request.put_header(req, "cookie", "sessionid=#{cookie}")
-    end
-    |> debug()
+
+    req =
+      case get_session_cookie(username) do
+        nil -> req
+        cookie -> Req.Request.put_header(req, "cookie", "sessionid=#{cookie}")
+      end
+      |> debug()
 
     form_data = %{
       action: action,
@@ -130,22 +130,25 @@ defmodule PanDoRa.API.Client do
     case Req.post(req, form: form_data) do
       {:ok, %Req.Response{status: 200, body: body, headers: headers}} ->
         cookie = extract_session_cookie(headers)
-        if cookie do 
+
+        if cookie do
           set_session_cookie(username, cookie)
           {:ok, body}
         else
-          if action=="signin" do
+          if action == "signin" do
             error(headers, "No session cookie received")
           else
             {:ok, body}
           end
         end
-        
+
       {:ok, %Req.Response{status: 401}} ->
         {:error, :unauthorized}
+
       {:ok, %Req.Response{status: status, body: body}} ->
         error(body, "API request failed with status #{status}")
         {:error, :request_failed}
+
       {:error, error} ->
         error(error, "API request failed")
         {:error, :request_failed}
@@ -173,7 +176,6 @@ defmodule PanDoRa.API.Client do
     Config.get([__MODULE__, :session_cookie, username], nil, :bonfire_pandora)
   end
 
-
   defp get_api_url do
     Config.get([__MODULE__, :api_url], "https://0xdb.org/api/")
   end
@@ -181,8 +183,8 @@ defmodule PanDoRa.API.Client do
   defp get_auth_default_user do
     Config.get([__MODULE__, :username], nil, :bonfire_pandora)
   end
+
   defp get_auth_credentials do
     {get_auth_default_user(), Config.get([__MODULE__, :password], nil, :bonfire_pandora)}
   end
-
 end

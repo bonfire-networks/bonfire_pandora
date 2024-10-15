@@ -1,14 +1,14 @@
 <div class="m-4">
-      <form change="validate" phx-submit="search" action="?" autocomplete="off">
-        <div class="flex gap-4">
-          <div class="flex-grow">
-            <input name="term" value={@search_term} placeholder="Enter search term" class="w-full">
-          </div>
-          <button type="submit" opts="px-4 py-2 bg-success rounded hover:bg-primary" disabled={@loading}>{if @loading, do: "Searching...", else: "Search"}</button>
-        </div>
-      </form>
-
-      <LoadingIndicator :if={@loading} />
-
-      <ResultsDisplay :if={@results} results={@results} search_term={@search_term} />
+  <form change="validate" phx-submit="search" action="?" autocomplete="off">
+    <div class="flex gap-4">
+      <div class="flex-grow">
+        <input name="term" value={@search_term} placeholder="Enter search term" class="w-full">
+      </div>
+      <button type="submit" opts="px-4 py-2 bg-success rounded hover:bg-primary" disabled={@loading}>{if @loading, do: "Searching...", else: "Search"}</button>
     </div>
+  </form>
+
+  <LoadingIndicator :if={@loading} />
+
+  <ResultsDisplay :if={@results} results={@results} search_term={@search_term} />
+</div>

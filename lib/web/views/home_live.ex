@@ -1,7 +1,6 @@
 defmodule Bonfire.PanDoRa.Web.HomeLive do
   use Bonfire.UI.Common.Web, :surface_live_view
 
-
   def mount(_params, _session, socket) do
     {:ok,
      assign(
