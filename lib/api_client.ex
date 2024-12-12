@@ -4,6 +4,7 @@ defmodule PanDoRa.API.Client do
   """
 
   import Untangle
+  use Bonfire.Common.Localise
   alias Bonfire.Common.Config
 
   @doc """
@@ -103,14 +104,13 @@ defmodule PanDoRa.API.Client do
         sign_in(username, password)
 
       _ ->
-        error("No username/password found")
+        error(l "No username/password found")
     end
   end
 
   defp make_request(action, payload, opts \\ []) do
     username = opts[:username] || get_auth_default_user()
-    url = get_api_url()
-    req = Req.new(url: url)
+    req = Req.new(url: get_api_url())
 
     req =
       case get_session_cookie(username) do
@@ -128,28 +128,25 @@ defmodule PanDoRa.API.Client do
       {:ok, %Req.Response{status: 200, body: body, headers: headers}} ->
         debug(body)
 
-        cookie = extract_session_cookie(headers)
-
-        if cookie do
+        set_cookie = if cookie = extract_session_cookie(headers) do
           set_session_cookie(username, cookie)
+          nil
         else
           if action == "signin" do
-            error(headers, "No session cookie received")
+            error(headers, l "No session cookie received")
           end
         end
 
-        maybe_return_data(body)
+        maybe_return_data(body) || set_cookie || l("No data received fro API")
 
       {:ok, %Req.Response{status: 401}} ->
-        {:error, :unauthorized}
+        error(l "Authentication failed")
 
       {:ok, %Req.Response{status: status, body: body}} ->
-        error(body, "API request failed with status #{status}")
-        {:error, :request_failed}
+        error(body, l("API request failed with code %{status}", status: status))
 
       {:error, error} ->
-        error(error, "API request failed")
-        {:error, :request_failed}
+        error(error, l "API request failed")
     end
   end
 
@@ -162,19 +159,23 @@ defmodule PanDoRa.API.Client do
   end
 
   defp maybe_return_data(%{"data" => data, "status" => %{"code" => status, "text" => error}}) do
-    error(data, "API request failed with status #{status} and error: #{error}")
+    error(data, l("API request failed with code %{code} and error: %{message}", code: status, message: error))
   end
 
   defp maybe_return_data(%{"data" => data, "status" => %{"code" => status}}) do
-    error(data, "API request failed with status #{status}")
+    error(data, l("API request failed with code %{status}", status: status))
   end
 
   defp maybe_return_data(%{} = data) do
     {:ok, data}
   end
 
+  defp maybe_return_data(nil) do
+    nil
+  end
+  
   defp maybe_return_data(body) do
-    error(body, "API data not recognised")
+    error(body, l "API data not recognised")
   end
 
   defp extract_session_cookie(headers) do
@@ -190,7 +191,7 @@ defmodule PanDoRa.API.Client do
   end
 
   defp set_session_cookie(username, cookie) do
-    # TEMP: store some other way
+    # TEMP: should store some other way?
     Config.put([__MODULE__, :session_cookie], %{username => cookie}, :bonfire_pandora)
   end
 

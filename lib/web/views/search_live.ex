@@ -70,17 +70,11 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   end
 
   def handle_async(:fetch_data, {:ok, {:error, error}}, socket) do
-    message =
-      case error do
-        :unauthorized -> "Authentication failed"
-        :request_failed -> "Failed to fetch data"
-        _ -> "An unexpected error occurred"
-      end
 
     {:noreply,
      socket
      |> assign(:loading, false)
-     |> put_flash(:error, message)}
+     |> put_flash(:error, error || l("An unexpected error occurred"))}
   end
 
   defp search(""), do: Client.find() |> debug()
