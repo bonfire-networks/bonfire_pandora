@@ -70,7 +70,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   end
 
   def handle_async(:fetch_data, {:ok, {:error, error}}, socket) do
-
     {:noreply,
      socket
      |> assign(:loading, false)

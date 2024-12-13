@@ -2,7 +2,7 @@
   <form change="validate" phx-submit="search" action="?" autocomplete="off">
     <div class="flex gap-4">
       <div class="flex-grow">
-        <input name="term" value={@search_term} placeholder={l "Enter search term"} class="w-full">
+        <input name="term" value={@search_term} placeholder={l("Enter search term")} class="w-full">
       </div>
       <button type="submit" opts="px-4 py-2 bg-success rounded hover:bg-primary" disabled={@loading}>{if @loading, do: l("Searching..."), else: l("Search")}</button>
     </div>

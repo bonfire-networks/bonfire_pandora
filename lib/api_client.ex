@@ -104,7 +104,7 @@ defmodule PanDoRa.API.Client do
         sign_in(username, password)
 
       _ ->
-        error(l "No username/password found")
+        error(l("No username/password found"))
     end
   end
 
@@ -128,25 +128,26 @@ defmodule PanDoRa.API.Client do
       {:ok, %Req.Response{status: 200, body: body, headers: headers}} ->
         debug(body)
 
-        set_cookie = if cookie = extract_session_cookie(headers) do
-          set_session_cookie(username, cookie)
-          nil
-        else
-          if action == "signin" do
-            error(headers, l "No session cookie received")
+        set_cookie =
+          if cookie = extract_session_cookie(headers) do
+            set_session_cookie(username, cookie)
+            nil
+          else
+            if action == "signin" do
+              error(headers, l("No session cookie received"))
+            end
           end
-        end
 
         maybe_return_data(body) || set_cookie || l("No data received fro API")
 
       {:ok, %Req.Response{status: 401}} ->
-        error(l "Authentication failed")
+        error(l("Authentication failed"))
 
       {:ok, %Req.Response{status: status, body: body}} ->
         error(body, l("API request failed with code %{status}", status: status))
 
       {:error, error} ->
-        error(error, l "API request failed")
+        error(error, l("API request failed"))
     end
   end
 
@@ -159,7 +160,13 @@ defmodule PanDoRa.API.Client do
   end
 
   defp maybe_return_data(%{"data" => data, "status" => %{"code" => status, "text" => error}}) do
-    error(data, l("API request failed with code %{code} and error: %{message}", code: status, message: error))
+    error(
+      data,
+      l("API request failed with code %{code} and error: %{message}",
+        code: status,
+        message: error
+      )
+    )
   end
 
   defp maybe_return_data(%{"data" => data, "status" => %{"code" => status}}) do
@@ -173,9 +180,9 @@ defmodule PanDoRa.API.Client do
   defp maybe_return_data(nil) do
     nil
   end
-  
+
   defp maybe_return_data(body) do
-    error(body, l "API data not recognised")
+    error(body, l("API data not recognised"))
   end
 
   defp extract_session_cookie(headers) do
