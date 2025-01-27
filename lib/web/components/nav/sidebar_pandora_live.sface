@@ -1,0 +1,68 @@
+<ul class="border-t border-base-content/20 mt-2 pt-2">
+  <li class="hidden">
+    <LinkLive
+      to="/groups"
+      class="w-full flex items-center !gap-3 !p-0 !m-0 bg-base-100 hover:bg-base-100"
+    >
+      <span><#Icon iconify="ph:users-three-bold" class="w-5 h-5 text-base-content/70" /></span>
+      <span><#Icon iconify="ph:users-three-fill" class="hidden w-5 h-5 text-base-content/70" /></span>
+      <span data-type="widget_label">{l("All groups")}</span>
+    </LinkLive>
+  </li>
+  <li>
+    <details open>
+      <summary class="group !ml-0 !pl-2 !pr-4 !py-2">
+        <span class="text-sm text-base-content/70 font-medium ml-0">{l("My groups")}</span>
+      </summary>
+      <ul class="!ml-0 !p-0 flex flex-col gap-2 !mt-1">
+        <li class="">
+          test
+        </li>
+
+        <!-- <li :for={%{} = subnav <- List.wrap(extension_nav)}>
+      <Bonfire.UI.Common.WidgetLive
+        :if={!e(subnav, :exclude_from_nav, nil) and e(subnav, :scope, nil) == @scope and
+          (is_nil(e(subnav, :module, nil)) or
+              module_enabled?(e(subnav, :module, nil), @__context__))}
+        widget={subnav}
+        page={@page}
+        showing_within={@showing_within}
+        wrapper_class="w-full !block !p-0 !m-0 bg-base-100 hover:bg-base-100"
+        selected_tab={@selected_tab}
+      />
+    </li> -->
+
+        <!-- <li class="bg-base-100 hover:bg-base-100">
+  <div data-showing-within="sidebar" data-type="widget" class="!p-0 !block">
+    <LinkLive to="/groups" class="">
+      <div class="flex-1 h-auto justify-start relative flex items-center gap-3 widget_content p-2 py-1">
+        <span><#Icon iconify="carbon:user-multiple" class="w-4 h-4 text-base-content" /></span>
+        <span data-type="widget_label">{l("Groups")}</span>
+      </div>
+    </LinkLive>
+
+    <div class="">
+      <nav :for={{%{type: :group} = category, children} <- @categories} class="">
+        <Bonfire.UI.Groups.SidebarGroupLive category={category} children={children} />
+      </nav>
+
+      <nav
+        module={maybe_component(Bonfire.UI.Topics.SidebarTopicLive, @__context__)}
+        :for={{%{type: :topic} = category, children} <- @categories}
+        class=""
+      >
+        <StatelessComponent
+          module={maybe_component Bonfire.UI.Topics.SidebarTopicLive}
+          category={category}
+          children={children}
+        />
+      </nav>
+
+   
+    </div>
+  </div>
+</li> -->
+      </ul>
+    </details>
+  </li>
+</ul>

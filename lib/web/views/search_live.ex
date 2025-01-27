@@ -9,10 +9,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   declare_extension(
     "Pan.do/ra",
     icon: "bi:app",
-    description: l("An awesome extension"),
-    default_nav: [
-      Bonfire.PanDoRa.Web.SearchLive
-    ]
+    description: l("An awesome extension")
+    # default_nav: [
+    #   Bonfire.PanDoRa.Web.SearchLive
+    # ]
   )
 
   declare_nav_link(l("Search Pan.do/ra"), page: "home", icon: "ri:home-line", emoji: "🧩")
