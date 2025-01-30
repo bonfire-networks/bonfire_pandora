@@ -1,220 +1,353 @@
 defmodule PanDoRa.API.Client do
   @moduledoc """
-  Context module for interacting with the external API.
+  Optimized API client implementation for fetching and caching metadata
   """
 
   import Untangle
   use Bonfire.Common.Localise
-  alias Bonfire.Common.Config
+  alias Bonfire.Common.Cache
+
+  # Cache TTL of 1 hour
+  @cache_ttl :timer.hours(1)
+  @metadata_keys ~w(director country year language)
+  @metadata_fields ~w(director country year language)
 
   @doc """
-  Makes a request to the API with the given parameters.
+  Basic find function that matches the API's find endpoint functionality with pagination support
 
-  ## Parameters
-    * opts - A keyword list of options:
-      * action - The API action to perform (default: "find")
-      * search_term - Optional search term
-      * keys - List of keys to return in the response
-      * range - Tuple of {start, end} for pagination
-      * sort - List of maps with sorting instructions
-      * conditions - Additional conditions to apply
-
-  ## Examples
-      iex> find(search_term: "example", keys: ["title", "id"])
-      {:ok, %{...}}
-
-      iex> find(action: "count", conditions: [%{key: "status", value: "active", operator: "="}])
-      {:ok, %{count: 42}}
-
-      # Custom query with multiple conditions
-      {:ok, results} = find(action: "find",
-        conditions: [
-          %{key: "status", value: "active", operator: "="},
-          %{key: "category", value: "books", operator: "="}
-        ],
-        keys: ["title", "id", "status", "category"],
-        range: {0, 20},
-        sort: [%{key: "created_at", operator: "-"}]
-      )
+  ## Options
+    * `:page` - The page number (zero-based)
+    * `:per_page` - Number of items per page
+    * `:keys` - List of keys to return in the response
+    * `:sort` - List of sort criteria
+    * `:conditions` - List of search conditions
+    * `:total` - Whether to include total count in response
   """
   def find(opts \\ []) do
-    search_term = Keyword.get(opts, :search_term)
-    keys = Keyword.get(opts, :keys, ["title", "id"])
-    {starts, ends} = Keyword.get(opts, :range, {0, 10})
-    sort = Keyword.get(opts, :sort, [%{key: "title", operator: "+"}])
-    extra_conditions = Keyword.get(opts, :conditions, [])
+    conditions = Keyword.get(opts, :conditions, [])
 
-    conditions = build_conditions(search_term) ++ extra_conditions
+    # Get total count first if needed
+    total =
+      if Keyword.get(opts, :total, false) do
+        case make_request("find", %{
+               query: %{
+                 conditions: conditions,
+                 operator: "&"
+               },
+               total: true
+             }) do
+          # Direct total
+          {:ok, %{"data" => %{"items" => total}}} when is_integer(total) -> total
+          # List of items
+          {:ok, %{"data" => %{"items" => items}}} when is_list(items) -> length(items)
+          _ -> 0
+        end
+      else
+        # Don't fetch total if not needed
+        nil
+      end
 
-    payload = %{
-      query: build_query(conditions),
-      keys: keys,
-      range: [starts, ends],
-      sort: sort
+    # Then get paginated items
+    range =
+      if range = Keyword.get(opts, :range) do
+        range
+      else
+        page = Keyword.get(opts, :page, 0)
+        per_page = Keyword.get(opts, :per_page, 20)
+        [page * per_page, (page + 1) * per_page - 1]
+      end
+
+    items_payload = %{
+      query: %{
+        conditions: conditions,
+        operator: "&"
+      },
+      range: range,
+      keys: Keyword.get(opts, :keys, ["title", "id"]),
+      sort: Keyword.get(opts, :sort, [%{key: "title", operator: "+"}])
     }
 
-    make_request(opts[:action] || "find", payload)
-  end
+    case make_request("find", items_payload) do
+      {:ok, %{"data" => %{"items" => items}}} when is_list(items) ->
+        {:ok,
+         %{
+           items: items,
+           total: total || length(items),
+           has_more: total && length(items) < total
+         }}
 
-  def request(action \\ "find", payload \\ %{}, opts \\ []) do
-    make_request(action, payload || %{})
-  end
-
-  defp build_conditions(nil), do: []
-
-  defp build_conditions(search_term) when is_binary(search_term) do
-    [%{key: "*", value: search_term, operator: "="}]
-  end
-
-  defp build_query([]), do: %{}
-  defp build_query(conditions), do: %{conditions: conditions}
-
-  @doc """
-  Signs in a user with the given username and password.
-
-  ## Parameters
-  * username - The user's username
-  * password - The user's password
-
-  ## Returns
-  * {:ok, %{"user"=>user} = data} - On successful sign-in
-  * {:error, errors} - On failed sign-in, returns error map
-
-  ## Examples
-      iex> sign_in("johndoe", "password123")
-      {:ok, %{id: 1, username: "johndoe", ...}}
-
-      iex> sign_in("unknown", "wrongpassword")
-      {:error, %{username: "Unknown Username"}}
-  """
-  def sign_in(username, password) do
-    set_session_cookie(username, nil)
-
-    payload = %{
-      username: username,
-      password: password
-    }
-
-    make_request("signin", payload)
-  end
-
-  def sign_in do
-    case get_auth_credentials() do
-      {username, password} when is_binary(username) and is_binary(password) ->
-        sign_in(username, password)
-
-      _ ->
-        error(l("No username/password found"))
+      error ->
+        error
     end
   end
 
-  defp make_request(action, payload, opts \\ []) do
-    username = opts[:username] || get_auth_default_user()
-    req = Req.new(url: get_api_url())
+  @doc """
+  Helper function to calculate total pages
+  """
+  def calculate_total_pages(total_items, per_page)
+      when is_integer(total_items) and is_integer(per_page) do
+    ceil(total_items / per_page)
+  end
+
+  def calculate_total_pages(_, _), do: 1
+
+  @doc """
+  Fetches metadata efficiently using parallel requests and caching
+  """
+  def fetch_all_metadata(conditions \\ []) do
+    cache_key = "pandora_metadata_#{:erlang.phash2(conditions)}"
+
+    case Cache.get(cache_key) do
+      nil ->
+        # Fetch metadata for each field in parallel
+        tasks =
+          @metadata_keys
+          |> Enum.map(fn field ->
+            Task.async(fn ->
+              fetch_field_metadata(field, conditions)
+            end)
+          end)
+
+        # Wait for all tasks with timeout
+        results = Task.await_many(tasks, 30_000)
+
+        # Combine results
+        metadata =
+          results
+          |> Enum.zip(@metadata_keys)
+          |> Enum.reduce(%{}, fn {result, key}, acc ->
+            Map.put(acc, "#{key}s", result)
+          end)
+
+        # Cache the results
+        Cache.put(cache_key, metadata, ttl: @cache_ttl)
+        {:ok, metadata}
+
+      cached ->
+        {:ok, cached}
+    end
+  end
+
+  @doc """
+  Fetches metadata with the current search conditions
+  """
+  def fetch_metadata(conditions, opts \\ []) do
+    # High limit to get comprehensive data
+    limit = Keyword.get(opts, :limit, 5000)
+
+    tasks =
+      @metadata_keys
+      |> Enum.map(fn field ->
+        Task.async(fn ->
+          fetch_field_metadata(field, conditions, limit)
+        end)
+      end)
+
+    results = Task.await_many(tasks, 30_000)
+
+    metadata =
+      results
+      |> Enum.zip(@metadata_keys)
+      |> Enum.reduce(%{}, fn {result, key}, acc ->
+        processed_results = process_metadata_field(result, key)
+        Map.put(acc, "#{key}s", processed_results)
+      end)
+
+    {:ok, metadata}
+  end
+
+  @doc """
+  Fetches grouped metadata for filters using the API's group parameter.
+  """
+  def fetch_grouped_metadata(conditions \\ []) do
+    debug("Fetching grouped metadata with conditions: #{inspect(conditions)}")
+
+    tasks =
+      @metadata_fields
+      |> Enum.map(fn field ->
+        Task.async(fn ->
+          {field, fetch_grouped_field(field, conditions)}
+        end)
+      end)
+
+    results = Task.await_many(tasks, :timer.seconds(10))
+    metadata = Map.new(results)
+    debug("Grouped metadata results: #{inspect(metadata)}")
+    # Return with :ok tuple
+    {:ok, metadata}
+  end
+
+  @doc """
+  Fetches grouped values for a single metadata field.
+  """
+  def fetch_grouped_field(field, conditions) when field in @metadata_fields do
+    # Build the query payload according to API docs
+    payload = %{
+      query: %{
+        conditions: conditions,
+        operator: "&"
+      },
+      # Group results by the specified field
+      group: field,
+      # Sort by number of items descending
+      sort: [%{key: "items", operator: "-"}],
+      # Get up to 1000 grouped results
+      range: [0, 1000]
+    }
+
+    case make_request("find", payload) do
+      {:ok, %{"data" => %{"items" => items}}} when is_list(items) ->
+        # API returns items in format [%{"name" => value, "items" => count}, ...]
+        items
+
+      {:ok, response} ->
+        case get_in(response, ["data", "items"]) do
+          items when is_list(items) -> items
+          _ -> []
+        end
+
+      _ ->
+        []
+    end
+  end
+
+  # Process each metadata field according to its structure
+  defp process_metadata_field(items, field) do
+    items
+    |> Enum.flat_map(fn item ->
+      case Map.get(item, field) do
+        values when is_list(values) -> values
+        value when is_binary(value) or is_integer(value) -> [value]
+        nil -> []
+      end
+    end)
+    |> process_field_values(field)
+  end
+
+  # Process specific fields with custom logic
+  defp process_field_values(values, "year") do
+    values
+    |> Enum.reject(&is_nil/1)
+    |> Enum.frequencies()
+    |> Enum.map(fn {year, count} ->
+      %{"name" => to_string(year), "items" => count}
+    end)
+    |> Enum.sort_by(fn %{"name" => year} -> year end, :desc)
+  end
+
+  defp process_field_values(values, "language") do
+    values
+    |> Enum.reject(&(&1 == "" or is_nil(&1)))
+    |> Enum.frequencies()
+    |> Enum.map(fn {lang, count} ->
+      %{"name" => lang, "items" => count}
+    end)
+    |> Enum.sort_by(fn %{"items" => count, "name" => name} -> {-count, name} end)
+  end
+
+  defp process_field_values(values, "country") do
+    values
+    |> Enum.reject(&(&1 == "" or is_nil(&1)))
+    |> Enum.frequencies()
+    |> Enum.map(fn {country, count} ->
+      %{"name" => country, "items" => count}
+    end)
+    |> Enum.sort_by(fn %{"items" => count, "name" => name} -> {-count, name} end)
+  end
+
+  defp process_field_values(values, "director") do
+    values
+    |> Enum.reject(&(&1 == "" or is_nil(&1)))
+    |> Enum.frequencies()
+    |> Enum.map(fn {name, count} ->
+      %{"name" => name, "items" => count}
+    end)
+    |> Enum.sort_by(fn %{"items" => count, "name" => name} -> {-count, name} end)
+  end
+
+  defp fetch_field_metadata(field, conditions, limit \\ 1000) do
+    payload = %{
+      query: %{
+        conditions: conditions,
+        # Default to AND operator
+        operator: "&"
+      },
+      keys: [field],
+      group_by: [
+        %{
+          key: field,
+          sort: [%{key: "items", operator: "-"}],
+          limit: limit
+        }
+      ]
+    }
+
+    debug("Making metadata request for #{field} with payload: #{inspect(payload)}")
+
+    case make_request("find", payload) do
+      {:ok, %{"data" => %{"items" => items}}} when is_list(items) ->
+        items
+        |> Enum.map(fn item ->
+          %{"name" => Map.get(item, "name", ""), "items" => Map.get(item, "items", 0)}
+        end)
+
+      {:ok, %{"items" => items}} when is_list(items) ->
+        items
+        |> Enum.map(fn item ->
+          %{"name" => Map.get(item, "name", ""), "items" => Map.get(item, "items", 0)}
+        end)
+
+      _ ->
+        []
+    end
+  end
+
+  @doc """
+  Makes a request to the API endpoint
+  """
+  def make_request(endpoint, payload) do
+    debug("Making request to #{endpoint} with payload: #{inspect(payload)}")
+    api_url = get_api_url()
 
     req =
-      case get_session_cookie(username) do
-        nil -> req
-        cookie -> Req.Request.put_header(req, "cookie", "sessionid=#{cookie}")
-      end
-      |> debug()
+      Req.new(
+        url: api_url,
+        connect_options: [timeout: 5_000],
+        receive_timeout: 15_000
+      )
 
     form_data = %{
-      action: action,
+      action: endpoint,
       data: Jason.encode!(payload)
     }
 
     case Req.post(req, form: form_data) do
-      {:ok, %Req.Response{status: 200, body: body, headers: headers}} ->
-        debug(body)
+      {:ok, %Req.Response{status: 200, body: body}} when is_binary(body) ->
+        case Jason.decode(body) do
+          {:ok, decoded} ->
+            debug(decoded, label: "API Response")
+            {:ok, decoded}
 
-        set_cookie =
-          if cookie = extract_session_cookie(headers) do
-            set_session_cookie(username, cookie)
-            nil
-          else
-            if action == "signin" do
-              error(headers, l("No session cookie received"))
-            end
-          end
+          {:error, reason} ->
+            debug("JSON decode error: #{inspect(reason)}")
+            {:error, "Invalid JSON response"}
+        end
 
-        maybe_return_data(body) || set_cookie || l("No data received fro API")
+      {:ok, %Req.Response{status: 200, body: body}} ->
+        debug(body, label: "API Response (raw)")
+        {:ok, body}
 
-      {:ok, %Req.Response{status: 401}} ->
-        error(l("Authentication failed"))
-
-      {:ok, %Req.Response{status: status, body: body}} ->
-        error(body, l("API request failed with code %{status}", status: status))
+      {:ok, %Req.Response{status: status}} ->
+        error(l("API request failed with status %{status}", status: status))
+        {:error, "API request failed with status #{status}"}
 
       {:error, error} ->
         error(error, l("API request failed"))
+        {:error, error}
     end
   end
 
-  defp maybe_return_data(%{"data" => %{"errors" => errors} = data}) do
-    error(errors)
-  end
-
-  defp maybe_return_data(%{"data" => data, "status" => %{"code" => 200}}) do
-    {:ok, data}
-  end
-
-  defp maybe_return_data(%{"data" => data, "status" => %{"code" => status, "text" => error}}) do
-    error(
-      data,
-      l("API request failed with code %{code} and error: %{message}",
-        code: status,
-        message: error
-      )
-    )
-  end
-
-  defp maybe_return_data(%{"data" => data, "status" => %{"code" => status}}) do
-    error(data, l("API request failed with code %{status}", status: status))
-  end
-
-  defp maybe_return_data(%{} = data) do
-    {:ok, data}
-  end
-
-  defp maybe_return_data(nil) do
-    nil
-  end
-
-  defp maybe_return_data(body) do
-    error(body, l("API data not recognised"))
-  end
-
-  defp extract_session_cookie(headers) do
-    headers
-    |> Enum.filter(fn {key, _} -> String.downcase(key) == "set-cookie" end)
-    |> Enum.flat_map(fn {_, values} -> List.wrap(values) end)
-    |> Enum.find_value(fn cookie_string ->
-      case Regex.run(~r/sessionid=([^;]+)/, cookie_string) do
-        [_, session_id] -> session_id
-        _ -> nil
-      end
-    end)
-  end
-
-  defp set_session_cookie(username, cookie) do
-    # TEMP: should store some other way?
-    Config.put([__MODULE__, :session_cookie], %{username => cookie}, :bonfire_pandora)
-  end
-
-  defp get_session_cookie(username) do
-    Config.get([__MODULE__, :session_cookie, username], nil, :bonfire_pandora)
-  end
-
   defp get_api_url do
-    Config.get([__MODULE__, :api_url], "https://0xdb.org/api/")
-  end
-
-  defp get_auth_default_user do
-    Config.get([__MODULE__, :username], nil, :bonfire_pandora)
-  end
-
-  defp get_auth_credentials do
-    {get_auth_default_user(), Config.get([__MODULE__, :password], nil, :bonfire_pandora)}
+    Bonfire.Common.Config.get([__MODULE__, :api_url], "https://0xdb.org/api/")
   end
 end

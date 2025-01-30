@@ -1,4 +1,8 @@
 defmodule Bonfire.PanDoRa.Web.Routes do
+  use Bonfire.Common.Localise
+  import Bonfire.Common.Modularity.DeclareHelpers
+  import Bonfire.UI.Common.Modularity.DeclareHelpers
+
   @behaviour Bonfire.UI.Common.RoutesModule
 
   defmacro __using__(_) do
