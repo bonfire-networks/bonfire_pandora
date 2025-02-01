@@ -100,7 +100,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
     # Update metadata with current conditions
     socket = update_metadata_with_conditions(socket, conditions)
-    
+
     trigger_search(socket)
   end
 
@@ -141,11 +141,20 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   # And make handle_event consistent:
   def handle_event("search", %{"term" => term}, socket) do
-    socket
-    |> assign(term: term)
-    |> reset_pagination()
-    |> set_loading_state(true)
-    |> trigger_search()
+    socket =
+      socket
+      |> assign(
+        selected_directors: [],
+        selected_countries: [],
+        selected_years: [],
+        selected_languages: [],
+        term: term
+      )
+      |> reset_pagination()
+      |> set_loading_state(true)
+      |> trigger_search()
+
+    {:noreply, socket}
   end
 
   def handle_event("load_more", _, socket) do
@@ -206,6 +215,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   #     _ -> socket
   #   end
   # end
+
+
 
   defp fetch_initial_data(socket) do
     case Client.fetch_grouped_metadata() do
@@ -272,6 +283,22 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       _ ->
         socket
     end
+  end
+
+  defp toggle_filter(socket, "country", value) do
+    current_filters = Map.get(socket.assigns, :selected_countries, [])
+
+    updated_filters =
+      if value in current_filters do
+        List.delete(current_filters, value)
+      else
+        [value | current_filters]
+      end
+
+    socket
+    |> assign(:selected_countries, updated_filters)
+    |> reset_pagination()
+    |> trigger_search()
   end
 
   defp toggle_filter(socket, filter_type, value) do
@@ -365,20 +392,31 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         selected_languages: socket.assigns.selected_languages
       })
 
-    # Fetch updated metadata using the current search term
-    socket = update_metadata_for_term(socket, term)
+    # Always update metadata regardless of term
+    socket =
+      case Client.fetch_grouped_metadata() do
+        {:ok, metadata} ->
+          socket
+          |> assign(
+            available_directors: metadata["director"] || [],
+            available_countries: metadata["country"] || [],
+            available_years: metadata["year"] || [],
+            available_languages: metadata["language"] || []
+          )
+        _ -> socket
+      end
 
     case Client.find(
            conditions: conditions,
-           range: [0, @default_per_page],  # Use range directly instead of page/per_page
+           range: [0, @default_per_page],
            keys: @default_keys,
            total: true
          ) do
       {:ok, %{items: items, total: total}} ->
         handle_search_success(socket, items, total)
 
-      {:error, error} ->
-        handle_search_error(socket, error)
+      _ ->
+        {:noreply, socket |> set_loading_state(false)}
     end
   end
 
