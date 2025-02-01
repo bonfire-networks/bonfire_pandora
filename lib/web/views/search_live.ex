@@ -443,8 +443,11 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         has_more_items: current_count == @default_per_page
       )
 
+    # Only pass search conditions to metadata if there's a search term
+    conditions = if socket.assigns.term, do: build_search_conditions(socket.assigns), else: []
+    
     # Update metadata with current search conditions
-    case Client.fetch_grouped_metadata(build_search_conditions(socket.assigns)) do
+    case Client.fetch_grouped_metadata(conditions) do
       {:ok, metadata} ->
         {:noreply, assign_metadata(socket, metadata)}
       _ ->
