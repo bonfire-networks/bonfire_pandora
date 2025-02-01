@@ -23,6 +23,16 @@
           {/if}
           {if @loading, do: l("Searching..."), else: l("Search")}
         </button>
+        <button 
+          :if={@term || length(@selected_directors) > 0 || length(@selected_countries) > 0 || length(@selected_years) > 0 || length(@selected_languages) > 0}
+          type="button" 
+          phx-click="clear_filters" 
+          class="btn btn-ghost btn-soft gap-2" 
+          disabled={@loading}
+        >
+          <#Icon iconify="carbon:filter-remove" class="w-4 h-4" />
+          {l("Clear filters")}
+        </button>
       </div>
     </form>
     <div class="flex mt-3 justify-between gap-3">

@@ -29,7 +29,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     has_more_items: true,
     term: nil,
     loading: false,
-    loading_metadata: true,
     current_count: 0,
     total_count: 0,
     without_secondary_widgets: true,
@@ -157,6 +156,23 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     {:noreply, socket}
   end
 
+  def handle_event("clear_filters", _, socket) do
+    socket =
+      socket
+      |> assign(
+        term: nil,
+        selected_directors: [],
+        selected_countries: [],
+        selected_years: [],
+        selected_languages: []
+      )
+      |> reset_pagination()
+      |> set_loading_state(true)
+      |> trigger_search()
+
+    {:noreply, socket}
+  end
+
   def handle_event("load_more", _, socket) do
     if socket.assigns.has_more_items do
       {:noreply,
@@ -219,6 +235,9 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
 
   defp fetch_initial_data(socket) do
+    socket = set_loading_state(socket, true)  # Set loading at start
+
+
     case Client.fetch_grouped_metadata() do
       {:ok, metadata} ->
         # Debug to verify metadata format
@@ -227,7 +246,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         socket =
           socket
           |> assign_metadata(metadata)
-          |> set_loading_state(true)
 
         # Now fetch initial results
         case Client.find(
@@ -248,7 +266,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       metadata when is_map(metadata) ->
         socket
         |> assign_metadata(metadata)
-        |> set_loading_state(true)
+        |> set_loading_state(false)
 
       _ ->
         socket |> set_loading_state(false)
@@ -310,7 +328,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     |> stream(:search_results, [], reset: true)
   end
 
-  defp set_loading_state(socket, loading) do
+  def set_loading_state(socket, loading) do
     assign(socket, loading: loading)
   end
 
@@ -383,8 +401,12 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     socket =
       case Client.fetch_grouped_metadata() do
         {:ok, metadata} ->
-          assign_metadata(socket, metadata)
-        _ -> socket
+          socket
+          |> assign_metadata(metadata)
+          # |> assign(loading: true)  # Explicitly preserve loading state
+        _ ->
+          socket
+        # |> assign(loading: true)  # Ensure loading state is preserved
       end
 
     case Client.find(
@@ -435,7 +457,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       socket
       |> stream(:search_results, prepare_items(items))
       |> assign(
-        loading: false,
         current_count: current_count,
         total_count: total,
         page: 0,
@@ -457,7 +478,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
             available_countries: metadata["country"] || [],
             available_years: sort_years(metadata["year"] || []),
             available_languages: metadata["language"] || []
-          )}
+          )
+          |> set_loading_state(false)}  # Only set to false after everything is done
       _ ->
         {:noreply, socket}
     end
