@@ -83,10 +83,47 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       when filter_type in @filter_types do
     debug("Filter params: #{inspect(params)}")
 
-    socket
-    |> toggle_filter(filter_type, params[filter_type])
-    |> reset_pagination()
-    |> trigger_search()
+    socket =
+      socket
+      |> toggle_filter(filter_type, params[filter_type])
+      |> reset_pagination()
+
+    # Build conditions with the updated filters
+    conditions =
+      build_search_conditions(%{
+        term: socket.assigns.term,
+        selected_directors: socket.assigns.selected_directors,
+        selected_countries: socket.assigns.selected_countries,
+        selected_years: socket.assigns.selected_years,
+        selected_languages: socket.assigns.selected_languages
+      })
+
+    # Update metadata with current conditions
+    socket = update_metadata_with_conditions(socket, conditions)
+    
+    trigger_search(socket)
+  end
+
+  # New function to update metadata with current conditions
+  defp update_metadata_with_conditions(socket, conditions) do
+    case Client.fetch_grouped_metadata(conditions) do
+      {:ok, metadata} ->
+        socket
+        |> assign(
+          available_directors: metadata["director"] || [],
+          available_countries: metadata["country"] || [],
+          available_years: metadata["year"] || [],
+          available_languages: metadata["language"] || []
+        )
+      _ ->
+        socket
+    end
+  end
+
+  # Update the existing update_metadata_for_term to use the new function
+  defp update_metadata_for_term(socket, term) do
+    conditions = [%{key: "title", operator: "~=", value: term}]
+    update_metadata_with_conditions(socket, conditions)
   end
 
   # def handle_event("search", %{"term" => term}, socket) do
@@ -192,10 +229,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
                sort: [%{key: "title", operator: "+"}],
                range: [0, @default_per_page],  # Use range directly instead of page/per_page
                keys: @default_keys,
-               query: %{  # Add proper query structure
-                 conditions: [],  # No initial conditions
-                 operator: "&"
-               },
                total: true
              ) do
           {:ok, %{items: items, total: total}} ->
@@ -332,10 +365,12 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         selected_languages: socket.assigns.selected_languages
       })
 
+    # Fetch updated metadata using the current search term
+    socket = update_metadata_for_term(socket, term)
+
     case Client.find(
            conditions: conditions,
-           page: socket.assigns.page,
-           per_page: @default_per_page,
+           range: [0, @default_per_page],  # Use range directly instead of page/per_page
            keys: @default_keys,
            total: true
          ) do
@@ -345,6 +380,12 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       {:error, error} ->
         handle_search_error(socket, error)
     end
+  end
+
+  # New function to handle metadata updates
+  defp update_metadata_for_term(socket, term) do
+    conditions = [%{key: "title", operator: "~=", value: term}]
+    update_metadata_with_conditions(socket, conditions)
   end
 
   defp handle_search_success(socket, items, total) do
