@@ -23,11 +23,12 @@
           {/if}
           {if @loading, do: l("Searching..."), else: l("Search")}
         </button>
-        <button 
-          :if={@term || length(@selected_directors) > 0 || length(@selected_countries) > 0 || length(@selected_years) > 0 || length(@selected_languages) > 0}
-          type="button" 
-          phx-click="clear_filters" 
-          class="btn btn-ghost btn-soft gap-2" 
+        <button
+          :if={@term || length(@selected_directors) > 0 || length(@selected_countries) > 0 ||
+            length(@selected_years) > 0 || length(@selected_languages) > 0}
+          type="button"
+          phx-click="clear_filters"
+          class="btn btn-ghost btn-soft gap-2"
           disabled={@loading}
         >
           <#Icon iconify="carbon:filter-remove" class="w-4 h-4" />
@@ -151,7 +152,6 @@
       </div>
     {/if}
     <ul id="search_results" phx-update="stream" class="list bg-base-100 rounded-box shadow-md">
-
       {#for {id, result} <- @streams.search_results}
         <li id={id} class="list-row">
           <div><img class="size-16 rounded-box" src="https://img.daisyui.com/images/profile/demo/3@94.webp"></div>
@@ -253,7 +253,6 @@
   </table> -->
 
     <div class="flex flex-col items-center gap-2 py-4 border-t border-base-content/10">
-
       {#if @has_more_items}
         <button
           :if={not @loading}

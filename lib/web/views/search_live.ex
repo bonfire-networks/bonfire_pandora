@@ -114,6 +114,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
           available_years: metadata["year"] || [],
           available_languages: metadata["language"] || []
         )
+
       _ ->
         socket
     end
@@ -232,11 +233,9 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   #   end
   # end
 
-
-
   defp fetch_initial_data(socket) do
-    socket = set_loading_state(socket, true)  # Set loading at start
-
+    # Set loading at start
+    socket = set_loading_state(socket, true)
 
     case Client.fetch_grouped_metadata() do
       {:ok, metadata} ->
@@ -403,10 +402,11 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         {:ok, metadata} ->
           socket
           |> assign_metadata(metadata)
-          # |> assign(loading: true)  # Explicitly preserve loading state
+
+        # |> assign(loading: true)  # Explicitly preserve loading state
         _ ->
           socket
-        # |> assign(loading: true)  # Ensure loading state is preserved
+          # |> assign(loading: true)  # Ensure loading state is preserved
       end
 
     case Client.find(
@@ -432,7 +432,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   defp sort_years(years) do
     Enum.sort_by(years, fn %{"name" => year} ->
       case Integer.parse(year) do
-        {num, _} -> -num  # Negative to sort in descending order
+        # Negative to sort in descending order
+        {num, _} -> -num
         _ -> 0
       end
     end)
@@ -466,20 +467,25 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       )
 
     # Only pass search conditions to metadata if there's a search term
-    conditions = if socket.assigns.term && socket.assigns.term != "", do: build_search_conditions(socket.assigns), else: []
+    conditions =
+      if socket.assigns.term && socket.assigns.term != "",
+        do: build_search_conditions(socket.assigns),
+        else: []
 
     # Update metadata with current search conditions
     case Client.fetch_grouped_metadata(conditions) do
       {:ok, metadata} ->
         {:noreply,
-          socket
-          |> assign(
-            available_directors: metadata["director"] || [],
-            available_countries: metadata["country"] || [],
-            available_years: sort_years(metadata["year"] || []),
-            available_languages: metadata["language"] || []
-          )
-          |> set_loading_state(false)}  # Only set to false after everything is done
+         socket
+         |> assign(
+           available_directors: metadata["director"] || [],
+           available_countries: metadata["country"] || [],
+           available_years: sort_years(metadata["year"] || []),
+           available_languages: metadata["language"] || []
+         )
+         # Only set to false after everything is done
+         |> set_loading_state(false)}
+
       _ ->
         {:noreply, socket}
     end
@@ -503,11 +509,11 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     next_page = socket.assigns.page + 1
 
     case Client.find(
-      conditions: build_search_conditions(socket.assigns),
-      range: calculate_page_range(next_page),
-      keys: @default_keys,
-      total: true
-    ) do
+           conditions: build_search_conditions(socket.assigns),
+           range: calculate_page_range(next_page),
+           keys: @default_keys,
+           total: true
+         ) do
       {:ok, %{items: items, total: total}} ->
         socket
         |> stream(:search_results, prepare_items(items))
@@ -520,7 +526,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
           loading: false
         )
 
-      {:error, error} -> handle_search_error(socket, error)
+      {:error, error} ->
+        handle_search_error(socket, error)
     end
   end
 

@@ -51,7 +51,7 @@ defmodule PanDoRa.API.Client do
         {:ok,
          %{
            items: items,
-           total:  length(items),
+           total: length(items),
            has_more: false
          }}
 
@@ -161,8 +161,10 @@ defmodule PanDoRa.API.Client do
               operator: "&"
             },
             group: field,
-            sort: [%{key: "items", operator: "-"}],  # Sort by count descending
-            range: [0, 19]  # Get top 20 items (0-19)
+            # Sort by count descending
+            sort: [%{key: "items", operator: "-"}],
+            # Get top 20 items (0-19)
+            range: [0, 19]
           }
 
           debug("Making request for field #{field}")
@@ -172,6 +174,7 @@ defmodule PanDoRa.API.Client do
           case result do
             {:ok, %{"data" => %{"items" => items}}} when is_list(items) ->
               {field, items}
+
             _ ->
               {field, []}
           end
@@ -188,6 +191,7 @@ defmodule PanDoRa.API.Client do
           {_, {:ok, {^field, items}}} ->
             debug("Successfully got #{length(items)} items for #{field}")
             {field, items}
+
           _ ->
             debug("Failed or timeout getting items for #{field}")
             {field, []}
@@ -336,10 +340,14 @@ defmodule PanDoRa.API.Client do
     req =
       Req.new(
         url: api_url,
-        connect_options: [timeout: 1_500],  # Reduce timeout to 1.5s
-        receive_timeout: 3_000,  # Reduce timeout to 3s
-        retry: :transient,  # Retry on network errors
-        max_retries: 1  # Try once more on failure
+        # Reduce timeout to 1.5s
+        connect_options: [timeout: 1_500],
+        # Reduce timeout to 3s
+        receive_timeout: 3_000,
+        # Retry on network errors
+        retry: :transient,
+        # Try once more on failure
+        max_retries: 1
       )
 
     form_data = %{
@@ -347,36 +355,37 @@ defmodule PanDoRa.API.Client do
       data: Jason.encode!(payload)
     }
 
-    result = case Req.post(req, form: form_data) do
-      {:ok, %Req.Response{status: 200, body: body}} when is_binary(body) ->
-        case Jason.decode(body) do
-          {:ok, decoded} ->
-            debug(decoded, label: "API Response")
-            {:ok, decoded}
+    result =
+      case Req.post(req, form: form_data) do
+        {:ok, %Req.Response{status: 200, body: body}} when is_binary(body) ->
+          case Jason.decode(body) do
+            {:ok, decoded} ->
+              debug(decoded, label: "API Response")
+              {:ok, decoded}
 
-          {:error, reason} ->
-            debug("JSON decode error: #{inspect(reason)}")
-            {:error, "Invalid JSON response"}
-        end
+            {:error, reason} ->
+              debug("JSON decode error: #{inspect(reason)}")
+              {:error, "Invalid JSON response"}
+          end
 
-      {:ok, %Req.Response{status: 200, body: body}} ->
-        debug(body, label: "API Response (raw)")
-        {:ok, body}
+        {:ok, %Req.Response{status: 200, body: body}} ->
+          debug(body, label: "API Response (raw)")
+          {:ok, body}
 
-      {:ok, %Req.Response{status: status}} ->
-        error(l("API request failed with status %{status}", status: status))
-        {:error, "API request failed with status #{status}"}
+        {:ok, %Req.Response{status: status}} ->
+          error(l("API request failed with status %{status}", status: status))
+          {:error, "API request failed with status #{status}"}
 
-      {:error, error} ->
-        error(error, l("API request failed"))
-        # Only retry once more on timeout
-        if retry_count < 1 and match?(%Req.TransportError{reason: :timeout}, error) do
-          debug("Retrying request after timeout")
-          make_request(endpoint, payload, retry_count + 1)
-        else
-          {:error, error}
-        end
-    end
+        {:error, error} ->
+          error(error, l("API request failed"))
+          # Only retry once more on timeout
+          if retry_count < 1 and match?(%Req.TransportError{reason: :timeout}, error) do
+            debug("Retrying request after timeout")
+            make_request(endpoint, payload, retry_count + 1)
+          else
+            {:error, error}
+          end
+      end
 
     end_time = System.monotonic_time(:millisecond)
     debug("Request to #{endpoint} took #{end_time - start_time}ms")
