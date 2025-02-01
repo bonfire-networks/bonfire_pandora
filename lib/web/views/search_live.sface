@@ -164,7 +164,7 @@
                 </div>
               {/if}
             </div>
-            <div class="flex py-1.5 items-center gap-2">
+            <div class="flex py-1.5 items-center gap-1 flex-wrap">
               {#if result["director"]}
                 {#for director <- List.wrap(result["director"])}
                   <span class="text-xs uppercase font-semibold opacity-60">{director}</span>

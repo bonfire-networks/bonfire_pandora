@@ -315,6 +315,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   end
 
   defp trigger_search(socket) do
+    socket = set_loading_state(socket, true)
     {:noreply, updated_socket} = do_search(socket, socket.assigns.term)
     updated_socket
   end
@@ -407,7 +408,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   end
 
   defp sort_years(years) do
-    Enum.sort_by(years, fn %{"name" => year} -> 
+    Enum.sort_by(years, fn %{"name" => year} ->
       case Integer.parse(year) do
         {num, _} -> -num  # Negative to sort in descending order
         _ -> 0
@@ -444,12 +445,19 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       )
 
     # Only pass search conditions to metadata if there's a search term
-    conditions = if socket.assigns.term, do: build_search_conditions(socket.assigns), else: []
-    
+    conditions = if socket.assigns.term && socket.assigns.term != "", do: build_search_conditions(socket.assigns), else: []
+
     # Update metadata with current search conditions
     case Client.fetch_grouped_metadata(conditions) do
       {:ok, metadata} ->
-        {:noreply, assign_metadata(socket, metadata)}
+        {:noreply,
+          socket
+          |> assign(
+            available_directors: metadata["director"] || [],
+            available_countries: metadata["country"] || [],
+            available_years: sort_years(metadata["year"] || []),
+            available_languages: metadata["language"] || []
+          )}
       _ ->
         {:noreply, socket}
     end
@@ -587,37 +595,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     |> to_string()
   end
 
-  defp assign_metadata(socket, metadata) do
-    socket
-    |> assign(:available_directors, Map.get(metadata, "directors", []))
-    |> assign(:available_countries, Map.get(metadata, "countries", []))
-    |> assign(:available_years, Map.get(metadata, "years", []))
-    |> assign(:available_languages, Map.get(metadata, "languages", []))
-    |> assign(:filters_loading, false)
-  end
-
-  # defp initial_assigns do
-  #   %{
-  #     page: 0,
-  #     has_more_items: true,
-  #     term: nil,
-  #     loading: false,
-  #     loading_metadata: true,
-  #     current_count: 0,
-  #     total_count: 0,
-  #     per_page: 20,
-  #     available_directors: [],
-  #     available_countries: [],
-  #     available_years: [],
-  #     available_languages: [],
-  #     selected_directors: [],
-  #     selected_countries: [],
-  #     selected_years: [],
-  #     selected_languages: [],
-  #     selected_filters: %{}
-  #   }
-  # end
-
   def format_duration(duration) when is_binary(duration) do
     case Float.parse(duration) do
       {seconds, _} -> format_duration(seconds)
@@ -636,6 +613,4 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       true -> "< 1min"
     end
   end
-
-  def format_duration(_), do: ""
 end
