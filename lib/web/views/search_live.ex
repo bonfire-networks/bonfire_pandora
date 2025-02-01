@@ -224,21 +224,15 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         # Debug to verify metadata format
         debug("Received metadata: #{inspect(metadata)}")
 
-        # Ensure metadata is correctly formatted before assigning
         socket =
           socket
-          |> assign(
-            available_directors: metadata["director"] || [],
-            available_countries: metadata["country"] || [],
-            available_years: metadata["year"] || [],
-            available_languages: metadata["language"] || []
-          )
+          |> assign_metadata(metadata)
           |> set_loading_state(true)
 
         # Now fetch initial results
         case Client.find(
                sort: [%{key: "title", operator: "+"}],
-               range: [0, @default_per_page],  # Use range directly instead of page/per_page
+               range: [0, @default_per_page],
                keys: @default_keys,
                total: true
              ) do
@@ -252,18 +246,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
       # Handle case where metadata is returned directly without :ok tuple
       metadata when is_map(metadata) ->
-        # Same assign logic as above
-        socket =
-          socket
-          |> assign(
-            available_directors: metadata["director"] || [],
-            available_countries: metadata["country"] || [],
-            available_years: metadata["year"] || [],
-            available_languages: metadata["language"] || []
-          )
-          |> set_loading_state(true)
+        socket
+        |> assign_metadata(metadata)
+        |> set_loading_state(true)
 
-      # Continue with fetch_initial_results...
       _ ->
         socket |> set_loading_state(false)
     end
@@ -396,13 +382,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     socket =
       case Client.fetch_grouped_metadata() do
         {:ok, metadata} ->
-          socket
-          |> assign(
-            available_directors: metadata["director"] || [],
-            available_countries: metadata["country"] || [],
-            available_years: metadata["year"] || [],
-            available_languages: metadata["language"] || []
-          )
+          assign_metadata(socket, metadata)
         _ -> socket
       end
 
@@ -426,30 +406,50 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     update_metadata_with_conditions(socket, conditions)
   end
 
+  defp sort_years(years) do
+    Enum.sort_by(years, fn %{"name" => year} -> 
+      case Integer.parse(year) do
+        {num, _} -> -num  # Negative to sort in descending order
+        _ -> 0
+      end
+    end)
+  end
+
+  defp assign_metadata(socket, metadata) do
+    socket
+    |> assign(
+      available_directors: metadata["director"] || [],
+      available_countries: metadata["country"] || [],
+      available_years: sort_years(metadata["year"] || []),
+      available_languages: metadata["language"] || []
+    )
+  end
+
+  # Always update metadata regardless of term
   defp handle_search_success(socket, items, total) do
     current_count = length(items)
     total_pages = ceil(total / @default_per_page)
 
-    debug("""
-    Search results:
-    - Items count: #{current_count}
-    - Total items: #{total}
-    - Total pages: #{total_pages}
-    - Has more: #{current_count == @default_per_page}
-    """)
+    socket =
+      socket
+      |> stream(:search_results, prepare_items(items))
+      |> assign(
+        loading: false,
+        current_count: current_count,
+        total_count: total,
+        page: 0,
+        total_pages: total_pages,
+        # Show load more if we have exactly per_page items (meaning there might be more)
+        has_more_items: current_count == @default_per_page
+      )
 
-    {:noreply,
-     socket
-     |> stream(:search_results, prepare_items(items), reset: true)
-     |> assign(
-       total_count: total,
-       current_count: current_count,
-       total_pages: total_pages,
-       page: 0,
-       # Show load more only if we got exactly per_page items
-       has_more_items: current_count == @default_per_page,
-       loading: false
-     )}
+    # Update metadata with current search conditions
+    case Client.fetch_grouped_metadata(build_search_conditions(socket.assigns)) do
+      {:ok, metadata} ->
+        {:noreply, assign_metadata(socket, metadata)}
+      _ ->
+        {:noreply, socket}
+    end
   end
 
   defp handle_search_error(socket, error) do
@@ -561,7 +561,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   # defp handle_search_results(socket, items, total, page) do
   #   socket
-  #   |> stream(:search_results, prepare_items(items), reset: page == 0)
+  #   |> stream(:search_results, prepare_items(items))
   #   |> assign(:total_count, total)
   #   |> assign(:page, page)
   # end
