@@ -190,9 +190,12 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         # Now fetch initial results
         case Client.find(
                sort: [%{key: "title", operator: "+"}],
-               page: 0,
-               per_page: @default_per_page,
+               range: [0, @default_per_page],  # Use range directly instead of page/per_page
                keys: @default_keys,
+               query: %{  # Add proper query structure
+                 conditions: [],  # No initial conditions
+                 operator: "&"
+               },
                total: true
              ) do
           {:ok, %{items: items, total: total}} ->
@@ -241,18 +244,18 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   defp toggle_filter(socket, filter_type, value) do
     filter_key = String.to_existing_atom("selected_#{filter_type}s")
     current_filters = Map.get(socket.assigns, filter_key, [])
-    values = List.wrap(value)
 
     updated_filters =
-      if Enum.all?(values, &(&1 in current_filters)) do
-        current_filters -- values
+      if value in current_filters do
+        List.delete(current_filters, value)
       else
-        Enum.uniq(current_filters ++ values)
+        [value | current_filters]
       end
 
     socket
     |> assign(filter_key, updated_filters)
-    |> set_loading_state(true)
+    |> reset_pagination()
+    |> trigger_search()
   end
 
   defp reset_pagination(socket) do
@@ -353,7 +356,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     - Items count: #{current_count}
     - Total items: #{total}
     - Total pages: #{total_pages}
-    - Has more: #{current_count < total}
+    - Has more: #{current_count == @default_per_page}
     """)
 
     {:noreply,
@@ -364,8 +367,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
        current_count: current_count,
        total_pages: total_pages,
        page: 0,
-       # Fixed comparison
-       has_more_items: total > current_count,
+       # Show load more only if we got exactly per_page items
+       has_more_items: current_count == @default_per_page,
        loading: false
      )}
   end
@@ -386,34 +389,32 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   defp do_load_more(socket) do
     next_page = socket.assigns.page + 1
-    range = calculate_page_range(next_page)
 
     case Client.find(
-           conditions: build_search_conditions(socket.assigns),
-           keys: @default_keys,
-           range: range,
-           total: true
-         ) do
-      {:ok, %{items: items, total: total, has_more: has_more}} ->
+      conditions: build_search_conditions(socket.assigns),
+      range: calculate_page_range(next_page),
+      keys: @default_keys,
+      total: true
+    ) do
+      {:ok, %{items: items, total: total}} ->
         socket
         |> stream(:search_results, prepare_items(items))
         |> assign(
           page: next_page,
           current_count: socket.assigns.current_count + length(items),
           total_count: total,
-          has_more_items: has_more,
+          # Show load more only if we got exactly per_page items
+          has_more_items: length(items) == @default_per_page,
           loading: false
         )
 
-      {:error, error} ->
-        socket
-        |> assign(error: error, loading: false)
+      {:error, error} -> handle_search_error(socket, error)
     end
   end
 
   defp calculate_page_range(page) do
     start_index = page * @default_per_page
-    [start_index, start_index + @default_per_page - 1]
+    [start_index, start_index + @default_per_page]
   end
 
   defp handle_load_more_success(socket, %{items: items, total: total}, next_page) do

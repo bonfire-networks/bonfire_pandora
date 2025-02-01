@@ -26,27 +26,6 @@ defmodule PanDoRa.API.Client do
   def find(opts \\ []) do
     conditions = Keyword.get(opts, :conditions, [])
 
-    # Get total count first if needed
-    total =
-      if Keyword.get(opts, :total, false) do
-        case make_request("find", %{
-               query: %{
-                 conditions: conditions,
-                 operator: "&"
-               },
-               total: true
-             }) do
-          # Direct total
-          {:ok, %{"data" => %{"items" => total}}} when is_integer(total) -> total
-          # List of items
-          {:ok, %{"data" => %{"items" => items}}} when is_list(items) -> length(items)
-          _ -> 0
-        end
-      else
-        # Don't fetch total if not needed
-        nil
-      end
-
     # Then get paginated items
     range =
       if range = Keyword.get(opts, :range) do
@@ -72,8 +51,8 @@ defmodule PanDoRa.API.Client do
         {:ok,
          %{
            items: items,
-           total: total || length(items),
-           has_more: total && length(items) < total
+           total:  length(items),
+           has_more: false
          }}
 
       error ->
@@ -132,18 +111,23 @@ defmodule PanDoRa.API.Client do
   Fetches metadata with the current search conditions
   """
   def fetch_metadata(conditions, opts \\ []) do
+    start_time = System.monotonic_time(:millisecond)
     # High limit to get comprehensive data
-    limit = Keyword.get(opts, :limit, 5000)
+    limit = Keyword.get(opts, :limit, 20)
 
     tasks =
       @metadata_keys
       |> Enum.map(fn field ->
         Task.async(fn ->
-          fetch_field_metadata(field, conditions, limit)
+          task_start = System.monotonic_time(:millisecond)
+          result = fetch_field_metadata(field, conditions, limit)
+          task_end = System.monotonic_time(:millisecond)
+          debug("Metadata fetch for #{field} took #{task_end - task_start}ms")
+          result
         end)
       end)
 
-    results = Task.await_many(tasks, 30_000)
+    results = Task.await_many(tasks, 10_000)
 
     metadata =
       results
@@ -153,27 +137,65 @@ defmodule PanDoRa.API.Client do
         Map.put(acc, "#{key}s", processed_results)
       end)
 
+    end_time = System.monotonic_time(:millisecond)
+    debug("Total metadata fetch took #{end_time - start_time}ms")
     {:ok, metadata}
   end
 
   @doc """
-  Fetches grouped metadata for filters using the API's group parameter.
+  Fetches grouped metadata for filters using the find endpoint with group parameter.
   """
   def fetch_grouped_metadata(conditions \\ []) do
-    debug("Fetching grouped metadata with conditions: #{inspect(conditions)}")
+    start_time = System.monotonic_time(:millisecond)
+    debug("Starting grouped metadata fetch")
 
+    # Make a single request per field but in parallel
     tasks =
       @metadata_fields
       |> Enum.map(fn field ->
         Task.async(fn ->
-          {field, fetch_grouped_field(field, conditions)}
+          # Build query for each field
+          payload = %{
+            query: %{
+              conditions: conditions,
+              operator: "&"
+            },
+            group: field,
+            sort: [%{key: "items", operator: "-"}],  # Sort by count descending
+            range: [0, 19]  # Get top 20 items (0-19)
+          }
+
+          debug("Making request for field #{field}")
+          result = make_request("find", payload)
+          debug("Got result for field #{field}: #{inspect(result)}")
+
+          case result do
+            {:ok, %{"data" => %{"items" => items}}} when is_list(items) ->
+              {field, items}
+            _ ->
+              {field, []}
+          end
         end)
       end)
 
-    results = Task.await_many(tasks, :timer.seconds(10))
-    metadata = Map.new(results)
-    debug("Grouped metadata results: #{inspect(metadata)}")
-    # Return with :ok tuple
+    # Wait for all requests with a reasonable timeout
+    results = Task.yield_many(tasks, 5000)
+
+    metadata =
+      Enum.zip(@metadata_fields, tasks)
+      |> Map.new(fn {field, task} ->
+        case Enum.find(results, fn {t, _} -> t.ref == task.ref end) do
+          {_, {:ok, {^field, items}}} ->
+            debug("Successfully got #{length(items)} items for #{field}")
+            {field, items}
+          _ ->
+            debug("Failed or timeout getting items for #{field}")
+            {field, []}
+        end
+      end)
+
+    end_time = System.monotonic_time(:millisecond)
+    debug("Total metadata fetch took #{end_time - start_time}ms")
     {:ok, metadata}
   end
 
@@ -185,6 +207,7 @@ defmodule PanDoRa.API.Client do
     payload = %{
       query: %{
         conditions: conditions,
+        # Default to AND operator
         operator: "&"
       },
       # Group results by the specified field
@@ -192,7 +215,7 @@ defmodule PanDoRa.API.Client do
       # Sort by number of items descending
       sort: [%{key: "items", operator: "-"}],
       # Get up to 1000 grouped results
-      range: [0, 1000]
+      range: [0, 20]
     }
 
     case make_request("find", payload) do
@@ -305,15 +328,18 @@ defmodule PanDoRa.API.Client do
   @doc """
   Makes a request to the API endpoint
   """
-  def make_request(endpoint, payload) do
+  def make_request(endpoint, payload, retry_count \\ 0) do
+    start_time = System.monotonic_time(:millisecond)
     debug("Making request to #{endpoint} with payload: #{inspect(payload)}")
     api_url = get_api_url()
 
     req =
       Req.new(
         url: api_url,
-        connect_options: [timeout: 5_000],
-        receive_timeout: 15_000
+        connect_options: [timeout: 1_500],  # Reduce timeout to 1.5s
+        receive_timeout: 3_000,  # Reduce timeout to 3s
+        retry: :transient,  # Retry on network errors
+        max_retries: 1  # Try once more on failure
       )
 
     form_data = %{
@@ -321,7 +347,7 @@ defmodule PanDoRa.API.Client do
       data: Jason.encode!(payload)
     }
 
-    case Req.post(req, form: form_data) do
+    result = case Req.post(req, form: form_data) do
       {:ok, %Req.Response{status: 200, body: body}} when is_binary(body) ->
         case Jason.decode(body) do
           {:ok, decoded} ->
@@ -343,8 +369,18 @@ defmodule PanDoRa.API.Client do
 
       {:error, error} ->
         error(error, l("API request failed"))
-        {:error, error}
+        # Only retry once more on timeout
+        if retry_count < 1 and match?(%Req.TransportError{reason: :timeout}, error) do
+          debug("Retrying request after timeout")
+          make_request(endpoint, payload, retry_count + 1)
+        else
+          {:error, error}
+        end
     end
+
+    end_time = System.monotonic_time(:millisecond)
+    debug("Request to #{endpoint} took #{end_time - start_time}ms")
+    result
   end
 
   defp get_api_url do

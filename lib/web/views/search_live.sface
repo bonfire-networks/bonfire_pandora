@@ -144,11 +144,10 @@
         <div class="loading loading-spinner loading-lg text-primary" />
       </div>
     {/if}
-    <ul class="list bg-base-100 rounded-box shadow-md">
-      <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Most played songs this week</li>
+    <ul id="search_results" phx-update="stream" class="list bg-base-100 rounded-box shadow-md">
 
       {#for {id, result} <- @streams.search_results}
-        <li class="list-row">
+        <li id={id} class="list-row">
           <div><img class="size-16 rounded-box" src="https://img.daisyui.com/images/profile/demo/3@94.webp"></div>
           <div>
             <div class="flex items-center w-full gap-2">
@@ -248,14 +247,6 @@
   </table> -->
 
     <div class="flex flex-col items-center gap-2 py-4 border-t border-base-content/10">
-      <div class="text-sm text-base-content/70">
-        {#if @current_count > 0}
-          {l("Showing %{count} of %{total} items",
-            count: to_string(@current_count),
-            total: to_string(@total_count)
-          )}
-        {/if}
-      </div>
 
       {#if @has_more_items}
         <button
