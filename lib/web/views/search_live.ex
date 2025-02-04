@@ -5,7 +5,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   @behaviour Bonfire.UI.Common.LiveHandler
 
   # Keep your existing extension declarations
-  declare_extension("FAA",
+  declare_extension("Federated Archives",
     icon: "mingcute:microscope-fill",
     emoji: "🔬",
     description: "Federated archives alliance",
