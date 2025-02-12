@@ -1,0 +1,57 @@
+<Bonfire.UI.Common.WidgetBlockLive widget_title={e(@widget_title, l("Properties"))}>
+  <ul class="flex flex-col gap-3 w-full">
+    {#if @movie["duration"]}
+      <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l("Duration")}</span>
+        <div class="font-semibold text-sm">
+          {format_duration(e(@movie, "duration", ""))}
+        </div>
+      </li>
+    {/if}
+    {#if @movie["stream"]}
+      <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l("Aspect Ratio")}</span>
+        <span class="font-semibold text-sm">{Float.round(@movie["stream"]["aspectratio"], 3)}</span>
+      </li>
+    {/if}
+    {#if @movie["hue"]}
+      <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l("HUE")}</span>
+        <span
+          class="font-semibold text-sm px-2 py-1 rounded"
+          style={"background-color: hsl(#{@movie["hue"]}, #{Float.round(@movie["saturation"] * 100, 1)}%, #{Float.round(@movie["lightness"] * 100, 1)}%);"}
+        >{Float.round(@movie["hue"], 3)}</span>
+      </li>
+    {/if}
+    {#if @movie["saturation"]}
+      <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l("Saturation")}</span>
+        <span class="font-semibold text-sm">{Float.round(@movie["saturation"] * 100, 3)}%</span>
+      </li>
+    {/if}
+    {#if @movie["lightness"]}
+      <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l("Lightness")}</span>
+        <span class="font-semibold text-sm">{Float.round(@movie["lightness"] * 100, 3)}%</span>
+      </li>
+    {/if}
+    {#if @movie["volume"]}
+      <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l("Volume")}</span>
+        <span class="font-semibold text-sm">{Float.round(@movie["volume"], 3)}</span>
+      </li>
+    {/if}
+    {#if @movie["cut"]}
+      <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l("Cuts per minute")}</span>
+        <span class="font-semibold text-sm">{@movie["cut"]}</span>
+      </li>
+    {/if}
+    {#if @movie["rights"]}
+      <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l("Rights level")}</span>
+        <span class="font-semibold text-sm">{@movie["rights"]}</span>
+      </li>
+    {/if}
+  </ul>
+</Bonfire.UI.Common.WidgetBlockLive>

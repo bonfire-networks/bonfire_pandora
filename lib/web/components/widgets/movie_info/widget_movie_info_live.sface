@@ -1,0 +1,66 @@
+<Bonfire.UI.Common.WidgetBlockLive widget_title={e(@widget_title, l("Info"))}>
+  <ul class="flex flex-col gap-3 w-full">
+    <li class="flex-col flex justify-start gap-1">
+      <span class="text-sm text-base-content/50 font-medium">{l("Title")}</span>
+      <span class="font-semibold text-sm">{e(@movie, "title", "")}</span>
+    </li>
+    <li class="flex-col flex justify-start gap-1">
+      <span class="text-sm text-base-content/50 font-medium">{l("Director")}</span>
+      <div class="flex items-center gap-1 flex-wrap">
+        {#if @movie["director"]}
+          {#for director <- List.wrap(@movie["director"])}
+            <span class="text-xs uppercase font-semibold">{director}</span>
+          {/for}
+        {/if}
+      </div>
+    </li>
+    {#if @movie["year"]}
+      <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l("Year")}</span>
+        <div class="font-semibold text-sm">
+          {e(@movie, "year", "")}
+        </div>
+      </li>
+    {/if}
+    {#if @movie["country"]}
+      <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l("Country")}</span>
+        <div class="badge badge-soft badge-info">
+          <#Icon iconify="material-symbols:globe" class="w-4 h-4" />
+          {@movie["country"] |> List.wrap() |> Enum.join(", ")}
+        </div>
+      </li>
+    {/if}
+    {#if @movie["language"]}
+      <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l("Language")}</span>
+        <span class="font-semibold text-sm">{@movie["language"] |> List.wrap() |> Enum.join(", ")}</span>
+      </li>
+    {/if}
+    <!-- <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l "Featuring"}</span>
+        <span class="font-semibold text-sm">117.244</span>
+    </li> -->
+    {#if @movie["genre"]}
+      <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l("Genre")}</span>
+        <div class="badge badge-soft badge-info">
+          <#Icon iconify="tabler:cards" class="w-4 h-4" />
+          {@movie["genre"] |> List.wrap() |> Enum.join(", ")}
+        </div>
+      </li>
+    {/if}
+    <!-- <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l "Edition"}</span>
+        <span class="font-semibold text-sm">117.244</span>
+    </li>
+    <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l "Section"}</span>
+        <span class="font-semibold text-sm">117.244</span>
+    </li>
+    <li class="items-center flex justify-between">
+        <span class="text-sm text-base-content/50 font-medium">{l "Catalogue"}</span>
+        <span class="font-semibold text-sm">117.244</span>
+    </li> -->
+  </ul>
+</Bonfire.UI.Common.WidgetBlockLive>

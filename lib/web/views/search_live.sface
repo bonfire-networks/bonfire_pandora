@@ -1,3 +1,4 @@
+{@loading} è ....
 <div class="w-full max-w-full flex flex-col feed w-full max-w-full lg:rounded-xl lg:shadow bg-base-100">
   <div class="flex rounded-t-xl border-b border-base-content/10 flex-col gap-2 p-3">
     <form change="validate" phx-submit="search" action="?" autocomplete="off">
@@ -154,11 +155,13 @@
     <ul id="search_results" phx-update="stream" class="list bg-base-100 rounded-box shadow-md">
       {#for {id, result} <- @streams.search_results}
         <li id={id} class="list-row">
-          <div><img class="size-16 rounded-box" src="https://img.daisyui.com/images/profile/demo/3@94.webp"></div>
+          <div><img
+              class="size-16 rounded-box"
+              src={"https://0xdb.org/" <> e(result, "id", "") <> "/420p.jpg"}
+            /></div>
           <div>
             <div class="flex items-center w-full gap-2">
-              <span class="text-base">{e(result, "title", "")}
-              </span>
+              <LinkLive to={"/pandora/movies/" <> e(result, "id", "")} class="link link-hover text-base">{e(result, "title", "")}</LinkLive>
               {#if result["year"]}
                 <span class="text-base-content/50">|</span>
                 <div class="flex items-center gap-1 text-base-content/50">

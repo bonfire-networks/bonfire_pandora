@@ -238,6 +238,97 @@ defmodule PanDoRa.API.Client do
     end
   end
 
+  @doc """
+  Converts a regular ID to the 0x-prefixed format required by the get endpoint.
+  """
+
+  # def format_movie_id(id) when is_binary(id) do
+  #   case id do
+  #     "0x" <> _ -> id
+  #     id -> "0x#{String.upcase(id)}"
+  #   end
+  # end
+
+  def get_movie(movie_id) do
+    # Convert the ID to the required format
+    # formatted_id = format_movie_id(movie_id)
+
+    payload = %{
+      id: movie_id,
+      keys: [
+        "title",
+        "id",
+        "director",
+        "country",
+        "year",
+        "language",
+        "duration",
+        "hue",
+        "saturation",
+        "lightness",
+        "volume",
+        "runtime",
+        "color",
+        "sound",
+        "writer",
+        "producer",
+        "cinematographer",
+        "editor",
+        "actor",
+        "productionCompany",
+        "genre",
+        "keyword",
+        "summary",
+        "stream",
+        "streams",
+        "rightsLevels",
+        "fps",
+        "resolution",
+        "codec",
+        "bitrate",
+        "filesize",
+        "format"
+      ]
+    }
+
+    case make_request("get", payload) do
+      {:ok, %{"data" => data}} when is_map(data) ->
+        debug(data, "Movie data retrieved")
+        {:ok, data}
+
+      {:ok, response} ->
+        case get_in(response, ["data"]) do
+          data when is_map(data) -> {:ok, data}
+          _ -> {:error, "Invalid response format"}
+        end
+
+      error ->
+        debug(error, "Error retrieving movie")
+        error
+    end
+  end
+
+  @doc """
+  Makes an init request to get site configuration and user data.
+  Returns `{:ok, data}` where data contains site and user information.
+  """
+  def init do
+    case make_request("init", %{}) do
+      {:ok, %{"data" => %{"site" => site, "user" => user} = data}}
+      when is_map(site) and is_map(user) ->
+        {:ok, data}
+
+      {:ok, response} ->
+        case get_in(response, ["data"]) do
+          data when is_map(data) -> {:ok, data}
+          _ -> {:error, "Invalid response format"}
+        end
+
+      error ->
+        error
+    end
+  end
+
   # Process each metadata field according to its structure
   defp process_metadata_field(items, field) do
     items

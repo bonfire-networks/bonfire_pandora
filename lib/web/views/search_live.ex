@@ -21,7 +21,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   # Add constants for better maintainability
   @filter_types ~w(director country year language)
   @default_per_page 20
-  @default_keys ~w(title director country year language duration)
+  @default_keys ~w(title id item_id public_id director country year language duration)
 
   # Clean initial assigns with defaults
   @initial_assigns %{
@@ -53,7 +53,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     socket =
       socket
       |> stream_configure(:search_results,
-        dom_id: &"result-#{&1["id"] || generate_stable_id(&1)}"
+        dom_id: &"result-#{&1["stable_id"] || generate_stable_id(&1)}"
       )
       |> stream(:search_results, [])
       |> assign(@initial_assigns)
@@ -191,12 +191,16 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       {:ok, metadata} ->
         {:noreply,
          socket
-         |> assign_metadata(metadata)
-         |> set_loading_state(false)}
+         |> set_loading_state(true)}
+        |> assign_metadata(metadata)
 
       _ ->
         {:noreply, socket}
     end
+  end
+
+  def handle_info({:set_loading_state, state}, socket) do
+    {:noreply, assign(socket, loading: state)}
   end
 
   # Private functions for better state management
@@ -332,7 +336,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   end
 
   defp trigger_search(socket) do
-    socket = set_loading_state(socket, true)
+    # Send message to update loading state immediately
+    send(self(), {:set_loading_state, true})
     {:noreply, updated_socket} = do_search(socket, socket.assigns.term)
     updated_socket
   end
@@ -402,11 +407,13 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         {:ok, metadata} ->
           socket
           |> assign_metadata(metadata)
+          # Ensure loading state is preserved
+          |> set_loading_state(false)
 
-        # |> assign(loading: true)  # Explicitly preserve loading state
         _ ->
           socket
-          # |> assign(loading: true)  # Ensure loading state is preserved
+          # Ensure loading state is preserved
+          |> set_loading_state(false)
       end
 
     case Client.find(
@@ -473,22 +480,23 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         else: []
 
     # Update metadata with current search conditions
-    case Client.fetch_grouped_metadata(conditions) do
-      {:ok, metadata} ->
-        {:noreply,
-         socket
-         |> assign(
-           available_directors: metadata["director"] || [],
-           available_countries: metadata["country"] || [],
-           available_years: sort_years(metadata["year"] || []),
-           available_languages: metadata["language"] || []
-         )
-         # Only set to false after everything is done
-         |> set_loading_state(false)}
+    socket =
+      case Client.fetch_grouped_metadata(conditions) do
+        {:ok, metadata} ->
+          socket
+          |> assign(
+            available_directors: metadata["director"] || [],
+            available_countries: metadata["country"] || [],
+            available_years: sort_years(metadata["year"] || []),
+            available_languages: metadata["language"] || []
+          )
 
-      _ ->
-        {:noreply, socket}
-    end
+        _ ->
+          socket
+      end
+
+    # Always set loading to false after all operations
+    {:noreply, socket |> set_loading_state(false)}
   end
 
   defp handle_search_error(socket, error) do
@@ -522,8 +530,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
           current_count: socket.assigns.current_count + length(items),
           total_count: total,
           # Show load more only if we got exactly per_page items
-          has_more_items: length(items) == @default_per_page,
-          loading: false
+          has_more_items: length(items) == @default_per_page
         )
 
       {:error, error} ->
@@ -545,8 +552,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       page: next_page,
       current_count: new_count,
       total_count: total,
-      has_more_items: new_count < total,
-      loading: false
+      has_more_items: new_count < total
     )
   end
 
@@ -609,7 +615,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   defp prepare_items(items) do
     items
     |> Enum.map(fn item ->
-      Map.put(item, "id", generate_stable_id(item))
+      Map.put(item, "stable_id", generate_stable_id(item))
     end)
   end
 

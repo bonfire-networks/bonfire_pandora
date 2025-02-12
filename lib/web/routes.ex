@@ -30,6 +30,8 @@ defmodule Bonfire.PanDoRa.Web.Routes do
       scope "/pandora/", Bonfire.PanDoRa.Web do
         pipe_through(:browser)
         pipe_through(:user_required)
+
+        live("/movies/:id", MovieLive)
       end
 
       # pages only admins can view
