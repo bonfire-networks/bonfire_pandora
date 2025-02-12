@@ -58,12 +58,19 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       |> stream(:search_results, [])
       |> assign(@initial_assigns)
       |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
+      # Set initial loading state
+      |> assign(:loading, true)
 
     if connected?(socket) do
-      {:ok, fetch_initial_data(socket)}
+      send(self(), :load_initial_data)
+      {:ok, socket}
     else
       {:ok, socket}
     end
+  end
+
+  def handle_info(:load_initial_data, socket) do
+    {:noreply, fetch_initial_data(socket)}
   end
 
   # Keep your existing handle_params implementation
@@ -131,12 +138,14 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   # end
 
   def handle_event("clear_search", _, socket) do
+    socket = set_loading_state(socket, true)
+
     {:noreply,
      socket
      |> assign(@initial_assigns)
      |> stream(:search_results, [], reset: true)
-     # Add initial results after clear
-     |> maybe_fetch_initial_results()}
+     |> maybe_fetch_initial_results()
+     |> set_loading_state(false)}
   end
 
   # And make handle_event consistent:
@@ -187,20 +196,27 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   # Add back the handle_info implementation for metadata
   def handle_info({:fetch_initial_metadata, _conditions}, socket) do
+    socket = set_loading_state(socket, true)
+
     case Client.fetch_grouped_metadata() do
       {:ok, metadata} ->
         {:noreply,
          socket
-         |> set_loading_state(true)}
-        |> assign_metadata(metadata)
+         |> assign_metadata(metadata)
+         |> set_loading_state(false)}
 
       _ ->
-        {:noreply, socket}
+        {:noreply, set_loading_state(socket, false)}
     end
   end
 
   def handle_info({:set_loading_state, state}, socket) do
+    IO.inspect(state, label: "Loading stateeee")
     {:noreply, assign(socket, loading: state)}
+  end
+
+  def handle_info({:do_search, term}, socket) do
+    do_search(socket, term)
   end
 
   # Private functions for better state management
@@ -224,26 +240,9 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     end
   end
 
-  # defp maybe_fetch_initial_results(socket) do
-  #   case Client.find(
-  #     sort: [%{key: "title", operator: "+"}],
-  #     page: 0,
-  #     per_page: @default_per_page,
-  #     keys: @default_keys
-  #   ) do
-  #     {:ok, %{items: items, total: total}} ->
-  #       handle_search_success(socket, items, total)
-  #     _ -> socket
-  #   end
-  # end
-
   defp fetch_initial_data(socket) do
-    # Set loading at start
-    socket = set_loading_state(socket, true)
-
     case Client.fetch_grouped_metadata() do
       {:ok, metadata} ->
-        # Debug to verify metadata format
         debug("Received metadata: #{inspect(metadata)}")
 
         socket =
@@ -258,25 +257,27 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
                total: true
              ) do
           {:ok, %{items: items, total: total}} ->
-            {:noreply, updated_socket} = handle_search_success(socket, items, total)
-            updated_socket
+            socket
+            |> handle_search_success(items, total)
+            |> assign(:loading, false)
 
           _ ->
-            socket |> set_loading_state(false)
+            socket |> assign(:loading, false)
         end
 
-      # Handle case where metadata is returned directly without :ok tuple
       metadata when is_map(metadata) ->
         socket
         |> assign_metadata(metadata)
-        |> set_loading_state(false)
+        |> assign(:loading, false)
 
       _ ->
-        socket |> set_loading_state(false)
+        socket |> assign(:loading, false)
     end
   end
 
   defp maybe_fetch_initial_results(socket) do
+    socket = set_loading_state(socket, true)
+
     case Client.find(
            sort: [%{key: "title", operator: "+"}],
            page: 0,
@@ -285,10 +286,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
          ) do
       {:ok, %{items: items, total: total}} ->
         {:noreply, updated_socket} = handle_search_success(socket, items, total)
-        updated_socket
+        set_loading_state(updated_socket, false)
 
       _ ->
-        socket
+        set_loading_state(socket, false)
     end
   end
 
@@ -336,10 +337,9 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   end
 
   defp trigger_search(socket) do
-    # Send message to update loading state immediately
-    send(self(), {:set_loading_state, true})
-    {:noreply, updated_socket} = do_search(socket, socket.assigns.term)
-    updated_socket
+    socket = assign(socket, :loading, true)
+    send(self(), {:do_search, socket.assigns.term})
+    socket
   end
 
   defp build_search_conditions(%{
@@ -407,13 +407,9 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         {:ok, metadata} ->
           socket
           |> assign_metadata(metadata)
-          # Ensure loading state is preserved
-          |> set_loading_state(false)
 
         _ ->
           socket
-          # Ensure loading state is preserved
-          |> set_loading_state(false)
       end
 
     case Client.find(
@@ -423,10 +419,18 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            total: true
          ) do
       {:ok, %{items: items, total: total}} ->
-        handle_search_success(socket, items, total)
+        socket =
+          socket
+          |> handle_search_success(items, total)
+          |> assign(:loading, false)
 
-      _ ->
-        {:noreply, socket |> set_loading_state(false)}
+        {:noreply, socket}
+
+      error ->
+        {:noreply,
+         socket
+         |> assign(:error, "Search failed: #{inspect(error)}")
+         |> assign(:loading, false)}
     end
   end
 
@@ -469,8 +473,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         total_count: total,
         page: 0,
         total_pages: total_pages,
-        # Show load more if we have exactly per_page items (meaning there might be more)
-        has_more_items: current_count == @default_per_page
+        has_more_items: current_count == @default_per_page,
+        error: nil
       )
 
     # Only pass search conditions to metadata if there's a search term
@@ -480,23 +484,19 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         else: []
 
     # Update metadata with current search conditions
-    socket =
-      case Client.fetch_grouped_metadata(conditions) do
-        {:ok, metadata} ->
-          socket
-          |> assign(
-            available_directors: metadata["director"] || [],
-            available_countries: metadata["country"] || [],
-            available_years: sort_years(metadata["year"] || []),
-            available_languages: metadata["language"] || []
-          )
+    case Client.fetch_grouped_metadata(conditions) do
+      {:ok, metadata} ->
+        socket
+        |> assign(
+          available_directors: metadata["director"] || [],
+          available_countries: metadata["country"] || [],
+          available_years: sort_years(metadata["year"] || []),
+          available_languages: metadata["language"] || []
+        )
 
-        _ ->
-          socket
-      end
-
-    # Always set loading to false after all operations
-    {:noreply, socket |> set_loading_state(false)}
+      _ ->
+        socket
+    end
   end
 
   defp handle_search_error(socket, error) do
@@ -523,18 +523,24 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            total: true
          ) do
       {:ok, %{items: items, total: total}} ->
+        new_count = socket.assigns.current_count + length(items)
+
         socket
         |> stream(:search_results, prepare_items(items))
         |> assign(
           page: next_page,
-          current_count: socket.assigns.current_count + length(items),
+          current_count: new_count,
           total_count: total,
-          # Show load more only if we got exactly per_page items
-          has_more_items: length(items) == @default_per_page
+          has_more_items: length(items) == @default_per_page,
+          # Reset loading state after success
+          loading: false
         )
 
       {:error, error} ->
-        handle_search_error(socket, error)
+        socket
+        |> assign(:error, "Failed to load more: #{inspect(error)}")
+        # Reset loading state after error
+        |> assign(:loading, false)
     end
   end
 
@@ -542,75 +548,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     start_index = page * @default_per_page
     [start_index, start_index + @default_per_page]
   end
-
-  defp handle_load_more_success(socket, %{items: items, total: total}, next_page) do
-    new_count = socket.assigns.current_count + length(items)
-
-    socket
-    |> stream(:search_results, prepare_items(items))
-    |> assign(
-      page: next_page,
-      current_count: new_count,
-      total_count: total,
-      has_more_items: new_count < total
-    )
-  end
-
-  defp handle_load_more_error(socket, error) do
-    socket
-    |> assign(error: error, loading: false)
-  end
-
-  # def do_load_more(socket) do
-  #   conditions = build_search_conditions(socket.assigns)
-  #   next_page = socket.assigns.page + 1
-  #   per_page = 20
-  #   start_index = next_page * per_page
-  #   end_index = start_index + per_page - 1
-
-  #   case Client.find(
-  #     conditions: conditions,
-  #     keys: ["title", "director", "country", "year", "language", "duration"],
-  #     range: [start_index, end_index],
-  #     total: true
-  #   ) do
-  #     {:ok, %{items: items, total: total}} ->
-  #       new_count = socket.assigns.current_count + length(items)
-
-  #       debug("""
-  #       Load more results:
-  #       - New items: #{length(items)}
-  #       - New total count: #{new_count}
-  #       - API total: #{total}
-  #       - Has more: #{new_count < total}
-  #       """)
-
-  #       socket
-  #       |> stream(:search_results, prepare_items(items))
-  #       |> assign(
-  #         page: next_page,
-  #         current_count: new_count,
-  #         total_count: total,
-  #         has_more_items: new_count < total,
-  #         loading: false
-  #       )
-
-  #     {:error, error} ->
-  #       debug("Load more error: #{inspect(error)}")
-  #       socket
-  #       |> assign(
-  #         error: error,
-  #         loading: false
-  #       )
-  #   end
-  # end
-
-  # defp handle_search_results(socket, items, total, page) do
-  #   socket
-  #   |> stream(:search_results, prepare_items(items))
-  #   |> assign(:total_count, total)
-  #   |> assign(:page, page)
-  # end
 
   defp prepare_items(items) do
     items

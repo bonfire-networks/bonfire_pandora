@@ -486,4 +486,39 @@ defmodule PanDoRa.API.Client do
   defp get_api_url do
     Bonfire.Common.Config.get([__MODULE__, :api_url], "https://0xdb.org/api/")
   end
+
+  @doc """
+  Basic test function for annotations
+  """
+  def fetch_annotations(movie_id) do
+    payload = %{
+      query: %{
+        conditions: [
+          %{
+            key: "id",
+            operator: "==",
+            value: movie_id
+          }
+        ],
+        operator: "&"
+      },
+      keys: [
+        publicnotes: [],
+        tags: []
+      ],
+      range: [0, 99]
+    }
+
+    debug("Testing annotations API with payload: #{inspect(payload)}")
+
+    case make_request("findAnnotations", payload) do
+      {:ok, response} ->
+        debug("Raw annotation response: #{inspect(response)}")
+        {:ok, response}
+
+      error ->
+        debug("Error fetching annotations: #{inspect(error)}")
+        error
+    end
+  end
 end

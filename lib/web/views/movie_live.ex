@@ -18,11 +18,16 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   end
 
   def handle_params(%{"id" => id}, _view, socket) do
+    debug("Testing annotations for movie: #{id}")
+    annotations_result = Client.fetch_annotations(id)
+    debug("Annotations result: #{inspect(annotations_result)}")
+
     case fetch_movies(id) do
       nil ->
         socket =
           socket
           |> assign(:movie, nil)
+          |> assign(:back, true)
           |> assign(:page_title, "Movie not found")
 
         {:noreply, socket}
@@ -33,6 +38,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         socket =
           socket
           |> assign(:params, id)
+          |> assign(:back, true)
           |> assign(:page_title, movie["title"] || "")
           |> assign(:movie, movie)
           |> assign(:sidebar_widgets,
