@@ -426,10 +426,12 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
         {:noreply, socket}
 
-      error ->
+      other ->
+        error(other, "Search failed")
+
         {:noreply,
          socket
-         |> assign(:error, "Search failed: #{inspect(error)}")
+         |> assign_error(l("Search failed"))
          |> assign(:loading, false)}
     end
   end
@@ -502,14 +504,14 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   defp handle_search_error(socket, error) do
     debug("Search error: #{inspect(error)}")
 
-     socket
-     |> assign(
-       error: error,
-       loading: false,
-       current_count: 0,
-       total_count: 0,
-       has_more_items: false
-     )
+    socket
+    |> assign(
+      error: error,
+      loading: false,
+      current_count: 0,
+      total_count: 0,
+      has_more_items: false
+    )
   end
 
   defp do_load_more(socket) do
@@ -535,9 +537,11 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
           loading: false
         )
 
-      {:error, error} ->
+      other ->
+        error(other, "Failed to load more")
+
         socket
-        |> assign(:error, "Failed to load more: #{inspect(error)}")
+        |> assign_error(l("Failed to load more"))
         # Reset loading state after error
         |> assign(:loading, false)
     end

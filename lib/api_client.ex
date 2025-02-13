@@ -3,8 +3,9 @@ defmodule PanDoRa.API.Client do
   Optimized API client implementation for fetching and caching metadata
   """
 
-  import Untangle
+  use Untangle
   use Bonfire.Common.Localise
+  alias Bonfire.Common.Config
   alias Bonfire.Common.Cache
 
   # Cache TTL of 1 hour
@@ -47,7 +48,7 @@ defmodule PanDoRa.API.Client do
     }
 
     case make_request("find", items_payload) do
-      {:ok, %{"data" => %{"items" => items}}} when is_list(items) ->
+      {:ok, %{"items" => items}} when is_list(items) ->
         {:ok,
          %{
            items: items,
@@ -55,8 +56,8 @@ defmodule PanDoRa.API.Client do
            has_more: false
          }}
 
-      error ->
-        error
+      other ->
+        error(other, l("Could not find anything"))
     end
   end
 
@@ -110,8 +111,8 @@ defmodule PanDoRa.API.Client do
   @doc """
   Fetches metadata with the current search conditions
   """
+  @decorate time()
   def fetch_metadata(conditions, opts \\ []) do
-    start_time = System.monotonic_time(:millisecond)
     # High limit to get comprehensive data
     limit = Keyword.get(opts, :limit, 20)
 
@@ -119,11 +120,7 @@ defmodule PanDoRa.API.Client do
       @metadata_keys
       |> Enum.map(fn field ->
         Task.async(fn ->
-          task_start = System.monotonic_time(:millisecond)
-          result = fetch_field_metadata(field, conditions, limit)
-          task_end = System.monotonic_time(:millisecond)
-          debug("Metadata fetch for #{field} took #{task_end - task_start}ms")
-          result
+          fetch_field_metadata(field, conditions, limit)
         end)
       end)
 
@@ -137,16 +134,14 @@ defmodule PanDoRa.API.Client do
         Map.put(acc, "#{key}s", processed_results)
       end)
 
-    end_time = System.monotonic_time(:millisecond)
-    debug("Total metadata fetch took #{end_time - start_time}ms")
     {:ok, metadata}
   end
 
   @doc """
   Fetches grouped metadata for filters using the find endpoint with group parameter.
   """
+  @decorate time()
   def fetch_grouped_metadata(conditions \\ []) do
-    start_time = System.monotonic_time(:millisecond)
     debug("Starting grouped metadata fetch")
 
     # Make a single request per field but in parallel
@@ -169,10 +164,10 @@ defmodule PanDoRa.API.Client do
 
           debug("Making request for field #{field}")
           result = make_request("find", payload)
-          debug("Got result for field #{field}: #{inspect(result)}")
+          debug(result, "Got result for field #{field}")
 
           case result do
-            {:ok, %{"data" => %{"items" => items}}} when is_list(items) ->
+            {:ok, %{"items" => items}} when is_list(items) ->
               {field, items}
 
             _ ->
@@ -198,8 +193,6 @@ defmodule PanDoRa.API.Client do
         end
       end)
 
-    end_time = System.monotonic_time(:millisecond)
-    debug("Total metadata fetch took #{end_time - start_time}ms")
     {:ok, metadata}
   end
 
@@ -223,15 +216,9 @@ defmodule PanDoRa.API.Client do
     }
 
     case make_request("find", payload) do
-      {:ok, %{"data" => %{"items" => items}}} when is_list(items) ->
+      {:ok, %{"items" => items}} when is_list(items) ->
         # API returns items in format [%{"name" => value, "items" => count}, ...]
         items
-
-      {:ok, response} ->
-        case get_in(response, ["data", "items"]) do
-          items when is_list(items) -> items
-          _ -> []
-        end
 
       _ ->
         []
@@ -292,15 +279,9 @@ defmodule PanDoRa.API.Client do
     }
 
     case make_request("get", payload) do
-      {:ok, %{"data" => data}} when is_map(data) ->
+      {:ok, %{} = data} ->
         debug(data, "Movie data retrieved")
         {:ok, data}
-
-      {:ok, response} ->
-        case get_in(response, ["data"]) do
-          data when is_map(data) -> {:ok, data}
-          _ -> {:error, "Invalid response format"}
-        end
 
       error ->
         debug(error, "Error retrieving movie")
@@ -312,20 +293,13 @@ defmodule PanDoRa.API.Client do
   Makes an init request to get site configuration and user data.
   Returns `{:ok, data}` where data contains site and user information.
   """
-  def init do
-    case make_request("init", %{}) do
-      {:ok, %{"data" => %{"site" => site, "user" => user} = data}}
-      when is_map(site) and is_map(user) ->
+  def init(opts \\ []) do
+    case make_request("init", %{}, opts) do
+      {:ok, %{"site" => _site, "user" => _user} = data} ->
         {:ok, data}
 
-      {:ok, response} ->
-        case get_in(response, ["data"]) do
-          data when is_map(data) -> {:ok, data}
-          _ -> {:error, "Invalid response format"}
-        end
-
       error ->
-        error
+        error(error, "Could not initialize API client")
     end
   end
 
@@ -383,6 +357,7 @@ defmodule PanDoRa.API.Client do
     |> Enum.sort_by(fn %{"items" => count, "name" => name} -> {-count, name} end)
   end
 
+  @decorate time()
   defp fetch_field_metadata(field, conditions, limit \\ 1000) do
     payload = %{
       query: %{
@@ -400,15 +375,9 @@ defmodule PanDoRa.API.Client do
       ]
     }
 
-    debug("Making metadata request for #{field} with payload: #{inspect(payload)}")
+    debug(payload, "Making metadata request for #{field} with payload")
 
     case make_request("find", payload) do
-      {:ok, %{"data" => %{"items" => items}}} when is_list(items) ->
-        items
-        |> Enum.map(fn item ->
-          %{"name" => Map.get(item, "name", ""), "items" => Map.get(item, "items", 0)}
-        end)
-
       {:ok, %{"items" => items}} when is_list(items) ->
         items
         |> Enum.map(fn item ->
@@ -423,10 +392,11 @@ defmodule PanDoRa.API.Client do
   @doc """
   Makes a request to the API endpoint
   """
-  def make_request(endpoint, payload, retry_count \\ 0) do
-    start_time = System.monotonic_time(:millisecond)
-    debug("Making request to #{endpoint} with payload: #{inspect(payload)}")
+  @decorate time()
+  def make_request(endpoint, payload, opts \\ [], retry_count \\ 0) do
+    debug(payload, "Making request to #{endpoint} with payload")
     api_url = get_api_url()
+    username = opts[:username] || get_auth_default_user()
 
     req =
       Req.new(
@@ -440,47 +410,192 @@ defmodule PanDoRa.API.Client do
         # Try once more on failure
         max_retries: 1
       )
+      |> maybe_sign_in_and_or_put_auth_cookie(username, endpoint, retry_count)
 
-    form_data = %{
-      action: endpoint,
-      data: Jason.encode!(payload)
+    case Req.post(req,
+           form: %{
+             action: endpoint,
+             data: Jason.encode!(payload)
+           }
+         ) do
+      {:ok, %Req.Response{status: 200, headers: headers, body: body}} ->
+        debug(body, label: "API Response (raw)")
+
+        save_cookie = maybe_save_auth_cookie(headers, username, endpoint)
+
+        maybe_return_data(body) || save_cookie || error(l("No data received from API"))
+
+      {:ok, %Req.Response{status: 401}} ->
+        error(l("Authentication failed"))
+
+      {:ok, %Req.Response{status: status} = res} ->
+        error(res, l("API request failed with status %{status}", status: status))
+
+      {:error, %Req.TransportError{reason: :timeout}} ->
+        # Only retry once more on timeout
+        if retry_count < 1 do
+          debug("Retrying request after timeout")
+          make_request(endpoint, payload, opts, retry_count + 1)
+        else
+          error(l("API request timed out"))
+        end
+
+      other ->
+        error(other, l("API request failed"))
+    end
+  end
+
+  defp maybe_return_data(body) when is_binary(body) do
+    case Jason.decode(body) do
+      {:ok, decoded} ->
+        maybe_return_data(body)
+
+      {:error, reason} ->
+        error(reason, l("API JSON decode error"))
+    end
+  end
+
+  defp maybe_return_data(%{"data" => %{"errors" => errors} = data}) do
+    error(errors)
+  end
+
+  defp maybe_return_data(%{"data" => data, "status" => %{"code" => 200}}) do
+    {:ok, data}
+  end
+
+  defp maybe_return_data(%{"data" => data, "status" => %{"code" => status, "text" => error}}) do
+    error(
+      data,
+      l("API request failed with code %{code} and error: %{message}",
+        code: status,
+        message: error
+      )
+    )
+  end
+
+  defp maybe_return_data(%{"data" => data, "status" => %{"code" => status}}) do
+    error(data, l("API request failed with code %{status}", status: status))
+  end
+
+  defp maybe_return_data(%{} = data) do
+    {:ok, data}
+  end
+
+  defp maybe_return_data(nil) do
+    nil
+  end
+
+  defp maybe_return_data(body) do
+    error(body, l("API data not recognised"))
+  end
+
+  @doc """
+  Signs in a user with the given username and password.
+  ## Parameters
+  * username - The user's username
+  * password - The user's password
+  ## Returns
+  * {:ok, %{"user"=>user} = data} - On successful sign-in
+  * {:error, errors} - On failed sign-in, returns error map
+  ## Examples
+      iex> sign_in("johndoe", "password123")
+      {:ok, %{id: 1, username: "johndoe", ...}}
+
+      iex> sign_in("unknown", "wrongpassword")
+      {:error, %{username: "Unknown Username"}}
+  """
+  def sign_in(username, password) do
+    set_session_cookie(username, nil)
+
+    payload = %{
+      username: username,
+      password: password
     }
 
-    result =
-      case Req.post(req, form: form_data) do
-        {:ok, %Req.Response{status: 200, body: body}} when is_binary(body) ->
-          case Jason.decode(body) do
-            {:ok, decoded} ->
-              debug(decoded, label: "API Response")
-              {:ok, decoded}
+    make_request("signin", payload, username: username)
+  end
 
-            {:error, reason} ->
-              debug("JSON decode error: #{inspect(reason)}")
-              {:error, "Invalid JSON response"}
-          end
+  def sign_in(opts \\ []) do
+    case get_auth_credentials(opts) do
+      {username, password} when is_binary(username) and is_binary(password) ->
+        sign_in(username, password)
 
-        {:ok, %Req.Response{status: 200, body: body}} ->
-          debug(body, label: "API Response (raw)")
-          {:ok, body}
+      _ ->
+        error(l("No username/password found"))
+    end
+  end
 
-        {:ok, %Req.Response{status: status}} ->
-          error(l("API request failed with status %{status}", status: status))
-          {:error, "API request failed with status #{status}"}
+  # avoid looping
+  def maybe_sign_in_and_or_put_auth_cookie(req, _, "signin", _), do: req
 
-        {:error, error} ->
-          error(error, l("API request failed"))
-          # Only retry once more on timeout
-          if retry_count < 1 and match?(%Req.TransportError{reason: :timeout}, error) do
-            debug("Retrying request after timeout")
-            make_request(endpoint, payload, retry_count + 1)
+  def maybe_sign_in_and_or_put_auth_cookie(req, username, action, retry_count)
+      when is_binary(username) do
+    case get_session_cookie(username) do
+      nil ->
+        with {:ok, _} <- sign_in(username, get_auth_pw(username)) do
+          if retry_count < 1 do
+            maybe_sign_in_and_or_put_auth_cookie(req, username, action, retry_count + 1)
           else
-            {:error, error}
+            debug("skip auth because failed once")
+            req
           end
-      end
+        else
+          auth_failed ->
+            warn(auth_failed, "Could not authenticate, continue as guest")
+            req
+        end
 
-    end_time = System.monotonic_time(:millisecond)
-    debug("Request to #{endpoint} took #{end_time - start_time}ms")
-    result
+      cookie ->
+        Req.Request.put_header(req, "cookie", "sessionid=#{cookie}")
+        |> debug()
+    end
+  end
+
+  def maybe_sign_in_and_or_put_auth_cookie(req, _, _, _), do: req
+
+  def maybe_save_auth_cookie(headers, username, action) do
+    if cookie = extract_session_cookie(headers) do
+      set_session_cookie(username, cookie)
+      nil
+    else
+      if action == "signin" do
+        error(headers, l("No session cookie received"))
+      end
+    end
+  end
+
+  defp extract_session_cookie(headers) do
+    headers
+    |> Enum.filter(fn {key, _} -> String.downcase(key) == "set-cookie" end)
+    |> Enum.flat_map(fn {_, values} -> List.wrap(values) end)
+    |> Enum.find_value(fn cookie_string ->
+      case Regex.run(~r/sessionid=([^;]+)/, cookie_string) do
+        [_, session_id] -> session_id
+        _ -> nil
+      end
+    end)
+  end
+
+  defp set_session_cookie(username, cookie) do
+    # TEMP: should store some other way?
+    Config.put([__MODULE__, :session_cookie], %{username => cookie}, :bonfire_pandora)
+  end
+
+  defp get_session_cookie(username) do
+    Config.get([__MODULE__, :session_cookie, username], nil, :bonfire_pandora)
+  end
+
+  defp get_auth_default_user do
+    Config.get([__MODULE__, :username], nil, :bonfire_pandora)
+  end
+
+  defp get_auth_pw(username) do
+    Config.get([__MODULE__, :password], nil, :bonfire_pandora)
+  end
+
+  defp get_auth_credentials(opts \\ []) do
+    username = get_auth_default_user()
+    {username, get_auth_pw(username)}
   end
 
   defp get_api_url do
@@ -509,15 +624,15 @@ defmodule PanDoRa.API.Client do
       range: [0, 99]
     }
 
-    debug("Testing annotations API with payload: #{inspect(payload)}")
+    debug(payload, "Testing annotations API with payload")
 
     case make_request("findAnnotations", payload) do
       {:ok, response} ->
-        debug("Raw annotation response: #{inspect(response)}")
+        debug(response, "Raw annotation response")
         {:ok, response}
 
       error ->
-        debug("Error fetching annotations: #{inspect(error)}")
+        debug(error, "Error fetching annotations")
         error
     end
   end
