@@ -18,47 +18,85 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   end
 
   def handle_params(%{"id" => id}, _view, socket) do
-    debug("Testing annotations for movie: #{id}")
-    annotations_result = Client.fetch_annotations(id)
-    debug("Annotations result: #{inspect(annotations_result)}")
+    # debug("Testing annotations for movie: #{id}")
+    # annotations_result = Client.fetch_annotations(id)
+    # debug("Annotations result: #{inspect(annotations_result)}")
 
-    case fetch_movies(id) do
-      nil ->
-        socket =
-          socket
-          |> assign(:movie, nil)
-          |> assign(:back, true)
-          |> assign(:page_title, "Movie not found")
+    with  {:ok, movie} <- Client.get_movie(id),
+          {:ok, public_notes} <- Client.fetch_annotations(id) do
 
-        {:noreply, socket}
+            socket =
+              socket
+              |> assign(:params, id)
+              |> assign(:back, true)
+              |> assign(:page_title, movie["title"] || "")
+              |> assign(:movie, movie)
+              |> assign(:public_notes, public_notes)
+              |> assign(:sidebar_widgets,
+                users: [
+                  secondary: [
+                    {Bonfire.PanDoRa.Web.WidgetMovieDescriptionLive,
+                     [movie: movie, widget_title: "Movie Summary"]},
+                    {Bonfire.PanDoRa.Web.WidgetMovieInfoLive,
+                     [movie: movie, widget_title: "Movie Info"]},
+                    {Bonfire.PanDoRa.Web.WidgetMoviePropertiesLive,
+                     [movie: movie, widget_title: "Movie Properties"]}
+                  ]
+                ]
+              )
 
-      movie ->
-        debug("Movie found: #{inspect(movie)}")
+            {:noreply, socket}
 
-        socket =
-          socket
-          |> assign(:params, id)
-          |> assign(:back, true)
-          |> assign(:page_title, movie["title"] || "")
-          |> assign(:movie, movie)
-          |> assign(:sidebar_widgets,
-            users: [
-              secondary: [
-                {Bonfire.PanDoRa.Web.WidgetMovieInfoLive,
-                 [movie: movie, widget_title: "Movie Info"]},
-                {Bonfire.PanDoRa.Web.WidgetMoviePropertiesLive,
-                 [movie: movie, widget_title: "Movie Properties"]}
-              ]
-            ]
-          )
 
-        {:noreply, socket}
-    end
+          else
+            error ->
+            debug("Error fetching movie: #{inspect(error)}")
+            socket =
+              socket
+              |> assign(:movie, nil)
+              |> assign(:back, true)
+              |> assign(:page_title, "Movie not found")
+
+            {:noreply, socket}
+          end
+    # case fetch_movies(id) do
+    #   nil ->
+    #     socket =
+    #       socket
+    #       |> assign(:movie, nil)
+    #       |> assign(:back, true)
+    #       |> assign(:page_title, "Movie not found")
+
+    #     {:noreply, socket}
+
+    #   movie ->
+    #     debug("Movie found: #{inspect(movie)}")
+
+    #     socket =
+    #       socket
+    #       |> assign(:params, id)
+    #       |> assign(:back, true)
+    #       |> assign(:page_title, movie["title"] || "")
+    #       |> assign(:movie, movie)
+    #       |> assign(:sidebar_widgets,
+    #         users: [
+    #           secondary: [
+    #             {Bonfire.PanDoRa.Web.WidgetMovieInfoLive,
+    #              [movie: movie, widget_title: "Movie Info"]},
+    #             {Bonfire.PanDoRa.Web.WidgetMoviePropertiesLive,
+    #              [movie: movie, widget_title: "Movie Properties"]}
+    #           ]
+    #         ]
+    #       )
+
+    #     {:noreply, socket}
+    # end
   end
 
   # Add a private function to fetch movies
   def fetch_movies(id) do
     debug("Fetching movie with ID: #{inspect(id)}")
+    Client.get_movie(id)
     # The ID from the search results doesn't include the 0x prefix
     case Client.get_movie(id) do
       {:ok, movie} ->

@@ -41,7 +41,7 @@
         <div class="flex justify-between items-center p-3 pb-2 px-4">
           <h2 class="text-sm font-medium text-base-content/50">{l("Directors")}</h2>
         </div>
-        <ul class="menu menu-vertical flex-nowrap max-h-64 overflow-y-scroll flex-1 w-full pt-0">
+        <ul class="menu menu-vertical flex-nowrap h-filter max-h-94  overflow-y-scroll flex-1 w-full pt-0">
           <!-- <code>{inspect(@available_directors, pretty: true)}</code> -->
 
           {#for %{"name" => director, "items" => count} <- @available_directors}
@@ -69,7 +69,7 @@
         <div class="flex justify-between items-center p-3 pb-2 px-4">
           <h2 class="text-sm font-medium text-base-content/50">{l("Countries")}</h2>
         </div>
-        <ul class="menu menu-vertical flex-nowrap max-h-64 overflow-y-scroll flex-1 w-full pt-0">
+        <ul class="menu menu-vertical flex-nowrap h-filter max-h-94  overflow-y-scroll flex-1 w-full pt-0">
           {#for %{"name" => country, "items" => count} <- @available_countries}
             <li class="w-full">
               <a
@@ -95,7 +95,7 @@
         <div class="flex justify-between items-center p-3 pb-2 px-4">
           <h2 class="text-sm font-medium text-base-content/50">{l("Years")}</h2>
         </div>
-        <ul class="menu menu-vertical flex-nowrap max-h-64 overflow-y-scroll flex-1 w-full pt-0">
+        <ul class="menu menu-vertical flex-nowrap h-filter max-h-94  overflow-y-scroll flex-1 w-full pt-0">
           {#for %{"name" => year, "items" => count} <- @available_years}
             <li class="w-full">
               <a
@@ -121,7 +121,7 @@
         <div class="flex justify-between items-center p-3 pb-2 px-4">
           <h2 class="text-sm font-medium text-base-content/50">{l("Languages")}</h2>
         </div>
-        <ul class="menu menu-vertical flex-nowrap max-h-64 overflow-y-scroll flex-1 w-full pt-0">
+        <ul class="menu menu-vertical flex-nowrap h-filter max-h-94  overflow-y-scroll flex-1 w-full pt-0">
           {#for %{"name" => language, "items" => count} <- @available_languages}
             <li class="w-full">
               <a

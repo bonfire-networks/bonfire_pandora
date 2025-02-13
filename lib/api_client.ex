@@ -603,28 +603,32 @@ defmodule PanDoRa.API.Client do
   end
 
   @doc """
-  Basic test function for annotations
+  Basic test function for annotations following API structure
   """
-  def fetch_annotations(movie_id) do
-    payload = %{
+   def fetch_annotations(movie_id) do
+    data = %{
+      itemsQuery: %{
+        conditions: [%{
+          key: "id",
+          operator: "==",
+          value: movie_id
+        }]
+      },
       query: %{
         conditions: [
           %{
-            key: "id",
+            key: "layer",
             operator: "==",
-            value: movie_id
+            value: "publicnotes"  # Note: the database showed lowercase "publicnotes"
           }
-        ],
-        operator: "&"
+        ]
       },
-      keys: [
-        publicnotes: [],
-        tags: []
-      ],
-      range: [0, 99]
+      keys: [],
+      range: [0, 99999]
     }
 
     debug(payload, "Testing annotations API with payload")
+    debug("Testing findAnnotations API with minimal payload: #{inspect(data)}")
 
     case make_request("findAnnotations", payload) do
       {:ok, response} ->
@@ -634,6 +638,6 @@ defmodule PanDoRa.API.Client do
       error ->
         debug(error, "Error fetching annotations")
         error
+      end
     end
-  end
 end

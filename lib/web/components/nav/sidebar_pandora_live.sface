@@ -4,7 +4,6 @@
       <details open>
         <summary class="font-bold uppercase text-xs text-base-content/50">{l("Your Archive")}</summary>
         <li><LinkLive to={~p"/pandora"}>{l("All videos")}</LinkLive></li>
-        <li><a>{l("Search")}</a></li>
         <li><a>{l("My lists")}</a></li>
         <li><a>{l("Favourite lists")}</a></li>
         <li><a>{l("Featured lists")}</a></li>
