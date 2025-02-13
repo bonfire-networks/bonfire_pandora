@@ -8,25 +8,30 @@
     <div class="border-b border-base-content/10 text-sm font-semibold p-3">{l("Public notes")}</div>
     <div class="p-3 flex flex-col gap-4 divide-y divide-base-content/10">
       <!-- <div class="prose prose-sm">{@movie["summary"]}</div> -->
-      <div :for={note <- @public_notes} id={"note-" <> to_string(note["id"])} class="flex items-top gap-3 pb-4">
+      <div
+        :for={note <- @public_notes}
+        id={"note-" <> to_string(note["id"])}
+        class="flex items-top gap-3 pb-4"
+      >
         <div class="avatar">
-            <div class="w-12 rounded">
-                <img
-                src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
-                alt="Tailwind-CSS-Avatar-component" />
-            </div>
+          <div class="w-12 rounded">
+            <img
+              src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
+              alt="Tailwind-CSS-Avatar-component"
+            />
+          </div>
         </div>
         <div class="flex flex-col flex-1">
-            <div class="flex items-baseline justify-between gap-2">
-                <div class="font-semibold flex-1 text-lg">{e(note, "user", "")}</div>
-                <div class="flex items-center gap-2">
-                    <div class="badge badge-accent badge-soft badge-sm">From {format_duration(e(note, "in", ""))} to {format_duration(e(note, "out", ""))}</div>
-                    <div class="text-sm text-base-content/50">{DatesTimes.date_from_now(e(note, "created", ""))}</div>
-                </div>
+          <div class="flex items-baseline justify-between gap-2">
+            <div class="font-semibold flex-1 text-lg">{e(note, "user", "")}</div>
+            <div class="flex items-center gap-2">
+              <div class="badge badge-accent badge-soft badge-sm">From {format_duration(e(note, "in", ""))} to {format_duration(e(note, "out", ""))}</div>
+              <div class="text-sm text-base-content/50">{DatesTimes.date_from_now(e(note, "created", ""))}</div>
             </div>
-            <div class="prose">{e(note, "value", "")}</div>
+          </div>
+          <div class="prose">{e(note, "value", "")}</div>
         </div>
-        </div>
+      </div>
       <!-- <code>{inspect(@public_notes, pretty: true)}</code> -->
     </div>
   </div>

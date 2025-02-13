@@ -12,6 +12,7 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieDescriptionLive do
 
   def get_summary(movie, show_all \\ false) do
     summary = e(movie, "summary", "")
+
     if show_all || !is_long_summary?(movie) do
       summary
     else

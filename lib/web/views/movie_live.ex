@@ -22,43 +22,42 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     # annotations_result = Client.fetch_annotations(id)
     # debug("Annotations result: #{inspect(annotations_result)}")
 
-    with  {:ok, movie} <- Client.get_movie(id),
-          {:ok, public_notes} <- Client.fetch_annotations(id) do
+    with {:ok, movie} <- Client.get_movie(id),
+         {:ok, public_notes} <- Client.fetch_annotations(id) do
+      socket =
+        socket
+        |> assign(:params, id)
+        |> assign(:back, true)
+        |> assign(:page_title, movie["title"] || "")
+        |> assign(:movie, movie)
+        |> assign(:public_notes, public_notes)
+        |> assign(:sidebar_widgets,
+          users: [
+            secondary: [
+              {Bonfire.PanDoRa.Web.WidgetMovieDescriptionLive,
+               [movie: movie, widget_title: "Movie Summary"]},
+              {Bonfire.PanDoRa.Web.WidgetMovieInfoLive,
+               [movie: movie, widget_title: "Movie Info"]},
+              {Bonfire.PanDoRa.Web.WidgetMoviePropertiesLive,
+               [movie: movie, widget_title: "Movie Properties"]}
+            ]
+          ]
+        )
 
-            socket =
-              socket
-              |> assign(:params, id)
-              |> assign(:back, true)
-              |> assign(:page_title, movie["title"] || "")
-              |> assign(:movie, movie)
-              |> assign(:public_notes, public_notes)
-              |> assign(:sidebar_widgets,
-                users: [
-                  secondary: [
-                    {Bonfire.PanDoRa.Web.WidgetMovieDescriptionLive,
-                     [movie: movie, widget_title: "Movie Summary"]},
-                    {Bonfire.PanDoRa.Web.WidgetMovieInfoLive,
-                     [movie: movie, widget_title: "Movie Info"]},
-                    {Bonfire.PanDoRa.Web.WidgetMoviePropertiesLive,
-                     [movie: movie, widget_title: "Movie Properties"]}
-                  ]
-                ]
-              )
+      {:noreply, socket}
+    else
+      error ->
+        debug("Error fetching movie: #{inspect(error)}")
 
-            {:noreply, socket}
+        socket =
+          socket
+          |> assign(:movie, nil)
+          |> assign(:back, true)
+          |> assign(:page_title, "Movie not found")
 
+        {:noreply, socket}
+    end
 
-          else
-            error ->
-            debug("Error fetching movie: #{inspect(error)}")
-            socket =
-              socket
-              |> assign(:movie, nil)
-              |> assign(:back, true)
-              |> assign(:page_title, "Movie not found")
-
-            {:noreply, socket}
-          end
     # case fetch_movies(id) do
     #   nil ->
     #     socket =
