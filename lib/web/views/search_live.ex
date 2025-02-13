@@ -502,7 +502,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   defp handle_search_error(socket, error) do
     debug("Search error: #{inspect(error)}")
 
-    {:noreply,
      socket
      |> assign(
        error: error,
@@ -510,7 +509,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
        current_count: 0,
        total_count: 0,
        has_more_items: false
-     )}
+     )
   end
 
   defp do_load_more(socket) do
