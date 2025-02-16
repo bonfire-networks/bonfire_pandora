@@ -32,6 +32,8 @@ defmodule Bonfire.PanDoRa.Web.Routes do
         pipe_through(:user_required)
 
         live("/movies/:id", MovieLive)
+        live("/my_lists/", MyListsLive)
+        live("/lists/:id", ListLive)
       end
 
       # pages only admins can view

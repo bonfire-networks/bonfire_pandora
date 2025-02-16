@@ -290,6 +290,30 @@ defmodule PanDoRa.API.Client do
   end
 
   @doc """
+  Gets a list by its ID.
+
+  ## Parameters
+    * `id` - The ID of the list to fetch
+
+  Returns {:ok, list} on success where list contains id, section, and other properties
+  Returns {:error, reason} on failure
+
+  ## Examples
+      iex> get_list("list123")
+      {:ok, %{"id" => "list123", "section" => "personal", ...}}
+  """
+  def get_list(id) when is_binary(id) do
+    case make_request("getList", %{id: id}) do
+      {:ok, list} when is_map(list) ->
+        debug(list, "List fetched")
+        {:ok, list}
+
+      other ->
+        error(other, l("Could not fetch list"))
+    end
+  end
+
+  @doc """
   Makes an init request to get site configuration and user data.
   Returns `{:ok, data}` where data contains site and user information.
   """
@@ -300,6 +324,267 @@ defmodule PanDoRa.API.Client do
 
       error ->
         error(error, "Could not initialize API client")
+    end
+  end
+
+  @doc """
+  Finds lists matching the given criteria.
+
+  ## Options
+    * `:page` - The page number (zero-based)
+    * `:per_page` - Number of items per page
+    * `:keys` - List of keys to return (featured, name, query, subscribed, user)
+    * `:sort` - List of sort criteria
+    * `:type` - Type of lists to fetch, one of:
+      - `:featured` - Only featured lists
+      - `:user` - Only user's personal lists
+      - `:subscribed` - Only subscribed/favorite lists
+  """
+  def find_lists(opts \\ []) do
+    range =
+      if range = Keyword.get(opts, :range) do
+        range
+      else
+        page = Keyword.get(opts, :page, 0)
+        per_page = Keyword.get(opts, :per_page, 20)
+        [page * per_page, (page + 1) * per_page - 1]
+      end
+
+    # Build conditions based on the type of lists we want
+    conditions =
+      case Keyword.get(opts, :type) do
+        :featured -> [%{key: "status", operator: "==", value: "featured"}]
+        :user -> [%{key: "user", operator: "==", value: get_auth_default_user()}]
+        :subscribed -> [%{key: "subscribed", operator: "==", value: true}]
+        # Return all lists if no type specified
+        _ -> []
+      end
+
+    payload = %{
+      query: %{
+        conditions: conditions,
+        operator: "&"
+      },
+      range: range,
+      keys: Keyword.get(opts, :keys, ["name", "id", "featured", "subscribed", "user"]),
+      sort: Keyword.get(opts, :sort, [%{key: "name", operator: "+"}])
+    }
+
+    debug(payload, "Finding lists with payload")
+
+    case make_request("findLists", payload) do
+      {:ok, %{"items" => items}} when is_list(items) ->
+        debug(items, "Received lists")
+        {:ok, %{items: items, total: length(items)}}
+
+      other ->
+        error(other, l("Could not find any lists"))
+    end
+  end
+
+  @doc """
+  Edits a list with the given ID.
+
+  ## Parameters
+    * `:id` - The list ID to edit
+    * `:name` - New name for the list
+    * `:position` - New position for the list
+    * `:poster_frames` - Array of {item, position} for poster frames
+    * `:query` - New query for the list
+    * `:status` - New status for the list (requires position to be set)
+    * `:description` - Description of the list
+
+  Returns {:ok, updated_list} on success, {:error, reason} on failure
+  """
+  def edit_list(id, params) when is_map(params) or is_list(params) do
+    # Convert params to map if they're keyword list
+    params = if is_list(params), do: Map.new(params), else: params
+
+    # Ensure we have an ID
+    params = Map.put(params, "id", id)
+
+    case make_request("editList", params) do
+      {:ok, list} when is_map(list) ->
+        debug(list, "List updated")
+        {:ok, list}
+
+      other ->
+        error(other, l("Could not update list"))
+    end
+  end
+
+  @doc """
+  Removes a list with the given ID.
+
+  ## Parameters
+    * `id` - The ID of the list to remove
+
+  Returns {:ok, %{}} on success, {:error, reason} on failure
+  """
+  def remove_list(id) do
+    case make_request("removeList", %{id: id}) do
+      {:ok, _} ->
+        debug("List #{id} removed successfully")
+        {:ok, %{}}
+
+      other ->
+        error(other, l("Could not remove list"))
+    end
+  end
+
+  @doc """
+  Adds one or more items to a static list.
+
+  ## Parameters
+    * `list_id` - The ID of the list to add items to
+    * `items` - List of item IDs to add
+    * `query` - Query object for finding items (not implemented)
+
+  Returns {:ok, %{}} on success, {:error, reason} on failure
+
+  ## Examples
+      iex> add_list_items("list123", items: ["item1", "item2"])
+      {:ok, %{}}
+
+      iex> add_list_items("list123", query: %{...})
+      {:error, "Query-based addition not implemented"}
+  """
+  def add_list_items(list_id, opts \\ []) do
+    cond do
+      items = Keyword.get(opts, :items) ->
+        payload = %{
+          list: list_id,
+          items: items
+        }
+
+        case make_request("addListItems", payload) do
+          {:ok, _} ->
+            debug("Items #{inspect(items)} added to list #{list_id}")
+            {:ok, %{}}
+
+          other ->
+            error(other, l("Could not add items to list"))
+        end
+
+      Keyword.has_key?(opts, :query) ->
+        {:error, l("Query-based addition not implemented")}
+
+      true ->
+        {:error, l("Either items or query must be provided")}
+    end
+  end
+
+  @doc """
+  Creates a new list.
+
+  ## Parameters
+    * `params` - Map or keyword list of list properties:
+      - `:name` - List name (optional, defaults to "Untitled")
+      - `:description` - List description
+      - `:items` - List of item IDs to add initially
+      - `:query` - Query for dynamic lists
+      - `:sort` - Sort criteria
+      - `:type` - List type
+      - `:view` - View settings
+
+  Returns {:ok, list} on success where list contains id, name, and other properties
+  Returns {:error, reason} on failure
+
+  ## Examples
+      iex> add_list(name: "My Favorites", description: "A collection of my favorite movies")
+      {:ok, %{"id" => "123", "name" => "My Favorites", ...}}
+  """
+  def add_list(params \\ []) do
+    # Convert params to map if they're keyword list
+    params = if is_list(params), do: Map.new(params), else: params
+
+    # Ensure name is present and properly formatted
+    params =
+      Map.update(params, "name", "Untitled", fn name ->
+        name = if is_binary(name), do: String.trim(name), else: ""
+        if name == "", do: "Untitled", else: name
+      end)
+
+    case make_request("addList", params) do
+      {:ok, list} when is_map(list) ->
+        debug(list, "List created")
+        {:ok, list}
+
+      other ->
+        error(other, l("Could not create list"))
+    end
+  end
+
+  @doc """
+  Finds all items within a specific list.
+
+  ## Parameters
+    * `list_id` - The ID of the list to fetch items from
+    * `opts` - Additional options:
+      * `:page` - The page number (zero-based)
+      * `:per_page` - Number of items per page
+      * `:keys` - List of item properties to return
+      * `:sort` - List of sort criteria
+
+  Returns {:ok, %{items: items, total: total}} on success
+  Returns {:error, reason} on failure
+
+  ## Examples
+      iex> find_list_items("list123", keys: ["title", "year"])
+      {:ok, %{items: [%{"id" => "movie1", "title" => "Movie 1"}, ...], total: 10}}
+  """
+  def find_list_items(list_id, opts \\ []) do
+    range =
+      if range = Keyword.get(opts, :range) do
+        range
+      else
+        page = Keyword.get(opts, :page, 0)
+        per_page = Keyword.get(opts, :per_page, 20)
+        [page * per_page, (page + 1) * per_page - 1]
+      end
+
+    payload = %{
+      query: %{
+        conditions: [
+          %{
+            key: "list",
+            operator: "==",
+            value: list_id
+          }
+        ],
+        operator: "&"
+      },
+      range: range,
+      keys:
+        Keyword.get(opts, :keys, [
+          "title",
+          "id",
+          "item_id",
+          "public_id",
+          "director",
+          "country",
+          "year",
+          "language",
+          "duration"
+        ]),
+      sort: Keyword.get(opts, :sort, [%{key: "title", operator: "+"}])
+    }
+
+    case make_request("find", payload) do
+      {:ok, %{"items" => items}} when is_list(items) ->
+        debug(items, "List items fetched")
+        {:ok, %{items: items, total: length(items)}}
+
+      other ->
+        error(other, l("Could not fetch list items"))
+    end
+  end
+
+  # Helper to conditionally add conditions based on options
+  defp maybe_add_condition(conditions, opts, key, field) do
+    case Keyword.get(opts, key) do
+      nil -> conditions
+      value -> [%{key: field, operator: "==", value: value} | conditions]
     end
   end
 
@@ -401,14 +686,14 @@ defmodule PanDoRa.API.Client do
     req =
       Req.new(
         url: api_url,
-        # Reduce timeout to 1.5s
-        connect_options: [timeout: 1_500],
-        # Reduce timeout to 3s
-        receive_timeout: 3_000,
+        # Increase connect timeout to 3s
+        connect_options: [timeout: 3_000],
+        # Increase receive timeout to 5s
+        receive_timeout: 5_000,
         # Retry on network errors
         retry: :transient,
-        # Try once more on failure
-        max_retries: 1
+        # Try twice more on failure
+        max_retries: 2
       )
       |> maybe_sign_in_and_or_put_auth_cookie(username, endpoint, retry_count)
 
@@ -598,8 +883,12 @@ defmodule PanDoRa.API.Client do
     {username, get_auth_pw(username)}
   end
 
+  def get_pandora_url do
+    Bonfire.Common.Config.get([__MODULE__, :pandora_url], "https://bff.matango.tv")
+  end
+
   defp get_api_url do
-    Bonfire.Common.Config.get([__MODULE__, :api_url], "https://0xdb.org/api/")
+    get_pandora_url() <> "/api/"
   end
 
   @doc """
@@ -631,8 +920,8 @@ defmodule PanDoRa.API.Client do
     }
 
     case make_request("findAnnotations", data) do
-      {:ok, response} ->
-        {:ok, response}
+      {:ok, %{"items" => items}} when is_list(items) ->
+        {:ok, items}
 
       error ->
         debug(error, "Error fetching annotations")

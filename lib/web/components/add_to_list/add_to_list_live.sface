@@ -1,0 +1,19 @@
+<ul class="list mt-4">
+  <li
+    :for={list <- @lists}
+    id={e(list, "id", "")}
+    phx-click="add_to_list"
+    phx-value-id={e(list, "id", "")}
+    phx-target={@myself}
+    class="list-row cursor-pointer hover:bg-base-content/5"
+  >
+    <div><img class="size-12 rounded-box" src="https://img.daisyui.com/images/profile/demo/1@94.webp"></div>
+    <div class="flex flex-col gap-1">
+      <div class="text-base font-semibold">{e(list, "name", "")}</div>
+      <div class="badge badge-info badge-sm badge-soft">{e(list, "status", "")}</div>
+      <!-- <p class="list-col-wrap text-sm text-base-content/70">
+            {e(list, "items_count", "9999")}
+        </p> -->
+    </div>
+  </li>
+</ul>

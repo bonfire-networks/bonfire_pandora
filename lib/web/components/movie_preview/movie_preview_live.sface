@@ -1,0 +1,60 @@
+<li id={@movie_id} class="list-row">
+  <div><img
+      class="size-16 rounded-box"
+      src={Client.get_pandora_url() <> "/" <> e(@movie, "id", "") <> "/poster512.jpg"}
+    /></div>
+  <div>
+    <div class="flex items-center w-full gap-2">
+      <LinkLive to={"/pandora/movies/" <> e(@movie, "id", "")} class="link link-hover text-base">{e(@movie, "title", "")}</LinkLive>
+      {#if @movie["year"]}
+        <span class="text-base-content/50">|</span>
+        <div class="flex items-center gap-1 text-base-content/50">
+          <#Icon iconify="carbon:calendar" class="w-4 h-4" />
+          {e(@movie, "year", "")}
+        </div>
+      {/if}
+      {#if @movie["duration"]}
+        <span class="text-base-content/50">|</span>
+        <div class="flex items-center gap-1 text-base-content/50">
+          <#Icon iconify="carbon:time" class="w-4 h-4" />
+          {format_duration(e(@movie, "duration", ""))}
+        </div>
+      {/if}
+    </div>
+    <div class="flex py-1.5 items-center gap-1 flex-wrap">
+      {#if @movie["director"]}
+        {#for director <- List.wrap(@movie["director"])}
+          <span class="text-xs uppercase font-semibold opacity-60">{director}</span>
+        {/for}
+      {/if}
+    </div>
+    <div class="list-col-wrap text-xs">
+      {#if @movie["country"]}
+        <div class="badge badge-soft badge-info">
+          <#Icon iconify="material-symbols:globe" class="w-4 h-4" />
+          {@movie["country"] |> List.wrap() |> Enum.join(", ")}
+        </div>
+      {/if}
+
+      {#if @movie["language"]}
+        <div class="badge badge-soft badge-accent">
+          <#Icon iconify="flowbite:language-outline" class="w-4 h-4" />
+          {@movie["language"] |> List.wrap() |> Enum.join(", ")}
+        </div>
+      {/if}
+    </div>
+  </div>
+  <Bonfire.UI.Common.OpenModalLive
+    id={"add_to_list_#{@movie_id}"}
+    title_text={l("Add movie to list")}
+    no_actions
+    open_btn_wrapper_class="text-left cursor-pointer text-error"
+  >
+    <Bonfire.PanDoRa.Components.AddToListLive id={@movie_id} movie_id={e(@movie, "id", "")} />
+    <:open_btn>
+      <div class="btn btn-circle btn-sm btn-secondary btn-soft">
+        <#Icon iconify="carbon:bookmark" class="w-4 h-4" />
+      </div>
+    </:open_btn>
+  </Bonfire.UI.Common.OpenModalLive>
+</li>

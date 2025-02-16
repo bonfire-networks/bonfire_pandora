@@ -1,6 +1,6 @@
 <div class="flex flex-col w-full gap-4">
   <video controls>
-    <source src={"https://0xdb.org/" <> @movie["id"] <> "/96p1.mp4?"} type="video/mp4">
+    <source src={Client.get_pandora_url() <> "/" <> @movie["id"] <> "/96p1.mp4?"} type="video/mp4">
     Your browser does not support the video tag.
   </video>
 

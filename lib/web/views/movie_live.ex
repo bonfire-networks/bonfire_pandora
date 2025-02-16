@@ -95,8 +95,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   # Add a private function to fetch movies
   def fetch_movies(id) do
     debug("Fetching movie with ID: #{inspect(id)}")
-    Client.get_movie(id)
-    # The ID from the search results doesn't include the 0x prefix
+
     case Client.get_movie(id) do
       {:ok, movie} ->
         debug("Fetched movie: #{inspect(movie)}")

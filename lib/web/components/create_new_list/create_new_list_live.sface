@@ -1,0 +1,44 @@
+<div data-role="new_list">
+  <Bonfire.UI.Common.OpenModalLive id="new_list" title_text={l("Create a new list")} no_actions>
+    <form id="new_list_form" phx-submit="new_list_create" phx-change="new_list_validate">
+      <div x-data="{ name: '' }" class="w-full mt-3">
+        <div class="w-full form-control">
+          <label for="name" class="">
+            <span class="sr-only">{l("Enter a name for the list")}</span>
+          </label>
+          <input
+            x-model="name"
+            id="name"
+            name="list[name]"
+            type="text"
+            placeholder={l("The list name...")}
+            class="w-full input input-bordered"
+          />
+        </div>
+
+        <div class="w-full form-control mt-3">
+          <label for="description" class="">
+            <span class="sr-only">{l("Enter a description for the list")}</span>
+          </label>
+          <textarea
+            id="description"
+            name="list[description]"
+            placeholder={l("Describe what this list is for...")}
+            class="w-full textarea textarea-bordered"
+            rows="3"
+          />
+        </div>
+
+        <button type="submit" class="w-full mt-3 normal-case btn btn-primary">
+          {l("Create")}
+        </button>
+      </div>
+    </form>
+
+    <:open_btn>
+      <div class="btn btn-neutral btn-sm">
+        {l("New list")}
+      </div>
+    </:open_btn>
+  </Bonfire.UI.Common.OpenModalLive>
+</div>
