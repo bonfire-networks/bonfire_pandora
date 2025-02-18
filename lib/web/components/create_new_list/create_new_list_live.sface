@@ -1,44 +1,51 @@
-<div data-role="new_list">
-  <Bonfire.UI.Common.OpenModalLive id="new_list" title_text={l("Create a new list")} no_actions>
-    <form id="new_list_form" phx-submit="new_list_create" phx-change="new_list_validate">
-      <div x-data="{ name: '' }" class="w-full mt-3">
-        <div class="w-full form-control">
-          <label for="name" class="">
-            <span class="sr-only">{l("Enter a name for the list")}</span>
-          </label>
-          <input
-            x-model="name"
-            id="name"
-            name="list[name]"
-            type="text"
-            placeholder={l("The list name...")}
-            class="w-full input input-bordered"
-          />
-        </div>
-
-        <div class="w-full form-control mt-3">
-          <label for="description" class="">
-            <span class="sr-only">{l("Enter a description for the list")}</span>
-          </label>
-          <textarea
-            id="description"
-            name="list[description]"
-            placeholder={l("Describe what this list is for...")}
-            class="w-full textarea textarea-bordered"
-            rows="3"
-          />
-        </div>
-
-        <button type="submit" class="w-full mt-3 normal-case btn btn-primary">
-          {l("Create")}
-        </button>
+<div x-data="{open: false}" class="">
+  <div x-on:click="open = !open" class="btn btn-soft btn-secondary w-full">
+    <#Icon iconify="carbon:bookmark-filled" class="w-5 h-5" />
+    {l "Create a new list"}
+  </div>
+  <div x-show="open" x-cloak x-collapse>
+    <div class="bg-base-100 shadow-xl p-4 rounded-xl flex-col gap-4">
+      <div class="mb-4">
+        <StatefulComponent
+          module={maybe_component(Bonfire.Files.Web.UploadIconLive, @__context__)}
+          id={:upload_icon}
+          src={@src}
+          set_fn={&Bonfire.PanDoRa.Components.CreateNewListLive.set_list_icon/5}
+          label={l("list icon")}
+          label_on_hover={false}
+          object={:pandora_list}
+          container_class="relative flex-shrink-0 block w-24 h-24 overflow-hidden rounded-md ring-4 ring-base-300"
+        />
       </div>
-    </form>
+      <form 
+        phx-submit="new_list_create" 
+        phx-target={@myself}
+      >
+        <div class="">
+          <div class="mb-4">
+            <label class="label">
+              <span class="label-text">{l "Name"}</span>
+            </label>
+            <input
+              type="text"
+              name="list[name]"
+              class="w-full input input-bordered"
+            />
+          </div>
 
-    <:open_btn>
-      <div class="btn btn-neutral btn-sm">
-        {l("New list")}
-      </div>
-    </:open_btn>
-  </Bonfire.UI.Common.OpenModalLive>
+          <div class="mb-4">
+            <label class="label">
+              <span class="label-text">{l "Description"}</span>
+            </label>
+            <textarea
+              name="list[description]"
+              class="w-full textarea textarea-bordered"
+            />
+          </div>
+
+          <button class="btn btn-primary btn-soft w-full mt-3" type="submit">{l "Create"}</button>
+        </div>
+      </form>
+    </div>
+  </div> 
 </div>

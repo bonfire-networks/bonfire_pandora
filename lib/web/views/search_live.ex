@@ -73,6 +73,12 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     {:noreply, fetch_initial_data(socket)}
   end
 
+  # Catch-all clause for unexpected messages
+  def handle_info(msg, socket) do
+    debug("SearchLive received unexpected message: #{inspect(msg)}")
+    {:noreply, socket}
+  end
+
   # Keep your existing handle_params implementation
   def handle_params(%{"term" => term}, _, socket) do
     if connected?(socket) do

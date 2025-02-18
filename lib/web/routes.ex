@@ -33,6 +33,7 @@ defmodule Bonfire.PanDoRa.Web.Routes do
 
         live("/movies/:id", MovieLive)
         live("/my_lists/", MyListsLive)
+        live("/featured_lists/", FeaturedListsLive)
         live("/lists/:id", ListLive)
       end
 

@@ -61,7 +61,7 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
   # Fetch lists for the current user
   defp fetch_my_lists() do
     Client.find_lists(
-      keys: ["id", "name", "status"],
+      keys: ["id", "name", "status", "posterFrames"],
       sort: [%{key: "name", operator: "+"}],
       type: :user
     )

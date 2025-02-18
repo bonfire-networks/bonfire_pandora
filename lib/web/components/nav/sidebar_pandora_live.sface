@@ -6,7 +6,7 @@
         <li><LinkLive to={~p"/pandora"}>{l("All videos")}</LinkLive></li>
         <li><LinkLive to={~p"/pandora/my_lists"}>{l("My lists")}</LinkLive></li>
         <li><a>{l("Favourite lists")}</a></li>
-        <li><a>{l("Featured lists")}</a></li>
+        <li><LinkLive to={~p"/pandora/featured_lists"}>{l("Featured lists")}</LinkLive></li>
       </details>
     </li>
   </ul>

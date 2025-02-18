@@ -1,0 +1,23 @@
+<!-- <div data-role="new_list">
+    <Bonfire.PanDoRa.Components.CreateNewListLive 
+      id="create_new_list" 
+      uploaded_files={e(@uploaded_files, nil)} />
+</div> -->
+
+<ul class="list bg-base-100 rounded-box shadow-md">
+  <li :for={list <- @lists} id={e(list, "id", "")} class="list-row">
+    <div><img class="size-24 rounded-box" src={with frames when is_list(frames) <- e(list, "posterFrames", []),
+         frame when is_map(frame) <- Enum.at(frames, 0) do
+           frame |> Map.keys() |> List.first() || ""
+         else
+           _ -> ""
+         end}></div>
+    <div class="flex flex-col gap-1">
+      <LinkLive to={~p"lists/#{e(list, "id", "")}"} class="text-lg link link-hover font-semibold">{e(list, "name", "")}</LinkLive>
+      <div class="badge badge-info badge-sm badge-soft">{e(list, "status", "")}</div>
+      <p class="list-col-wrap text-sm text-base-content/70">
+        {e(list, "description", "")}
+      </p>
+    </div>
+  </li>
+</ul>

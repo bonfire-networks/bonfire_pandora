@@ -7,7 +7,12 @@
     phx-target={@myself}
     class="list-row cursor-pointer hover:bg-base-content/5"
   >
-    <div><img class="size-12 rounded-box" src="https://img.daisyui.com/images/profile/demo/1@94.webp"></div>
+    <div><img class="size-12 rounded-box" src={with frames when is_list(frames) <- e(list, "posterFrames", []),
+         frame when is_map(frame) <- Enum.at(frames, 0) do
+           frame |> Map.keys() |> List.first() || ""
+         else
+           _ -> ""
+         end}></div>
     <div class="flex flex-col gap-1">
       <div class="text-base font-semibold">{e(list, "name", "")}</div>
       <div class="badge badge-info badge-sm badge-soft">{e(list, "status", "")}</div>
