@@ -475,6 +475,48 @@ defmodule PanDoRa.API.Client do
   end
 
   @doc """
+  Removes one or more items from a static list.
+
+  ## Parameters
+    * `list_id` - The ID of the list to remove items from
+    * `items` - List of item IDs to remove
+    * `query` - Query object for finding items to remove (not implemented)
+
+  Returns {:ok, %{}} on success, {:error, reason} on failure
+
+  ## Examples
+      iex> remove_list_items("list123", items: ["item1", "item2"])
+      {:ok, %{}}
+
+      iex> remove_list_items("list123", query: %{...})
+      {:error, "Query-based removal not implemented"}
+  """
+  def remove_list_items(list_id, opts \\ []) do
+    cond do
+      items = Keyword.get(opts, :items) ->
+        payload = %{
+          list: list_id,
+          items: items
+        }
+
+        case make_request("removeListItems", payload) do
+          {:ok, _} ->
+            debug("Items #{inspect(items)} removed from list #{list_id}")
+            {:ok, %{}}
+
+          other ->
+            error(other, l("Could not remove items from list"))
+        end
+
+      Keyword.has_key?(opts, :query) ->
+        {:error, l("Query-based removal not implemented")}
+
+      true ->
+        {:error, l("Either items or query must be provided")}
+    end
+  end
+
+  @doc """
   Creates a new list.
 
   ## Parameters
@@ -811,9 +853,9 @@ defmodule PanDoRa.API.Client do
   end
 
   # avoid looping
-  def maybe_sign_in_and_or_put_auth_cookie(req, _, "signin", _), do: req
+  defp maybe_sign_in_and_or_put_auth_cookie(req, _, "signin", _), do: req
 
-  def maybe_sign_in_and_or_put_auth_cookie(req, username, action, retry_count)
+  defp maybe_sign_in_and_or_put_auth_cookie(req, username, action, retry_count)
       when is_binary(username) do
     case get_session_cookie(username) do
       nil ->
@@ -836,9 +878,9 @@ defmodule PanDoRa.API.Client do
     end
   end
 
-  def maybe_sign_in_and_or_put_auth_cookie(req, _, _, _), do: req
+  defp maybe_sign_in_and_or_put_auth_cookie(req, _, _, _), do: req
 
-  def maybe_save_auth_cookie(headers, username, action) do
+  defp maybe_save_auth_cookie(headers, username, action) do
     if cookie = extract_session_cookie(headers) do
       set_session_cookie(username, cookie)
       nil
