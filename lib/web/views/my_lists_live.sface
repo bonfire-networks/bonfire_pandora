@@ -1,17 +1,21 @@
 <div data-role="new_list">
-    <Bonfire.PanDoRa.Components.CreateNewListLive 
-      id="create_new_list" 
-      uploaded_files={e(@uploaded_files, nil)} />
+  <Bonfire.PanDoRa.Components.CreateNewListLive
+    id="create_new_list"
+    uploaded_files={e(@uploaded_files, nil)}
+  />
 </div>
 
 <ul class="list bg-base-100 rounded-box shadow-md">
   <li :for={list <- @lists} id={e(list, "id", "")} class="list-row">
-    <div><img class="size-24 rounded-box" src={with frames when is_list(frames) <- e(list, "posterFrames", []),
-         frame when is_map(frame) <- Enum.at(frames, 0) do
-           frame |> Map.keys() |> List.first() || ""
-         else
-           _ -> ""
-         end}></div>
+    <div><img
+        class="size-24 rounded-box"
+        src={with frames when is_list(frames) <- e(list, "posterFrames", []),
+             frame when is_map(frame) <- Enum.at(frames, 0) do
+          frame |> Map.keys() |> List.first() || ""
+        else
+          _ -> ""
+        end}
+      /></div>
     <div class="flex flex-col gap-1">
       <LinkLive to={~p"lists/#{e(list, "id", "")}"} class="text-lg link link-hover font-semibold">{e(list, "name", "")}</LinkLive>
       <div class="badge badge-info badge-sm badge-soft">{e(list, "status", "")}</div>
@@ -41,7 +45,7 @@
         role="menu"
         aria-orientation="vertical"
       >
-        <li><LinkLive to={~p"lists/#{e(list, "id", "")}"}>{l "View"}</LinkLive></li>
+        <li><LinkLive to={~p"lists/#{e(list, "id", "")}"}>{l("View")}</LinkLive></li>
         <li>
           <Bonfire.UI.Common.OpenModalLive
             id={"edit_list_for_#{e(list, "id", "")}"}
@@ -50,18 +54,16 @@
             open_btn_wrapper_class="text-left cursor-pointer"
           >
             <div class="mt-4 pt-1 p-3 border border-base-content/10 rounded-xl">
-
-
               <div class="my-4">
                 <StatefulComponent
                   module={maybe_component(Bonfire.Files.Web.UploadIconLive, @__context__)}
                   id={:update_icon}
                   src={with frames when is_list(frames) <- e(list, "posterFrames", []),
-                    frame when is_map(frame) <- Enum.at(frames, 0) do
-                      frame |> Map.keys() |> List.first() || ""
-                    else
-                      _ -> ""
-                    end}
+                       frame when is_map(frame) <- Enum.at(frames, 0) do
+                    frame |> Map.keys() |> List.first() || ""
+                  else
+                    _ -> ""
+                  end}
                   set_fn={&Bonfire.PanDoRa.Components.CreateNewListLive.set_list_icon/5}
                   label={l("list icon")}
                   label_on_hover={false}

@@ -1,7 +1,7 @@
 <div x-data="{open: false}" class="">
   <div x-on:click="open = !open" class="btn btn-soft btn-secondary w-full">
     <#Icon iconify="carbon:bookmark-filled" class="w-5 h-5" />
-    {l "Create a new list"}
+    {l("Create a new list")}
   </div>
   <div x-show="open" x-cloak x-collapse>
     <div class="bg-base-100 shadow-xl p-4 rounded-xl flex-col gap-4">
@@ -17,12 +17,30 @@
           container_class="relative flex-shrink-0 block w-24 h-24 overflow-hidden rounded-md ring-4 ring-base-300"
         />
       </div>
-      <form 
-        phx-submit="new_list_create" 
-        phx-target={@myself}
-      >
+      <form phx-submit="new_list_create" phx-target={@myself}>
         <div class="">
-          <div class="mb-4">
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">{l("List name")}</legend>
+            <input type="text" name="list[name]" class="w-full input">
+          </fieldset>
+
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">{l("List description")}</legend>
+            <textarea name="list[description]" class="w-full textarea textarea-bordered" />
+          </fieldset>
+
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">{l("Privacy")}</legend>
+            <div class="cursor-pointer label">
+              <span class="label-text">{l("Make this list public")}</span>
+              <select name="list[status]" class="select select-bordered">
+                <option value="private" selected>{l("Private")}</option>
+                <option value="public">{l("Public")}</option>
+              </select>
+            </div>
+          </fieldset>
+
+          <!-- <div class="mb-4">
             <label class="label">
               <span class="label-text">{l "Name"}</span>
             </label>
@@ -31,9 +49,9 @@
               name="list[name]"
               class="w-full input input-bordered"
             />
-          </div>
+          </div> -->
 
-          <div class="mb-4">
+          <!-- <div class="mb-4">
             <label class="label">
               <span class="label-text">{l "Description"}</span>
             </label>
@@ -41,11 +59,11 @@
               name="list[description]"
               class="w-full textarea textarea-bordered"
             />
-          </div>
+          </div> -->
 
-          <button class="btn btn-primary btn-soft w-full mt-3" type="submit">{l "Create"}</button>
+          <button class="btn btn-primary btn-soft w-full mt-3" type="submit">{l("Create")}</button>
         </div>
       </form>
     </div>
-  </div> 
+  </div>
 </div>

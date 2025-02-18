@@ -856,7 +856,7 @@ defmodule PanDoRa.API.Client do
   defp maybe_sign_in_and_or_put_auth_cookie(req, _, "signin", _), do: req
 
   defp maybe_sign_in_and_or_put_auth_cookie(req, username, action, retry_count)
-      when is_binary(username) do
+       when is_binary(username) do
     case get_session_cookie(username) do
       nil ->
         with {:ok, _} <- sign_in(username, get_auth_pw(username)) do

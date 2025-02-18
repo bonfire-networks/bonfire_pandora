@@ -9,6 +9,7 @@ defmodule Bonfire.PanDoRa.Web.MyListsLive do
   def mount(_params, _session, socket) do
     # Fetch lists immediately in mount
     lists_result = fetch_my_lists()
+
     socket =
       socket
       |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
@@ -22,8 +23,6 @@ defmodule Bonfire.PanDoRa.Web.MyListsLive do
 
     {:ok, socket}
   end
-
-
 
   # Handle successful list fetch
   defp handle_lists_result(socket, {:ok, %{items: lists}}) do
@@ -77,19 +76,22 @@ defmodule Bonfire.PanDoRa.Web.MyListsLive do
   def handle_event("validate_update_list", _params, socket) do
     {:noreply, socket}
   end
+
   def handle_event("update_list", %{"list" => list_params} = _params, socket) do
     debug(list_params, "update_list_params")
     debug(socket.assigns.uploaded_files, "Uploaded files during list creation")
 
     list_params =
       case socket.assigns.uploaded_files do
-        %Bonfire.Files.Media{} = uploaded_media  ->
+        %{} = uploaded_media ->
           debug(uploaded_media, "Adding icon to list params")
           Map.put(list_params, "posterFrames", [{uploaded_media.path, 0}])
+
         _ ->
           debug("No icon available")
           list_params
       end
+
     # Extract the ID and remove it from params to be updated
     id = Map.get(list_params, "id")
     update_params = Map.drop(list_params, ["id"])
@@ -98,7 +100,7 @@ defmodule Bonfire.PanDoRa.Web.MyListsLive do
       {:ok, updated_list} ->
         # Update the list in the lists array
         lists =
-        lists =
+          lists =
           Enum.map(socket.assigns.lists, fn list ->
             if list["id"] == id, do: updated_list, else: list
           end)
@@ -117,7 +119,6 @@ defmodule Bonfire.PanDoRa.Web.MyListsLive do
     end
   end
 
-
   def handle_info({:list_created, new_list}, socket) do
     lists = [new_list | socket.assigns.lists]
     {:noreply, assign(socket, :lists, lists)}
@@ -126,11 +127,10 @@ defmodule Bonfire.PanDoRa.Web.MyListsLive do
   # WIP: need to move this function to create_new_list component
   def handle_info({:update_list_icon, media} = msg, socket) do
     IO.inspect(media, label: "Received list icon update")
+
     {:noreply,
      socket
-     |> assign(
-       uploaded_files: media
-     )}
+     |> assign(uploaded_files: media)}
   end
 
   def handle_info(msg, socket) do

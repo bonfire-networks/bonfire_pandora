@@ -9,6 +9,7 @@ defmodule Bonfire.PanDoRa.Web.FeaturedListsLive do
   def mount(_params, _session, socket) do
     # Fetch lists immediately in mount
     lists_result = fetch_my_lists()
+
     socket =
       socket
       |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
@@ -22,10 +23,10 @@ defmodule Bonfire.PanDoRa.Web.FeaturedListsLive do
     {:ok, socket}
   end
 
-
-
   # Handle successful list fetch
   defp handle_lists_result(socket, {:ok, %{items: lists}}) do
+    IO.inspect(lists, label: "Fetched lists")
+
     socket
     |> assign(:lists, lists)
     |> assign(:loading, false)

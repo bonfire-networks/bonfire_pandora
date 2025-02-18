@@ -154,6 +154,7 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
   # Update lists after adding/removing movie
   defp update_lists(socket) do
     lists_result = fetch_my_lists()
+
     socket
     |> handle_lists_result(lists_result)
     |> check_movie_in_lists()

@@ -8,6 +8,7 @@ defmodule Bonfire.PanDoRa.Components.CreateNewListLive do
 
   def update(assigns, socket) do
     debug(assigns, "Initializing CreateNewListLive")
+
     {:ok,
      socket
      |> assign(assigns)}
@@ -18,12 +19,27 @@ defmodule Bonfire.PanDoRa.Components.CreateNewListLive do
 
     list_params =
       case socket.assigns.uploaded_files do
-        %Bonfire.Files.Media{} = uploaded_media  ->
+        %{} = uploaded_media ->
           debug(uploaded_media, "Adding icon to list params")
-          Map.put(list_params, "posterFrames", [{uploaded_media.path, 0}])
+
+          list_params
+          |> Map.put("posterFrames", [{uploaded_media.path, 0}])
+          |> Map.update("status", "private", fn
+            true -> "public"
+            false -> "private"
+            status when is_binary(status) -> status
+            _ -> "private"
+          end)
+
         _ ->
           debug("No icon available")
-          list_params
+
+          Map.update(list_params, "status", "private", fn
+            true -> "public"
+            false -> "private"
+            status when is_binary(status) -> status
+            _ -> "private"
+          end)
       end
 
     handle_create_list(list_params, socket)
@@ -31,11 +47,10 @@ defmodule Bonfire.PanDoRa.Components.CreateNewListLive do
 
   def handle_info({:update_list_icon, media} = msg, socket) do
     IO.inspect(media, label: "Received list icon update")
+
     {:noreply,
      socket
-     |> assign(
-       uploaded_files: media
-     )}
+     |> assign(uploaded_files: media)}
   end
 
   def handle_info(msg, socket) do
@@ -43,7 +58,7 @@ defmodule Bonfire.PanDoRa.Components.CreateNewListLive do
     {:noreply, socket}
   end
 
-  def set_list_icon(:icon, :pandora_list, %Bonfire.Files.Media{} = media, assign_field, socket) do
+  def set_list_icon(:icon, :pandora_list, %{} = media, assign_field, socket) do
     # Store the uploaded media for use in list creation
     IO.inspect(media, label: "Setting list icon")
 

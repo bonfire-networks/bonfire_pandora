@@ -1,10 +1,14 @@
 <div class="bg-base-100 rounded-lg p-6 shadow-xl flex items-start gap-4">
-  <div><img class="size-24 rounded-box" src={with frames when is_list(frames) <- e(@list, "posterFrames", []),
-         frame when is_map(frame) <- Enum.at(frames, 0) do
-           frame |> Map.keys() |> List.first() || ""
-         else
-           _ -> ""
-         end} alt="Poster"></div>
+  <div><img
+      class="size-24 rounded-box"
+      src={with frames when is_list(frames) <- e(@list, "posterFrames", []),
+           frame when is_map(frame) <- Enum.at(frames, 0) do
+        frame |> Map.keys() |> List.first() || ""
+      else
+        _ -> ""
+      end}
+      alt="Poster"
+    /></div>
   <div class="flex flex-col flex-1 gap-2">
     <div class="text-xl font-semibold">{e(@list, "name", "")}</div>
     <div class="badge badge-info badge-sm badge-soft">{e(@list, "status", "")}</div>
@@ -13,108 +17,106 @@
     </p>
   </div>
 
-    <div
-      data-position="bottom"
-      phx-hook="Tooltip"
-      id={"my_list_" <> e(@list, "id", "")}
-      class="relative"
-      >
-      <label
-        class="tooltip-button btn btn-sm btn-circle btn-ghost"
-        tabindex="0"
-        role="button"
-        aria-haspopup="true"
-        aria-expanded="true"
-      >
-        <#Icon solid="DotsHorizontal" class="w-4 h-4 opacity/70" />
-      </label>
-      <ul
-        tabindex="0"
-        class="tooltip z-[99999999] menu shadow-sm bg-base-100 border border-base-content/10 w-52 absolute rounded-xl top-0 left-0 hidden"
-        role="menu"
-        aria-orientation="vertical"
-      >
-        <!-- <li><LinkLive to={~p"lists/#{e(@list, "id", "")}"}>{l "View"}</LinkLive></li> -->
-        <li>
-          <Bonfire.UI.Common.OpenModalLive
-            id={"edit_list_for_#{e(@list, "id", "")}"}
-            title_text={l("Edit list")}
-            no_actions
-            open_btn_wrapper_class="text-left cursor-pointer"
-          >
-            <div class="mt-4 pt-1 p-3 border border-base-content/10 rounded-xl">
-              <div class="my-4">
-                <StatefulComponent
-                  module={maybe_component(Bonfire.Files.Web.UploadIconLive, @__context__)}
-                  id={:update_icon}
-                  src={with frames when is_list(frames) <- e(@list, "posterFrames", []),
-                    frame when is_map(frame) <- Enum.at(frames, 0) do
-                      frame |> Map.keys() |> List.first() || ""
-                    else
-                      _ -> ""
-                    end}
-                  set_fn={&Bonfire.PanDoRa.Components.CreateNewListLive.set_list_icon/5}
-                  label={l("list icon")}
-                  label_on_hover={false}
-                  object={:pandora_list}
-                  container_class="relative flex-shrink-0 block w-24 h-24 overflow-hidden rounded-md ring-4 ring-base-300"
+  <div
+    data-position="bottom"
+    phx-hook="Tooltip"
+    id={"my_list_" <> e(@list, "id", "")}
+    class="relative"
+  >
+    <label
+      class="tooltip-button btn btn-sm btn-circle btn-ghost"
+      tabindex="0"
+      role="button"
+      aria-haspopup="true"
+      aria-expanded="true"
+    >
+      <#Icon solid="DotsHorizontal" class="w-4 h-4 opacity/70" />
+    </label>
+    <ul
+      tabindex="0"
+      class="tooltip z-[99999999] menu shadow-sm bg-base-100 border border-base-content/10 w-52 absolute rounded-xl top-0 left-0 hidden"
+      role="menu"
+      aria-orientation="vertical"
+    >
+      <!-- <li><LinkLive to={~p"lists/#{e(@list, "id", "")}"}>{l "View"}</LinkLive></li> -->
+      <li>
+        <Bonfire.UI.Common.OpenModalLive
+          id={"edit_list_for_#{e(@list, "id", "")}"}
+          title_text={l("Edit list")}
+          no_actions
+          open_btn_wrapper_class="text-left cursor-pointer"
+        >
+          <div class="mt-4 pt-1 p-3 border border-base-content/10 rounded-xl">
+            <div class="my-4">
+              <StatefulComponent
+                module={maybe_component(Bonfire.Files.Web.UploadIconLive, @__context__)}
+                id={:update_icon}
+                src={with frames when is_list(frames) <- e(@list, "posterFrames", []),
+                     frame when is_map(frame) <- Enum.at(frames, 0) do
+                  frame |> Map.keys() |> List.first() || ""
+                else
+                  _ -> ""
+                end}
+                set_fn={&Bonfire.PanDoRa.Components.CreateNewListLive.set_list_icon/5}
+                label={l("list icon")}
+                label_on_hover={false}
+                object={:pandora_list}
+                container_class="relative flex-shrink-0 block w-24 h-24 overflow-hidden rounded-md ring-4 ring-base-300"
+              />
+            </div>
+
+            <form
+              id={"edit_list_form_for_#{e(@list, "id", "")}"}
+              phx-change="validate_update_list"
+              phx-submit="update_list"
+            >
+              <input type="hidden" name="list[id]" value={e(@list, "id", "")}>
+              <fieldset class="fieldset">
+                <legend class="fieldset-legend">{l("Name")}</legend>
+                <input
+                  name="list[name]"
+                  value={e(@list, "name", "")}
+                  type="text"
+                  class="input w-full"
+                  placeholder="Type here"
                 />
-              </div>
+              </fieldset>
 
-              <form
-                id={"edit_list_form_for_#{e(@list, "id", "")}"}
-                phx-change="validate_update_list"
-                phx-submit="update_list"
-              >
-                <input type="hidden" name="list[id]" value={e(@list, "id", "")}>
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">{l("Name")}</legend>
-                  <input
-                    name="list[name]"
-                    value={e(@list, "name", "")}
-                    type="text"
-                    class="input w-full"
-                    placeholder="Type here"
-                  />
-                </fieldset>
+              <fieldset class="fieldset mt-2">
+                <legend class="fieldset-legend">{l("Description")}</legend>
+                <textarea name="list[description]" class="textarea w-full h-24" placeholder="Bio">{e(@list, "description", "")}</textarea>
+              </fieldset>
 
-                <fieldset class="fieldset mt-2">
-                  <legend class="fieldset-legend">{l("Description")}</legend>
-                  <textarea name="list[description]" class="textarea w-full h-24" placeholder="Bio">{e(@list, "description", "")}</textarea>
-                </fieldset>
-
-                <button class="btn mt-3 btn-primary btn-soft w-full" type="submit">{l("Save")}</button>
-              </form>
-            </div>
-            <:open_btn>
-              {l("Edit list")}
-            </:open_btn>
-          </Bonfire.UI.Common.OpenModalLive>
-        </li>
-        <li>
-          <Bonfire.UI.Common.OpenModalLive
-            id={"remove_list_for_#{e(@list, "id", "")}"}
-            title_text={l("Delete list")}
-            no_actions
-            open_btn_wrapper_class="text-left cursor-pointer text-error"
-          >
-            <div class="p-3 border-error/30 mt-3 border rounded-xl bg-error/10">
-              <p class="text-error">{l("Are you sure you want to delete ")} <span class="font-semibold">{e(@list, "name", "")}</span>?</p>
-              <button
-                phx-click="delete_list"
-                phx-value-list-id={e(@list, "id", "")}
-                class="btn btn-error w-full mt-3"
-              >{l("Delete")}</button>
-            </div>
-            <:open_btn>
-              {l("Delete list")}
-            </:open_btn>
-          </Bonfire.UI.Common.OpenModalLive>
-        </li>
-      </ul>
-    </div>
-
-
+              <button class="btn mt-3 btn-primary btn-soft w-full" type="submit">{l("Save")}</button>
+            </form>
+          </div>
+          <:open_btn>
+            {l("Edit list")}
+          </:open_btn>
+        </Bonfire.UI.Common.OpenModalLive>
+      </li>
+      <li>
+        <Bonfire.UI.Common.OpenModalLive
+          id={"remove_list_for_#{e(@list, "id", "")}"}
+          title_text={l("Delete list")}
+          no_actions
+          open_btn_wrapper_class="text-left cursor-pointer text-error"
+        >
+          <div class="p-3 border-error/30 mt-3 border rounded-xl bg-error/10">
+            <p class="text-error">{l("Are you sure you want to delete ")} <span class="font-semibold">{e(@list, "name", "")}</span>?</p>
+            <button
+              phx-click="delete_list"
+              phx-value-list-id={e(@list, "id", "")}
+              class="btn btn-error w-full mt-3"
+            >{l("Delete")}</button>
+          </div>
+          <:open_btn>
+            {l("Delete list")}
+          </:open_btn>
+        </Bonfire.UI.Common.OpenModalLive>
+      </li>
+    </ul>
+  </div>
 </div>
 
 <div class="">
