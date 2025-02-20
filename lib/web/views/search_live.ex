@@ -93,6 +93,15 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   def handle_params(_, _, socket), do: {:noreply, socket}
 
+    # Handle specific filter events
+    def handle_event("filter_by_sezione", %{"id" => value} = params, socket) when is_binary(value) do
+      {:noreply, toggle_filter(socket, "sezione", value)}
+    end
+
+    def handle_event("filter_by_edizione", %{"id" => value} = params, socket) when is_binary(value) do
+      {:noreply, toggle_filter(socket, "edizione", value)}
+    end
+
   # Unified filter handling using pattern matching
   def handle_event("filter_by_" <> filter_type, params, socket)
       when filter_type in @filter_types do
@@ -118,6 +127,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
     trigger_search(socket)
   end
+
+
 
   # New function to update metadata with current conditions
   defp update_metadata_with_conditions(socket, conditions) do
@@ -334,6 +345,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     filter_key = case filter_type do
       "sezione" -> :selected_sezione
       "edizione" -> :selected_edizione
+      "featuring" -> :selected_featuring
       other -> String.to_existing_atom("selected_#{other}s")
     end
     current_filters = Map.get(socket.assigns, filter_key, [])

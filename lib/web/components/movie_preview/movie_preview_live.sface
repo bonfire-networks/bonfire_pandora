@@ -1,47 +1,51 @@
 <li id={@movie_id} class="list-row">
-  <div><img
+    <div><img
       class="size-16 rounded-box"
       src={Client.get_pandora_url() <> "/" <> e(@movie, "id", "") <> "/poster512.jpg"}
     /></div>
-  <div>
-    <div class="flex items-center w-full gap-2">
-      <LinkLive to={"/pandora/movies/" <> e(@movie, "id", "")} class="link link-hover text-base">{rich(e(@movie, "title", ""))}</LinkLive>
-      {#if @movie["year"]}
-        <span class="text-base-content/50">|</span>
-        <div class="flex items-center gap-1 text-base-content/50">
-          <#Icon iconify="carbon:calendar" class="w-4 h-4" />
-          {e(@movie, "year", "")}
-        </div>
-      {/if}
-      {#if @movie["duration"]}
-        <span class="text-base-content/50">|</span>
-        <div class="flex items-center gap-1 text-base-content/50">
-          <#Icon iconify="carbon:time" class="w-4 h-4" />
-          {format_duration(e(@movie, "duration", ""))}
-        </div>
-      {/if}
-    </div>
-    <div class="flex py-1.5 items-center gap-1 flex-wrap">
-      {#if @movie["director"]}
+    <div>
+    <LinkLive to={"/pandora/movies/" <> e(@movie, "id", "")} class="link link-hover text-base">{rich(e(@movie, "title", ""))}</LinkLive>
+    
+    {#if @movie["director"]}
+      <div class="flex py-1.5 items-center gap-1 flex-wrap">
         {#for director <- List.wrap(@movie["director"])}
           <span class="text-xs uppercase font-semibold opacity-60">{director}</span>
         {/for}
-      {/if}
-    </div>
+      </div>
+    {/if}
     <div class="list-col-wrap text-xs">
-      {#if @movie["country"]}
-        <div class="badge badge-soft badge-info">
-          <#Icon iconify="material-symbols:globe" class="w-4 h-4" />
-          {@movie["country"] |> List.wrap() |> Enum.join(", ")}
-        </div>
-      {/if}
-
-      {#if @movie["language"]}
-        <div class="badge badge-soft badge-accent">
-          <#Icon iconify="flowbite:language-outline" class="w-4 h-4" />
-          {@movie["language"] |> List.wrap() |> Enum.join(", ")}
-        </div>
-      {/if}
+      <div class="flex items-center gap-3">
+        <!-- {#if @movie["country"]}
+          <div class="badge badge-soft badge-info">
+            <#Icon iconify="material-symbols:globe" class="w-4 h-4" />
+            {@movie["country"] |> List.wrap() |> Enum.join(", ")}
+          </div>
+        {/if} -->
+        <!-- {#if @movie["language"]}
+          <div class="badge badge-soft badge-accent">
+            <#Icon iconify="flowbite:language-outline" class="w-4 h-4" />
+            {@movie["language"] |> List.wrap() |> Enum.join(", ")}
+          </div>
+        {/if} -->
+        {#if @movie["duration"]}
+          <div class="badge badge-sm badge-ghost">
+            <#Icon iconify="carbon:time" class="w-4 h-4" />
+            {format_duration(e(@movie, "duration", ""))}
+          </div>
+        {/if}
+        {#if @movie["sezione"]}
+          <button class="btn btn-xs btn-soft btn-primary" phx-click="filter_by_sezione" phx-value-id={e(@movie, "sezione", "")}>
+            <#Icon iconify="material-symbols:category-rounded" class="w-4 h-4" />
+            {(e(@movie, "sezione", ""))}
+          </button>
+        {/if}
+        {#if @movie["edizione"]}
+          <button class="btn btn-xs btn-soft btn-primary" phx-click="filter_by_edizione" phx-value-id={e(@movie, "edizione", "")}>
+            <#Icon solid="calendar" class="w-4 h-4" />
+            {(e(@movie, "edizione", ""))}
+          </button>
+        {/if}
+      </div>
     </div>
   </div>
   <Bonfire.UI.Common.OpenModalLive
@@ -53,7 +57,7 @@
     <Bonfire.PanDoRa.Components.AddToListLive id={@movie_id} movie_id={e(@movie, "id", "")} />
     <:open_btn>
       <div class="btn btn-circle btn-sm btn-secondary btn-soft">
-        <#Icon iconify="carbon:bookmark" class="w-4 h-4" />
+        <#Icon iconify="carbon:bookmark-filled" class="w-4 h-4" />
       </div>
     </:open_btn>
   </Bonfire.UI.Common.OpenModalLive>
