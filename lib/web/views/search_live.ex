@@ -19,9 +19,9 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   )
 
   # Add constants for better maintainability
-  @filter_types ~w(director country year language)
+  @filter_types ~w(director sezione edizione featuring)
   @default_per_page 20
-  @default_keys ~w(title id item_id public_id director country year language duration)
+  @default_keys ~w(title id item_id public_id director sezione edizione featuring duration)
 
   # Clean initial assigns with defaults
   @initial_assigns %{
@@ -35,13 +35,16 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     page_title: "Search in your archive",
     per_page: @default_per_page,
     available_directors: [],
-    available_countries: [],
-    available_years: [],
-    available_languages: [],
+    available_sezione: [],
+    available_edizione: [],
+    available_featuring: [],
     selected_directors: [],
-    selected_countries: [],
-    selected_years: [],
-    selected_languages: [],
+    selected_sezione: [],
+    selected_edizione: [],
+    selected_featuring: [],
+    first_selected_filter: nil,
+    is_keyword_search: false,
+    keep_keyword_filtering: false,
     error: nil
   }
 
@@ -74,10 +77,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   end
 
   # Catch-all clause for unexpected messages
-  def handle_info(msg, socket) do
-    debug("SearchLive received unexpected message: #{inspect(msg)}")
-    {:noreply, socket}
-  end
+  # def handle_info(msg, socket) do
+  #   debug("SearchLive received unexpected message: #{inspect(msg)}")
+  #   {:noreply, socket}
+  # end
 
   # Keep your existing handle_params implementation
   def handle_params(%{"term" => term}, _, socket) do
@@ -105,9 +108,9 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       build_search_conditions(%{
         term: socket.assigns.term,
         selected_directors: socket.assigns.selected_directors,
-        selected_countries: socket.assigns.selected_countries,
-        selected_years: socket.assigns.selected_years,
-        selected_languages: socket.assigns.selected_languages
+        selected_sezione: socket.assigns.selected_sezione,
+        selected_edizione: socket.assigns.selected_edizione,
+        selected_featuring: socket.assigns.selected_featuring
       })
 
     # Update metadata with current conditions
@@ -119,13 +122,34 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   # New function to update metadata with current conditions
   defp update_metadata_with_conditions(socket, conditions) do
     case Client.fetch_grouped_metadata(conditions) do
-      {:ok, metadata} ->
+      {:ok, filtered_metadata} ->
+        metadata = cond do
+          socket.assigns.is_keyword_search || socket.assigns.keep_keyword_filtering ->
+            filtered_metadata
+          socket.assigns.first_selected_filter ->
+            case Client.fetch_grouped_metadata([]) do
+              {:ok, complete_metadata} ->
+                # Keep complete metadata for first filter, filtered for others
+                key = case socket.assigns.first_selected_filter do
+                  "director" -> "director"
+                  "sezione" -> "sezione"
+                  "edizione" -> "edizione"
+                  "featuring" -> "featuring"
+                end
+                Map.put(filtered_metadata, key, complete_metadata[key])
+              _ ->
+                filtered_metadata
+            end
+          true ->
+            filtered_metadata
+        end
+
         socket
         |> assign(
           available_directors: metadata["director"] || [],
-          available_countries: metadata["country"] || [],
-          available_years: metadata["year"] || [],
-          available_languages: metadata["language"] || []
+          available_sezione: metadata["sezione"] || [],
+          available_edizione: metadata["edizione"] || [],
+          available_featuring: metadata["featuring"] || []
         )
 
       _ ->
@@ -143,6 +167,26 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   #   do_search(socket, term)
   # end
 
+  def handle_event("search", %{"term" => term}, socket) do
+    socket =
+      socket
+      |> assign(
+        selected_directors: [],
+        selected_sezione: [],
+        selected_edizione: [],
+        selected_featuring: [],
+        term: term,
+        is_keyword_search: true,
+        keep_keyword_filtering: true,
+        first_selected_filter: nil
+      )
+      |> reset_pagination()
+      |> set_loading_state(true)
+      |> trigger_search()
+
+    {:noreply, socket}
+  end
+
   def handle_event("clear_search", _, socket) do
     socket = set_loading_state(socket, true)
 
@@ -154,33 +198,18 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
      |> set_loading_state(false)}
   end
 
-  # And make handle_event consistent:
-  def handle_event("search", %{"term" => term}, socket) do
-    socket =
-      socket
-      |> assign(
-        selected_directors: [],
-        selected_countries: [],
-        selected_years: [],
-        selected_languages: [],
-        term: term
-      )
-      |> reset_pagination()
-      |> set_loading_state(true)
-      |> trigger_search()
-
-    {:noreply, socket}
-  end
-
   def handle_event("clear_filters", _, socket) do
     socket =
       socket
       |> assign(
         term: nil,
         selected_directors: [],
-        selected_countries: [],
-        selected_years: [],
-        selected_languages: []
+        selected_sezione: [],
+        selected_edizione: [],
+        selected_featuring: [],
+        first_selected_filter: nil,
+        is_keyword_search: false,
+        keep_keyword_filtering: false
       )
       |> reset_pagination()
       |> set_loading_state(true)
@@ -264,7 +293,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
              ) do
           {:ok, %{items: items, total: total}} ->
             socket
-            |> handle_search_success(items, total)
+            |> handle_search_success(items, total, [])  # Pass empty conditions for initial load
             |> assign(:loading, false)
 
           _ ->
@@ -291,43 +320,52 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            keys: @default_keys
          ) do
       {:ok, %{items: items, total: total}} ->
-        {:noreply, updated_socket} = handle_search_success(socket, items, total)
-        set_loading_state(updated_socket, false)
+        socket
+        |> handle_search_success(items, total, [])  # Pass empty conditions for initial load
+        |> set_loading_state(false)
 
       _ ->
         set_loading_state(socket, false)
     end
   end
 
-  defp toggle_filter(socket, "country", value) do
-    current_filters = Map.get(socket.assigns, :selected_countries, [])
-
-    updated_filters =
-      if value in current_filters do
-        List.delete(current_filters, value)
-      else
-        [value | current_filters]
-      end
-
-    socket
-    |> assign(:selected_countries, updated_filters)
-    |> reset_pagination()
-    |> trigger_search()
-  end
-
-  defp toggle_filter(socket, filter_type, value) do
-    filter_key = String.to_existing_atom("selected_#{filter_type}s")
+  defp toggle_filter(socket, filter_type, value) when filter_type in @filter_types and is_binary(value) do
+    # Handle Italian words that don't follow English pluralization
+    filter_key = case filter_type do
+      "sezione" -> :selected_sezione
+      "edizione" -> :selected_edizione
+      other -> String.to_existing_atom("selected_#{other}s")
+    end
     current_filters = Map.get(socket.assigns, filter_key, [])
 
-    updated_filters =
+    # Only switch off keyword search mode, keep the filtering
+    socket = if socket.assigns.is_keyword_search do
+      assign(socket, :is_keyword_search, false)
+    else
+      socket
+    end
+
+    # Determine if this is the first filter being selected
+    {updated_filters, first_filter} =
       if value in current_filters do
-        List.delete(current_filters, value)
+        filters = List.delete(current_filters, value)
+        first_filter = if filters == [] && socket.assigns.first_selected_filter == filter_type do
+          nil  # Reset first filter if removing last value of that type
+        else
+          socket.assigns.first_selected_filter
+        end
+        {filters, first_filter}
       else
-        [value | current_filters]
+        first_filter = case socket.assigns.first_selected_filter do
+          nil -> filter_type  # This is the first filter
+          existing -> existing  # Keep existing first filter
+        end
+        {[value | current_filters], first_filter}
       end
 
     socket
     |> assign(filter_key, updated_filters)
+    |> assign(:first_selected_filter, first_filter)
     |> reset_pagination()
     |> trigger_search()
   end
@@ -351,28 +389,28 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   defp build_search_conditions(%{
          term: term,
          selected_directors: directors,
-         selected_countries: countries,
-         selected_years: years,
-         selected_languages: languages
+         selected_sezione: sezione,
+         selected_edizione: edizione,
+         selected_featuring: featuring
        }) do
     filters =
       []
       |> add_filter_condition("director", directors)
-      |> add_filter_condition("country", countries)
-      |> add_filter_condition("year", years)
-      |> add_filter_condition("language", languages)
+      |> add_filter_condition("sezione", sezione)
+      |> add_filter_condition("edizione", edizione)
+      |> add_filter_condition("featuring", featuring)
+      |> Enum.reject(&is_nil/1)
 
     case {term, filters} do
       {nil, []} ->
         []
-
       {term, []} when is_binary(term) and term != "" ->
         [%{key: "*", operator: "=", value: term}]
-
-      {nil, filters} ->
-        [%{conditions: filters, operator: "&"}]
-
-      {term, filters} ->
+      {nil, [single]} ->
+        [single]
+      {nil, multiple} when length(multiple) > 0 ->
+        [%{conditions: multiple, operator: "&"}]
+      {term, filters} when is_binary(term) and term != "" ->
         [
           %{
             conditions: [%{key: "*", operator: "=", value: term} | filters],
@@ -383,15 +421,13 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   end
 
   defp add_filter_condition(conditions, _type, []), do: conditions
-
-  defp add_filter_condition(conditions, type, [value]),
-    do: [%{key: type, operator: "==", value: value} | conditions]
-
+  defp add_filter_condition(conditions, type, [single]),
+    do: [%{key: type, operator: "==", value: single} | conditions]
   defp add_filter_condition(conditions, type, values) when length(values) > 0,
     do: [
       %{
         conditions: Enum.map(values, &%{key: type, operator: "==", value: &1}),
-        operator: "|"
+        operator: "|"  # Use OR operator for multiple values of same type
       }
       | conditions
     ]
@@ -402,21 +438,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       build_search_conditions(%{
         term: term,
         selected_directors: socket.assigns.selected_directors,
-        selected_countries: socket.assigns.selected_countries,
-        selected_years: socket.assigns.selected_years,
-        selected_languages: socket.assigns.selected_languages
+        selected_sezione: socket.assigns.selected_sezione,
+        selected_edizione: socket.assigns.selected_edizione,
+        selected_featuring: socket.assigns.selected_featuring
       })
-
-    # Always update metadata regardless of term
-    socket =
-      case Client.fetch_grouped_metadata() do
-        {:ok, metadata} ->
-          socket
-          |> assign_metadata(metadata)
-
-        _ ->
-          socket
-      end
 
     case Client.find(
            conditions: conditions,
@@ -427,7 +452,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       {:ok, %{items: items, total: total}} ->
         socket =
           socket
-          |> handle_search_success(items, total)
+          |> handle_search_success(items, total, conditions)  # Pass conditions to handle_search_success
           |> assign(:loading, false)
 
         {:noreply, socket}
@@ -442,9 +467,24 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     end
   end
 
-  # New function to handle metadata updates
-  defp update_metadata_for_term(socket, term) do
-    conditions = [%{key: "title", operator: "~=", value: term}]
+  # Update handle_search_success to handle metadata fetching
+  defp handle_search_success(socket, items, total, conditions) do
+    current_count = length(items)
+    total_pages = ceil(total / @default_per_page)
+
+    socket =
+      socket
+      |> stream(:search_results, prepare_items(items))
+      |> assign(
+        current_count: current_count,
+        total_count: total,
+        page: 0,
+        total_pages: total_pages,
+        has_more_items: current_count == @default_per_page,
+        error: nil
+      )
+
+    # Single metadata update with proper handling of first selected filter
     update_metadata_with_conditions(socket, conditions)
   end
 
@@ -462,49 +502,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     socket
     |> assign(
       available_directors: metadata["director"] || [],
-      available_countries: metadata["country"] || [],
-      available_years: sort_years(metadata["year"] || []),
-      available_languages: metadata["language"] || []
+      available_sezione: metadata["sezione"] || [],
+      available_edizione: metadata["edizione"] || [],
+      available_featuring: metadata["featuring"] || []
     )
-  end
-
-  # Always update metadata regardless of term
-  defp handle_search_success(socket, items, total) do
-    current_count = length(items)
-    total_pages = ceil(total / @default_per_page)
-
-    socket =
-      socket
-      |> stream(:search_results, prepare_items(items))
-      |> assign(
-        current_count: current_count,
-        total_count: total,
-        page: 0,
-        total_pages: total_pages,
-        has_more_items: current_count == @default_per_page,
-        error: nil
-      )
-
-    # Only pass search conditions to metadata if there's a search term
-    conditions =
-      if socket.assigns.term && socket.assigns.term != "",
-        do: build_search_conditions(socket.assigns),
-        else: []
-
-    # Update metadata with current search conditions
-    case Client.fetch_grouped_metadata(conditions) do
-      {:ok, metadata} ->
-        socket
-        |> assign(
-          available_directors: metadata["director"] || [],
-          available_countries: metadata["country"] || [],
-          available_years: sort_years(metadata["year"] || []),
-          available_languages: metadata["language"] || []
-        )
-
-      _ ->
-        socket
-    end
   end
 
   defp handle_search_error(socket, error) do
@@ -522,9 +523,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   defp do_load_more(socket) do
     next_page = socket.assigns.page + 1
+    conditions = build_search_conditions(socket.assigns)
 
     case Client.find(
-           conditions: build_search_conditions(socket.assigns),
+           conditions: conditions,
            range: calculate_page_range(next_page),
            keys: @default_keys,
            total: true
@@ -542,6 +544,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
           # Reset loading state after success
           loading: false
         )
+        |> update_metadata_with_conditions(conditions)  # Update metadata with current conditions
 
       other ->
         error(other, "Failed to load more")

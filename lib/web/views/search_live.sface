@@ -11,21 +11,13 @@
             class="input w-full"
             disabled={@loading}
           />
-          <!-- {#if @loading}
-            <div class="absolute right-3 top-1/2 -translate-y-1/2">
-              <div class="loading loading-spinner loading-xs" />
-            </div>
-          {/if} -->
         </div>
         <button type="submit" class="btn btn-soft btn-secondary" disabled={@loading}>
-          <!-- {#if @loading}
-            <div class="loading loading-spinner loading-sm" />
-          {/if} -->
           {if @loading, do: l("Searching..."), else: l("Search")}
         </button>
         <button
-          :if={@term || length(@selected_directors) > 0 || length(@selected_countries) > 0 ||
-            length(@selected_years) > 0 || length(@selected_languages) > 0}
+          :if={@term || length(@selected_directors) > 0 || length(@selected_sezione) > 0 ||
+            length(@selected_edizione) > 0 || length(@selected_featuring) > 0}
           type="button"
           phx-click="clear_filters"
           class="btn btn-ghost btn-soft gap-2"
@@ -42,8 +34,6 @@
           <h2 class="text-sm font-medium text-base-content/50">{l("Directors")}</h2>
         </div>
         <ul class="menu menu-vertical flex-nowrap h-filter max-h-94  overflow-y-scroll flex-1 w-full pt-0">
-          <!-- <code>{inspect(@available_directors, pretty: true)}</code> -->
-
           {#for %{"name" => director, "items" => count} <- @available_directors}
             <li class="w-full">
               <a
@@ -57,9 +47,7 @@
                 {#if director in @selected_directors}
                   <span class="text-primary">✓</span>
                 {/if}
-                <!-- {#if @loading}
-                  <div class="loading loading-spinner loading-xs" />
-                {/if} -->
+
               </a>
             </li>
           {/for}
@@ -67,24 +55,22 @@
       </nav>
       <nav class="flex-1 bg-base-200 flex flex-col rounded-box">
         <div class="flex justify-between items-center p-3 pb-2 px-4">
-          <h2 class="text-sm font-medium text-base-content/50">{l("Countries")}</h2>
+          <h2 class="text-sm font-medium text-base-content/50">{l("Sezione")}</h2>
         </div>
         <ul class="menu menu-vertical flex-nowrap h-filter max-h-94  overflow-y-scroll flex-1 w-full pt-0">
-          {#for %{"name" => country, "items" => count} <- @available_countries}
+          {#for %{"name" => sezione, "items" => count} <- @available_sezione}
             <li class="w-full">
               <a
-                phx-click="filter_by_country"
-                phx-value-country={country}
-                class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": country in @selected_countries}
+                phx-click="filter_by_sezione"
+                phx-value-sezione={sezione}
+                class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": sezione in @selected_sezione}
                 disabled={@loading}
               >
-                <span class="flex-1">{country}</span>
-                {#if country in @selected_countries}
+                <span class="flex-1">{sezione}</span>
+                <span class="text-sm opacity-50">({count})</span>
+                {#if sezione in @selected_sezione}
                   <span class="text-primary">✓</span>
                 {/if}
-                <!-- {#if @loading}
-                  <div class="loading loading-spinner loading-xs" />
-                {/if} -->
               </a>
             </li>
           {/for}
@@ -93,24 +79,22 @@
 
       <nav class="flex-1 bg-base-200 flex flex-col rounded-box">
         <div class="flex justify-between items-center p-3 pb-2 px-4">
-          <h2 class="text-sm font-medium text-base-content/50">{l("Years")}</h2>
+          <h2 class="text-sm font-medium text-base-content/50">{l("Edizione")}</h2>
         </div>
         <ul class="menu menu-vertical flex-nowrap h-filter max-h-94  overflow-y-scroll flex-1 w-full pt-0">
-          {#for %{"name" => year, "items" => count} <- @available_years}
+          {#for %{"name" => edizione, "items" => count} <- @available_edizione}
             <li class="w-full">
               <a
-                phx-click="filter_by_year"
-                phx-value-year={year}
-                class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": year in @selected_years}
+                phx-click="filter_by_edizione"
+                phx-value-edizione={edizione}
+                class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": edizione in @selected_edizione}
                 disabled={@loading}
               >
-                <span class="flex-1">{year}</span>
-                {#if year in @selected_years}
+                <span class="flex-1">{edizione}</span>
+                <span class="text-sm opacity-50">({count})</span>
+                {#if edizione in @selected_edizione}
                   <span class="text-primary">✓</span>
                 {/if}
-                <!-- {#if @loading}
-                  <div class="loading loading-spinner loading-xs" />
-                {/if} -->
               </a>
             </li>
           {/for}
@@ -119,24 +103,22 @@
 
       <nav class="flex-1 bg-base-200 flex flex-col rounded-box">
         <div class="flex justify-between items-center p-3 pb-2 px-4">
-          <h2 class="text-sm font-medium text-base-content/50">{l("Languages")}</h2>
+          <h2 class="text-sm font-medium text-base-content/50">{l("Featuring")}</h2>
         </div>
         <ul class="menu menu-vertical flex-nowrap h-filter max-h-94  overflow-y-scroll flex-1 w-full pt-0">
-          {#for %{"name" => language, "items" => count} <- @available_languages}
+          {#for %{"name" => featuring, "items" => count} <- @available_featuring}
             <li class="w-full">
               <a
-                phx-click="filter_by_language"
-                phx-value-language={language}
-                class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": language in @selected_languages}
+                phx-click="filter_by_featuring"
+                phx-value-featuring={featuring}
+                class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": featuring in @selected_featuring}
                 disabled={@loading}
               >
-                <span class="flex-1">{language}</span>
-                {#if language in @selected_languages}
+                <span class="flex-1">{featuring}</span>
+                <span class="text-sm opacity-50">({count})</span>
+                {#if featuring in @selected_featuring}
                   <span class="text-primary">✓</span>
                 {/if}
-                <!-- {#if @loading}
-                  <div class="loading loading-spinner loading-xs" />
-                {/if} -->
               </a>
             </li>
           {/for}

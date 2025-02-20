@@ -1,0 +1,23 @@
+<nav class="flex-1 bg-base-200 flex flex-col rounded-box">
+  <div class="flex justify-between items-center p-3 pb-2 px-4">
+    <h2 class="text-sm font-medium text-base-content/50">{@category_title}</h2>
+  </div>
+  <ul class="menu menu-vertical flex-nowrap h-filter max-h-94  overflow-y-scroll flex-1 w-full pt-0">
+    {#for item <- @category_list}
+      <li class="w-full">
+        <a
+          phx-click={"filter_by_#{@filter_event}"}
+          phx-value-{@filter_event}={Map.get(item, @item_display_key)}
+          class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": Map.get(item, @item_display_key) in @selected_list}
+          disabled={@loading}
+        >
+          <span class="flex-1">{Map.get(item, @item_display_key)}</span>
+          <span class="text-sm opacity-50">({Map.get(item, @count_display_key)})</span>
+          {#if Map.get(item, @item_display_key) in @selected_list}
+            <span class="text-primary">✓</span>
+          {/if}
+        </a>
+      </li>
+    {/for}
+  </ul>
+</nav>

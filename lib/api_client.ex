@@ -10,8 +10,8 @@ defmodule PanDoRa.API.Client do
 
   # Cache TTL of 1 hour
   @cache_ttl :timer.hours(1)
-  @metadata_keys ~w(director country year language)
-  @metadata_fields ~w(director country year language)
+  @metadata_keys ~w(director sezione edizione featuring)
+  @metadata_fields ~w(director sezione edizione featuring)
 
   @doc """
   Basic find function that matches the API's find endpoint functionality with pagination support
@@ -644,6 +644,19 @@ defmodule PanDoRa.API.Client do
   end
 
   # Process specific fields with custom logic
+  defp process_field_values(values, field_type) when field_type in ~w(director sezione edizione featuring) do
+    values
+    |> Enum.reject(&(&1 == "" or is_nil(&1)))
+    |> Enum.frequencies()
+    |> Enum.map(fn {value, count} ->
+      %{
+        "name" => value,
+        "items" => count
+      }
+    end)
+    |> Enum.sort_by(& &1["name"])
+  end
+
   defp process_field_values(values, "year") do
     values
     |> Enum.reject(&is_nil/1)
@@ -908,11 +921,11 @@ defmodule PanDoRa.API.Client do
     Config.put([__MODULE__, :session_cookie], %{username => cookie}, :bonfire_pandora)
   end
 
-  defp get_session_cookie(username) do
+  def get_session_cookie(username) do
     Config.get([__MODULE__, :session_cookie, username], nil, :bonfire_pandora)
   end
 
-  defp get_auth_default_user do
+  def get_auth_default_user do
     Config.get([__MODULE__, :username], nil, :bonfire_pandora)
   end
 
