@@ -170,30 +170,30 @@
   </div>
 
   <div class="overflow-x-auto relative">
-    {#if @loading}
-      <div class="bg-base-200/50 p-20 flex items-center justify-center z-10">
-        <div class="loading loading-spinner loading-lg text-primary" />
-      </div>
-    {/if}
-    <ul 
-      id="search_results" 
-      phx-update="stream"
-      :hook
-      data-page={@page}
-      class="list bg-base-100 rounded-box shadow-md"
-    >
-      {#for {id, result} <- @streams.search_results}
-        <Bonfire.PanDoRa.Components.MoviePreviewLive movie={result} movie_id={id} />
-      {/for}
-    </ul>
-
-    <div class="flex flex-col items-center gap-2 py-4 border-t border-base-content/10">
-      {#if @has_more_items}
-        <button :if={@loading} class="btn btn-secondary btn-wide btn-soft gap-2" disabled>
-          {l("Loading...")}
-        </button>
-      {/if}
+  {#if @loading && @page == 0}
+    <div class="bg-base-200/50 p-20 flex items-center justify-center z-10">
+      <div class="loading loading-spinner loading-lg text-primary" />
     </div>
+  {/if}
+  
+  <ul 
+    id="search_results" 
+    phx-update="stream"
+    :hook
+    data-page={@page}
+    data-loading={@loading}
+    class="list bg-base-100 rounded-box shadow-md"
+  >
+    {#for {id, result} <- @streams.search_results}
+      <Bonfire.PanDoRa.Components.MoviePreviewLive movie={result} movie_id={id} />
+    {/for}
+  </ul>
+
+  <div class="flex flex-col items-center gap-2 py-4 border-t border-base-content/10">
+    {#if @has_more_items && @loading && @page > 0}
+      <div class="loading loading-spinner loading-lg text-primary"></div>
+    {/if}
   </div>
+</div>
   <!-- <ResultsDisplay :if={@results} results={@results} search_term={@search_term} /> -->
 </div>

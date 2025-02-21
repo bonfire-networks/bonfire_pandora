@@ -34,12 +34,8 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> assign(:sidebar_widgets,
           users: [
             secondary: [
-              {Bonfire.PanDoRa.Web.WidgetMovieDescriptionLive,
-               [movie: movie, widget_title: "Movie Summary"]},
               {Bonfire.PanDoRa.Web.WidgetMovieInfoLive,
-               [movie: movie, widget_title: "Movie Info"]},
-              {Bonfire.PanDoRa.Web.WidgetMoviePropertiesLive,
-               [movie: movie, widget_title: "Movie Properties"]}
+               [movie: movie, widget_title: "Movie Info"]}
             ]
           ]
         )

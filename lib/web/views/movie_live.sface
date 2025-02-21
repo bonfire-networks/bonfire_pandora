@@ -1,6 +1,4 @@
 <div class="flex flex-col w-full gap-4">
-  {@movie["id"]} test
-  {Client.get_pandora_url()} test2
   <video controls>
     <source src={Client.get_pandora_url() <> "/" <> @movie["id"] <> "/480p1.mp4?"} type="video/mp4">
     Your browser does not support the video tag.

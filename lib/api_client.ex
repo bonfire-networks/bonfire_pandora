@@ -28,14 +28,7 @@ defmodule PanDoRa.API.Client do
     conditions = Keyword.get(opts, :conditions, [])
     debug("Client.find called with opts: #{inspect(opts)}")
 
-    range =
-      if range = Keyword.get(opts, :range) do
-        range
-      else
-        page = Keyword.get(opts, :page, 0)
-        per_page = Keyword.get(opts, :per_page, 20)
-        [page * per_page, (page + 1) * per_page]  # Request one extra item
-      end
+    range = calculate_range(opts)
 
     debug("Range calculated: #{inspect(range)}")
 
@@ -244,16 +237,6 @@ defmodule PanDoRa.API.Client do
     end
   end
 
-  @doc """
-  Converts a regular ID to the 0x-prefixed format required by the get endpoint.
-  """
-
-  # def format_movie_id(id) when is_binary(id) do
-  #   case id do
-  #     "0x" <> _ -> id
-  #     id -> "0x#{String.upcase(id)}"
-  #   end
-  # end
 
   def get_movie(movie_id) do
     # Convert the ID to the required format
@@ -293,7 +276,10 @@ defmodule PanDoRa.API.Client do
         "codec",
         "bitrate",
         "filesize",
-        "format"
+        "format",
+        "sezione",
+        "edizione",
+        "featuring",
       ]
     }
 
@@ -846,6 +832,16 @@ defmodule PanDoRa.API.Client do
 
   defp maybe_return_data(body) do
     error(body, l("API data not recognised"))
+  end
+
+  defp calculate_range(opts) do
+    if range = Keyword.get(opts, :range) do
+      range
+    else
+      page = Keyword.get(opts, :page, 0)
+      per_page = Keyword.get(opts, :per_page, 20)
+      [page * per_page, (page + 1) * per_page]
+    end
   end
 
   @doc """
