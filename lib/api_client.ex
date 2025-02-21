@@ -26,34 +26,43 @@ defmodule PanDoRa.API.Client do
   """
   def find(opts \\ []) do
     conditions = Keyword.get(opts, :conditions, [])
+    debug("Client.find called with opts: #{inspect(opts)}")
 
-    # Then get paginated items
     range =
       if range = Keyword.get(opts, :range) do
         range
       else
         page = Keyword.get(opts, :page, 0)
         per_page = Keyword.get(opts, :per_page, 20)
-        [page * per_page, (page + 1) * per_page - 1]
+        [page * per_page, (page + 1) * per_page]  # Request one extra item
       end
+
+    debug("Range calculated: #{inspect(range)}")
 
     items_payload = %{
       query: %{
         conditions: conditions,
         operator: "&"
       },
-      range: range,
+      range: [List.first(range), List.last(range) + 1],  # Request one extra
       keys: Keyword.get(opts, :keys, ["title", "id"]),
       sort: Keyword.get(opts, :sort, [%{key: "title", operator: "+"}])
     }
 
+    debug("Making request with payload: #{inspect(items_payload)}")
+
     case make_request("find", items_payload) do
       {:ok, %{"items" => items}} when is_list(items) ->
+        requested_count = List.last(range) - List.first(range) + 1
+        has_more = length(items) > requested_count
+        items_to_return = if has_more, do: Enum.take(items, requested_count), else: items
+
+        debug("API returned #{length(items)} items, returning #{length(items_to_return)} items, has_more: #{has_more}")
+
         {:ok,
          %{
-           items: items,
-           total: length(items),
-           has_more: false
+           items: items_to_return,
+           has_more: has_more
          }}
 
       other ->
@@ -139,14 +148,24 @@ defmodule PanDoRa.API.Client do
 
   @doc """
   Fetches grouped metadata for filters using the find endpoint with group parameter.
+  Accepts optional page and per_page parameters for pagination.
   """
   @decorate time()
-  def fetch_grouped_metadata(conditions \\ []) do
+  def fetch_grouped_metadata(conditions \\ [], opts \\ []) do
     debug("Starting grouped metadata fetch")
+
+    page = Keyword.get(opts, :page, 0)
+    per_page = Keyword.get(opts, :per_page, 10)
+    field = Keyword.get(opts, :field)
+
+    start_idx = page * per_page
+    end_idx = start_idx + per_page - 1
+
+    fields = if field, do: [field], else: @metadata_fields
 
     # Make a single request per field but in parallel
     tasks =
-      @metadata_fields
+      fields
       |> Enum.map(fn field ->
         Task.async(fn ->
           # Build query for each field
@@ -158,8 +177,8 @@ defmodule PanDoRa.API.Client do
             group: field,
             # Sort by count descending
             sort: [%{key: "items", operator: "-"}],
-            # Get top 20 items (0-19)
-            range: [0, 19]
+            # Use pagination range
+            range: [start_idx, end_idx]
           }
 
           debug("Making request for field #{field}")
@@ -180,7 +199,7 @@ defmodule PanDoRa.API.Client do
     results = Task.yield_many(tasks, 5000)
 
     metadata =
-      Enum.zip(@metadata_fields, tasks)
+      Enum.zip(fields, tasks)
       |> Map.new(fn {field, task} ->
         case Enum.find(results, fn {t, _} -> t.ref == task.ref end) do
           {_, {:ok, {^field, items}}} ->
@@ -212,7 +231,7 @@ defmodule PanDoRa.API.Client do
       # Sort by number of items descending
       sort: [%{key: "items", operator: "-"}],
       # Get up to 1000 grouped results
-      range: [0, 20]
+      range: [0, 10]
     }
 
     case make_request("find", payload) do
@@ -788,7 +807,7 @@ defmodule PanDoRa.API.Client do
   defp maybe_return_data(body) when is_binary(body) do
     case Jason.decode(body) do
       {:ok, decoded} ->
-        maybe_return_data(body)
+        maybe_return_data(decoded)
 
       {:error, reason} ->
         error(reason, l("API JSON decode error"))
