@@ -232,35 +232,31 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
 
   # New function to update metadata with current conditions
-  defp update_metadata_with_conditions(socket, conditions) do
+  defp update_metadata_with_conditions(socket, conditions, current_filter \\ nil) do
     case Client.fetch_grouped_metadata(conditions) do
       {:ok, filtered_metadata} ->
         metadata = cond do
+          # Keep the current filter's list unchanged
+          current_filter != nil ->
+            Map.update(filtered_metadata, current_filter, [], fn _new_list ->
+              get_current_filter_list(socket, current_filter)
+            end)
+
           socket.assigns.is_keyword_search || socket.assigns.keep_keyword_filtering ->
             filtered_metadata
+
           socket.assigns.first_selected_filter ->
+            key = socket.assigns.first_selected_filter
             case Client.fetch_grouped_metadata([]) do
               {:ok, complete_metadata} ->
-                # Keep complete metadata for first filter, filtered for others
-                key = case socket.assigns.first_selected_filter do
-                  "director" -> "director"
-                  "sezione" -> "sezione"
-                  "edizione" -> "edizione"
-                  "featuring" -> "featuring"
-                end
                 Map.put(filtered_metadata, key, complete_metadata[key])
               _ ->
                 filtered_metadata
             end
+
           true ->
             filtered_metadata
         end
-
-        # Debug the metadata state
-        debug("Updating metadata with conditions: #{inspect(conditions)}")
-        debug("First selected filter: #{inspect(socket.assigns.first_selected_filter)}")
-        debug("Filtered metadata: #{inspect(filtered_metadata)}")
-        debug("Final metadata: #{inspect(metadata)}")
 
         socket
         |> assign(
@@ -273,6 +269,16 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       _ ->
         socket
         |> put_flash(:error, l("Error updating filters"))
+    end
+  end
+
+  defp get_current_filter_list(socket, filter_type) do
+    case filter_type do
+      "director" -> socket.assigns.available_directors
+      "sezione" -> socket.assigns.available_sezione
+      "edizione" -> socket.assigns.available_edizione
+      "featuring" -> socket.assigns.available_featuring
+      _ -> []
     end
   end
 
@@ -483,56 +489,39 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   end
 
   defp toggle_filter(socket, filter_type, value) when filter_type in @filter_types and is_binary(value) do
-    # Handle Italian words that don't follow English pluralization
     filter_key = case filter_type do
       "sezione" -> :selected_sezione
       "edizione" -> :selected_edizione
       "featuring" -> :selected_featuring
       other -> String.to_existing_atom("selected_#{other}s")
     end
+
     current_filters = Map.get(socket.assigns, filter_key, [])
 
-    # Only switch off keyword search mode, keep the filtering
-    socket = if socket.assigns.is_keyword_search do
-      assign(socket, :is_keyword_search, false)
-    else
-      socket
-    end
-
-    # Determine if this is the first filter being selected
     {updated_filters, first_filter} =
       if value in current_filters do
         filters = List.delete(current_filters, value)
         first_filter = if filters == [] && socket.assigns.first_selected_filter == filter_type do
-          nil  # Reset first filter if removing last value of that type
+          nil
         else
           socket.assigns.first_selected_filter
         end
         {filters, first_filter}
       else
         first_filter = case socket.assigns.first_selected_filter do
-          nil -> filter_type  # This is the first filter
-          existing -> existing  # Keep existing first filter
+          nil -> filter_type
+          existing -> existing
         end
         {[value | current_filters], first_filter}
       end
 
-    # First update the filter state and set loading
     socket = socket
       |> assign(filter_key, updated_filters)
       |> assign(:first_selected_filter, first_filter)
-      |> assign(:loading, true)  # Use simple loading state for filter updates
+      |> assign(:loading, true)
 
-    # Then build new conditions and update both search and metadata
-    conditions = build_search_conditions(%{
-      term: socket.assigns.term,
-      selected_directors: if(filter_key == :selected_directors, do: updated_filters, else: socket.assigns.selected_directors),
-      selected_sezione: if(filter_key == :selected_sezione, do: updated_filters, else: socket.assigns.selected_sezione),
-      selected_edizione: if(filter_key == :selected_edizione, do: updated_filters, else: socket.assigns.selected_edizione),
-      selected_featuring: if(filter_key == :selected_featuring, do: updated_filters, else: socket.assigns.selected_featuring)
-    })
+    conditions = build_search_conditions(socket.assigns)
 
-    # Update both search results and metadata in one go
     case Client.find(
       conditions: conditions,
       range: [0, @default_per_page],
@@ -542,23 +531,21 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       {:ok, %{items: items}} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
 
-        # First update the search results and immediately clear loading
-        socket = socket
-          |> stream(:search_results, prepare_items(items_to_show), reset: true)
-          |> assign(
-            has_more_items: has_more,
-            current_count: length(items_to_show),
-            page: 0,
-            loading: false  # Clear loading as soon as we have results
-          )
-
-        # Then update metadata without affecting loading state
-        update_metadata_with_conditions(socket, conditions)
+        socket
+        |> stream(:search_results, prepare_items(items_to_show), reset: true)
+        |> assign(
+          has_more_items: has_more,
+          current_count: length(items_to_show),
+          page: 0,
+          loading: false
+        )
+        # Pass current_filter to preserve its list
+        |> update_metadata_with_conditions(conditions, filter_type)
 
       _ ->
         socket
         |> put_flash(:error, l("Error updating results"))
-        |> assign(:loading, false)  # Make sure to clear loading on error
+        |> assign(:loading, false)
     end
   end
 
