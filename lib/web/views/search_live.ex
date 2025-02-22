@@ -293,6 +293,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   # end
 
   def handle_event("search", %{"term" => term}, socket) do
+    # First reset all filters
     socket =
       socket
       |> assign(
@@ -300,16 +301,47 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         selected_sezione: [],
         selected_edizione: [],
         selected_featuring: [],
-        term: term,
+        first_selected_filter: nil,
         is_keyword_search: true,
         keep_keyword_filtering: true,
-        first_selected_filter: nil
+        term: term,
+        page: 0
       )
-      |> reset_pagination()
-      |> set_loading_state(true)
-      |> trigger_search()
+      |> track_loading(:search_load, true)
 
-    {:noreply, socket}
+    # Then perform search with only the term
+    case Client.find(
+      conditions: [%{key: "*", operator: "=", value: term}],
+      range: [0, @default_per_page],
+      keys: @default_keys,
+      total: true
+    ) do
+      {:ok, %{items: items}} when is_list(items) ->
+        {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
+
+        socket =
+          socket
+          |> stream(:search_results, prepare_items(items_to_show), reset: true)
+          |> assign(
+            has_more_items: has_more,
+            current_count: length(items_to_show),
+            page: 0
+          )
+          |> track_loading(:search_load, false)
+
+        # Update metadata for new search results
+        case fetch_metadata(socket, [%{key: "*", operator: "=", value: term}]) do
+          {:ok, socket} -> {:noreply, socket}
+          {:error, socket} ->
+            {:noreply, socket |> put_flash(:error, l("Error updating filters"))}
+        end
+
+      error ->
+        {:noreply,
+         socket
+         |> assign_error(l("Search failed"))
+         |> track_loading(:search_load, false)}
+    end
   end
 
   def handle_event("clear_search", _, socket) do
