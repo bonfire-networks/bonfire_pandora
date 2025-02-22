@@ -366,13 +366,41 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         selected_featuring: [],
         first_selected_filter: nil,
         is_keyword_search: false,
-        keep_keyword_filtering: false
+        keep_keyword_filtering: false,
+        page: 0
       )
-      |> reset_pagination()
-      |> set_loading_state(true)
-      |> trigger_search()
+      |> stream(:search_results, [], reset: true)  # Reset the stream first
+      |> assign(:loading, true)
 
-    {:noreply, socket}
+    # Fetch initial results directly instead of using trigger_search
+    case Client.find(
+      sort: [%{key: "title", operator: "+"}],
+      range: [0, @default_per_page],
+      keys: @default_keys,
+      total: true
+    ) do
+      {:ok, %{items: items}} when is_list(items) ->
+        {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
+
+        socket =
+          socket
+          |> stream(:search_results, prepare_items(items_to_show))
+          |> assign(
+            has_more_items: has_more,
+            current_count: length(items_to_show),
+            loading: false
+          )
+          # Update metadata without conditions to get full lists
+          |> update_metadata_with_conditions([])
+
+        {:noreply, socket}
+
+      _ ->
+        {:noreply,
+         socket
+         |> put_flash(:error, l("Error loading results"))
+         |> assign(:loading, false)}
+    end
   end
 
   # Add back the handle_info implementation for metadata

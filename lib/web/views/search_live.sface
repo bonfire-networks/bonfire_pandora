@@ -15,17 +15,6 @@
         <button type="submit" class="btn btn-soft btn-secondary" disabled={@loading}>
           {if @loading, do: l("Searching..."), else: l("Search")}
         </button>
-        <button
-          :if={@term || length(@selected_directors) > 0 || length(@selected_sezione) > 0 ||
-            length(@selected_edizione) > 0 || length(@selected_featuring) > 0}
-          type="button"
-          phx-click="clear_filters"
-          class="btn btn-ghost btn-soft gap-2"
-          disabled={@loading}
-        >
-          <#Icon iconify="carbon:filter-remove" class="w-4 h-4" />
-          {l("Clear filters")}
-        </button>
       </div>
     </form>
     <div class="flex mt-3 justify-between gap-3">
@@ -170,6 +159,59 @@
           </ul>
         </div>
       </nav>
+    </div>
+
+    <!-- Active filters and search term display -->
+    <div 
+      :if={not is_nil(@term) or length(@selected_directors) > 0 or length(@selected_sezione) > 0 or length(@selected_edizione) > 0 or length(@selected_featuring) > 0}
+      class="p-3 bg-base-200 rounded-lg flex justify-between items-center">
+    <div 
+      class="flex flex-1 flex-wrap gap-2">
+      <!-- Search term chip -->
+      {#if @term}
+        <div class="badge badge-accent badge-soft">
+          <span>Search: {String.slice(@term, 0, 30)}{if String.length(@term) > 30, do: "..."}</span>
+        </div>
+      {/if}
+
+      <!-- Director filters -->
+      {#for director <- @selected_directors}
+        <div class="badge badge-accent badge-soft">
+          <span>Director: {director}</span>
+        </div>
+      {/for}
+
+      <!-- Sezione filters -->
+      {#for sezione <- @selected_sezione}
+        <div class="badge badge-accent badge-soft">
+          <span>Section: {sezione}</span>
+        </div>
+      {/for}
+
+      <!-- Edizione filters -->
+      {#for edizione <- @selected_edizione}
+        <div class="badge badge-accent badge-soft">
+          <span>Edition: {edizione}</span>
+        </div>
+      {/for}
+
+      <!-- Featuring filters -->
+      {#for featuring <- @selected_featuring}
+        <div class="badge badge-accent badge-soft">
+          <span>Featuring: {featuring}</span>
+        </div>
+      {/for}
+
+    </div>
+     <button
+      type="button"
+      phx-click="clear_filters"
+      class="btn btn-ghost btn-soft gap-2"
+      disabled={@loading}
+    >
+      <#Icon iconify="carbon:filter-remove" class="w-4 h-4" />
+      {l("Clear filters")}
+    </button>
     </div>
   </div>
 
