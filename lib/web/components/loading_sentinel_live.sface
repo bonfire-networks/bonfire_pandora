@@ -1,0 +1,5 @@
+<div class="w-full py-4 border-t border-base-content/10">
+    {#if @has_more && @loading && @page > 0}
+    <div class="loading loading-spinner loading-lg text-primary"></div>
+    {/if}
+</div>

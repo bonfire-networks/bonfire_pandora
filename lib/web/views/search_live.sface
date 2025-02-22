@@ -37,6 +37,7 @@
           :hook
           id="director-container"
           data-page={@directors_page}
+          data-type="filter"
           phx-update="append"
         >
           <ul class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative" id="directors-list">
@@ -73,6 +74,7 @@
           id="sezione-container"
           data-page={@sezione_page}
           phx-update="append"
+          data-type="filter"
         >
           <ul class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative" id="sezione-list">
             {#for %{"name" => sezione, "items" => count} <- @available_sezione}
@@ -109,6 +111,7 @@
           id="edizione-container"
           data-page={@edizione_page}
           phx-update="append"
+          data-type="filter"
         >
           <ul class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative" id="edizione-list">
             {#for %{"name" => edizione, "items" => count} <- @available_edizione}
@@ -145,6 +148,7 @@
           id="featuring-container"
           data-page={@featuring_page}
           phx-update="append"
+          data-type="filter"
         >
           <ul class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative" id="featuring-list">
             {#for %{"name" => featuring, "items" => count} <- @available_featuring}
@@ -175,25 +179,31 @@
       <div class="loading loading-spinner loading-lg text-primary" />
     </div>
   {/if}
-  
-  <ul 
-    id="search_results" 
-    phx-update="stream"
-    :hook
-    data-page={@page}
-    data-loading={@loading}
-    class="list bg-base-100 rounded-box shadow-md"
-  >
-    {#for {id, result} <- @streams.search_results}
-      <Bonfire.PanDoRa.Components.MoviePreviewLive movie={result} movie_id={id} />
-    {/for}
-  </ul>
-
-  <div class="flex flex-col items-center gap-2 py-4 border-t border-base-content/10">
+    <div class="search-results-container" id="search-results-container" :hook data-type="results">
+      <ul 
+        id="search_results" 
+        phx-update="stream"
+        data-page={@page}
+        data-loading={@loading}
+        class="list bg-base-100 rounded-box shadow-md"
+      >
+        {#for {id, result} <- @streams.search_results}
+          <Bonfire.PanDoRa.Components.MoviePreviewLive movie={result} movie_id={id} />
+        {/for}
+      </ul>
+        <div id="search-results-sentinel" phx-update="ignore">
+        <Bonfire.PanDoRa.Components.LoadingSentinelLive
+          loading={@loading} 
+          page={@page} 
+          has_more={@has_more_items} 
+        />
+      </div>
+  <!-- <div class="flex flex-col items-center gap-2 py-4 border-t border-base-content/10">
     {#if @has_more_items && @loading && @page > 0}
       <div class="loading loading-spinner loading-lg text-primary"></div>
     {/if}
-  </div>
+  </div> -->
 </div>
   <!-- <ResultsDisplay :if={@results} results={@results} search_term={@search_term} /> -->
+</div>
 </div>
