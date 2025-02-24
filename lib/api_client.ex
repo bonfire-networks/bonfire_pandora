@@ -154,6 +154,8 @@ defmodule PanDoRa.API.Client do
     start_idx = page * per_page
     end_idx = start_idx + per_page - 1
 
+    debug("fetching grouped metadata for field #{field} with page #{page} and per_page #{per_page}")
+
     fields = if field, do: [field], else: @metadata_fields
 
     # Make a single request per field but in parallel
