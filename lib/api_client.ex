@@ -37,7 +37,8 @@ defmodule PanDoRa.API.Client do
         conditions: conditions,
         operator: "&"
       },
-      range: [List.first(range), List.last(range) + 1],  # Request one extra
+      # Request one extra
+      range: [List.first(range), List.last(range) + 1],
       keys: Keyword.get(opts, :keys, ["title", "id"]),
       sort: Keyword.get(opts, :sort, [%{key: "title", operator: "+"}])
     }
@@ -50,7 +51,9 @@ defmodule PanDoRa.API.Client do
         has_more = length(items) > requested_count
         items_to_return = if has_more, do: Enum.take(items, requested_count), else: items
 
-        debug("API returned #{length(items)} items, returning #{length(items_to_return)} items, has_more: #{has_more}")
+        debug(
+          "API returned #{length(items)} items, returning #{length(items_to_return)} items, has_more: #{has_more}"
+        )
 
         {:ok,
          %{
@@ -154,7 +157,9 @@ defmodule PanDoRa.API.Client do
     start_idx = page * per_page
     end_idx = start_idx + per_page - 1
 
-    debug("fetching grouped metadata for field #{field} with page #{page} and per_page #{per_page}")
+    debug(
+      "fetching grouped metadata for field #{field} with page #{page} and per_page #{per_page}"
+    )
 
     fields = if field, do: [field], else: @metadata_fields
 
@@ -239,7 +244,6 @@ defmodule PanDoRa.API.Client do
     end
   end
 
-
   def get_movie(movie_id) do
     # Convert the ID to the required format
     # formatted_id = format_movie_id(movie_id)
@@ -281,7 +285,7 @@ defmodule PanDoRa.API.Client do
         "format",
         "sezione",
         "edizione",
-        "featuring",
+        "featuring"
       ]
     }
 
@@ -360,15 +364,24 @@ defmodule PanDoRa.API.Client do
     # Build conditions based on the type of lists we want
     conditions =
       case Keyword.get(opts, :type) do
-        :featured -> [%{key: "status", operator: "==", value: "featured"}]
-        :user -> [%{key: "user", operator: "==", value: get_auth_default_user()}]
-        :subscribed -> [%{key: "subscribed", operator: "==", value: true}]
-        :public -> [
-          %{key: "status", operator: "==", value: "public"},
-          %{key: "user", operator: "==", value: Keyword.get(opts, :user)}
-        ]
+        :featured ->
+          [%{key: "status", operator: "==", value: "featured"}]
+
+        :user ->
+          [%{key: "user", operator: "==", value: get_auth_default_user()}]
+
+        :subscribed ->
+          [%{key: "subscribed", operator: "==", value: true}]
+
+        :public ->
+          [
+            %{key: "status", operator: "==", value: "public"},
+            %{key: "user", operator: "==", value: Keyword.get(opts, :user)}
+          ]
+
         # Return all lists if no type specified
-        _ -> []
+        _ ->
+          []
       end
 
     payload = %{
@@ -655,7 +668,8 @@ defmodule PanDoRa.API.Client do
   end
 
   # Process specific fields with custom logic
-  defp process_field_values(values, field_type) when field_type in ~w(director sezione edizione featuring) do
+  defp process_field_values(values, field_type)
+       when field_type in ~w(director sezione edizione featuring) do
     values
     |> Enum.reject(&(&1 == "" or is_nil(&1)))
     |> Enum.frequencies()

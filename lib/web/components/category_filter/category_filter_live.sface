@@ -8,7 +8,10 @@
         <a
           phx-click={"filter_by_#{@filter_event}"}
           phx-value-{@filter_event}={Map.get(item, @item_display_key)}
-          class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": Map.get(item, @item_display_key) in @selected_list}
+          class={
+            "flex gap-3 px-2 text-base-content",
+            "active bg-primary/10": Map.get(item, @item_display_key) in @selected_list
+          }
           disabled={@loading}
         >
           <span class="flex-1">{Map.get(item, @item_display_key)}</span>

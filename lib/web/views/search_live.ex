@@ -62,14 +62,12 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     has_more_sezione: true,
     has_more_edizione: true,
     has_more_featuring: true,
-
-
     first_selected_filter: nil,
     is_keyword_search: false,
     keep_keyword_filtering: false,
     error: nil,
-
-    current_filters: %{},    # Add this to track current filter state
+    # Add this to track current filter state
+    current_filters: %{}
   }
 
   on_mount {LivePlugs, [Bonfire.UI.Me.LivePlugs.LoadCurrentUser]}
@@ -89,7 +87,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
       |> assign(:loading_states, MapSet.new())
       |> track_loading(:initial_load, true)
-      # |> debug_loading_states("mount")
+
+    # |> debug_loading_states("mount")
 
     if connected?(socket) do
       send(self(), :load_initial_data)
@@ -108,12 +107,13 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   def handle_info({_ref, {filter_type, data}}, socket) when filter_type in @filter_types do
     # Update the corresponding filter data in assigns
-    assign_key = case filter_type do
-      "director" -> :available_director
-      "sezione" -> :available_sezione
-      "edizione" -> :available_edizione
-      "featuring" -> :available_featuring
-    end
+    assign_key =
+      case filter_type do
+        "director" -> :available_director
+        "sezione" -> :available_sezione
+        "edizione" -> :available_edizione
+        "featuring" -> :available_featuring
+      end
 
     {:noreply, assign(socket, assign_key, data)}
   end
@@ -150,7 +150,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   # Unified filter handling using pattern matching
   def handle_event("filter_by_" <> filter_type, params, socket)
-    when filter_type in @filter_types do
+      when filter_type in @filter_types do
     debug("Filter params: #{inspect(params)}")
     debug("Current filters before update: #{inspect(socket.assigns.current_filters)}")
 
@@ -162,14 +162,16 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   end
 
   # Add handlers for infinite scroll
-  def handle_event("load_more_" <> filter_type, _params, socket) when filter_type in @filter_types do
+  def handle_event("load_more_" <> filter_type, _params, socket)
+      when filter_type in @filter_types do
     # Map the filter type to the correct assign key
-    assign_key = case filter_type do
-      "director" -> :available_director
-      "sezione" -> :available_sezione
-      "edizione" -> :available_edizione
-      "featuring" -> :available_featuring
-    end
+    assign_key =
+      case filter_type do
+        "director" -> :available_director
+        "sezione" -> :available_sezione
+        "edizione" -> :available_edizione
+        "featuring" -> :available_featuring
+      end
 
     page_key = String.to_atom("#{filter_type}_page")
     loading_key = String.to_atom("#{filter_type}_loading")
@@ -182,35 +184,39 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     socket = track_loading(socket, String.to_atom("#{filter_type}_load"), true)
 
     case Client.fetch_grouped_metadata(conditions,
-    field: filter_type,
-    page: current_page + 1,
-    per_page: @filter_per_page
-  ) do
-    {:ok, metadata} ->
-      items = Map.get(metadata, filter_type, [])
-      current_items = Map.get(socket.assigns, assign_key, [])
-      new_items = Enum.filter(items, fn %{"name" => name} ->
-        not Enum.any?(current_items, fn %{"name" => existing} -> existing == name end)
-      end)
+           field: filter_type,
+           page: current_page + 1,
+           per_page: @filter_per_page
+         ) do
+      {:ok, metadata} ->
+        items = Map.get(metadata, filter_type, [])
+        current_items = Map.get(socket.assigns, assign_key, [])
 
-      has_more = length(items) >= @filter_per_page
+        new_items =
+          Enum.filter(items, fn %{"name" => name} ->
+            not Enum.any?(current_items, fn %{"name" => existing} -> existing == name end)
+          end)
 
-      socket = socket
-      |> assign(loading_key, false)
-      |> assign(has_more_key, has_more)
-      |> assign(page_key, current_page + 1)
-      |> update(assign_key, fn current -> current ++ new_items end)
-      |> track_loading(String.to_atom("#{filter_type}_load"), false)
+        has_more = length(items) >= @filter_per_page
 
-      {:noreply, socket}
+        socket =
+          socket
+          |> assign(loading_key, false)
+          |> assign(has_more_key, has_more)
+          |> assign(page_key, current_page + 1)
+          |> update(assign_key, fn current -> current ++ new_items end)
+          |> track_loading(String.to_atom("#{filter_type}_load"), false)
 
-    {:error, _} ->
-      socket = socket
-      |> assign(loading_key, false)
-      |> assign(has_more_key, false)
-      |> track_loading(String.to_atom("#{filter_type}_load"), false)
+        {:noreply, socket}
 
-      {:noreply, socket}
+      {:error, _} ->
+        socket =
+          socket
+          |> assign(loading_key, false)
+          |> assign(has_more_key, false)
+          |> track_loading(String.to_atom("#{filter_type}_load"), false)
+
+        {:noreply, socket}
     end
   end
 
@@ -227,33 +233,35 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     end
   end
 
-
   # New function to update metadata with current conditions
   defp update_metadata_with_conditions(socket, conditions, current_filter \\ nil) do
     case Client.fetch_grouped_metadata(conditions) do
       {:ok, filtered_metadata} ->
-        metadata = cond do
-          # Keep the current filter's list unchanged
-          current_filter != nil ->
-            Map.update(filtered_metadata, current_filter, [], fn _new_list ->
-              get_current_filter_list(socket, current_filter)
-            end)
+        metadata =
+          cond do
+            # Keep the current filter's list unchanged
+            current_filter != nil ->
+              Map.update(filtered_metadata, current_filter, [], fn _new_list ->
+                get_current_filter_list(socket, current_filter)
+              end)
 
-          socket.assigns.is_keyword_search || socket.assigns.keep_keyword_filtering ->
-            filtered_metadata
+            socket.assigns.is_keyword_search || socket.assigns.keep_keyword_filtering ->
+              filtered_metadata
 
-          socket.assigns.first_selected_filter ->
-            key = socket.assigns.first_selected_filter
-            case Client.fetch_grouped_metadata([]) do
-              {:ok, complete_metadata} ->
-                Map.put(filtered_metadata, key, complete_metadata[key])
-              _ ->
-                filtered_metadata
-            end
+            socket.assigns.first_selected_filter ->
+              key = socket.assigns.first_selected_filter
 
-          true ->
-            filtered_metadata
-        end
+              case Client.fetch_grouped_metadata([]) do
+                {:ok, complete_metadata} ->
+                  Map.put(filtered_metadata, key, complete_metadata[key])
+
+                _ ->
+                  filtered_metadata
+              end
+
+            true ->
+              filtered_metadata
+          end
 
         socket
         |> assign(
@@ -279,7 +287,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     end
   end
 
-
   def handle_event("search", %{"term" => term}, socket) do
     # First reset all filters
     socket =
@@ -299,11 +306,11 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
     # Then perform search with only the term
     case Client.find(
-      conditions: [%{key: "*", operator: "=", value: term}],
-      range: [0, @default_per_page],
-      keys: @default_keys,
-      total: true
-    ) do
+           conditions: [%{key: "*", operator: "=", value: term}],
+           range: [0, @default_per_page],
+           keys: @default_keys,
+           total: true
+         ) do
       {:ok, %{items: items}} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
 
@@ -319,7 +326,9 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
         # Update metadata for new search results
         case fetch_metadata(socket, [%{key: "*", operator: "=", value: term}]) do
-          {:ok, socket} -> {:noreply, socket}
+          {:ok, socket} ->
+            {:noreply, socket}
+
           {:error, socket} ->
             {:noreply, socket |> put_flash(:error, l("Error updating filters"))}
         end
@@ -357,16 +366,17 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         keep_keyword_filtering: false,
         page: 0
       )
-      |> stream(:search_results, [], reset: true)  # Reset the stream first
+      # Reset the stream first
+      |> stream(:search_results, [], reset: true)
       |> track_loading(:global_load, true)
 
     # Fetch initial results directly instead of using trigger_search
     case Client.find(
-      sort: [%{key: "title", operator: "+"}],
-      range: [0, @default_per_page],
-      keys: @default_keys,
-      total: true
-    ) do
+           sort: [%{key: "title", operator: "+"}],
+           range: [0, @default_per_page],
+           keys: @default_keys,
+           total: true
+         ) do
       {:ok, %{items: items}} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
 
@@ -398,27 +408,41 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
     case Client.fetch_grouped_metadata(conditions, per_page: @filter_per_page) do
       {:ok, metadata} ->
-        socket = socket
-        |> assign(:available_director, Map.get(metadata, "director", []))
-        |> assign(:available_sezione, Map.get(metadata, "sezione", []))
-        |> assign(:available_edizione, Map.get(metadata, "edizione", []))
-        |> assign(:available_featuring, Map.get(metadata, "featuring", []))
-        |> assign(:director_page, 0)
-        |> assign(:sezione_page, 0)
-        |> assign(:edizione_page, 0)
-        |> assign(:featuring_page, 0)
-        |> assign(:has_more_director, length(Map.get(metadata, "director", [])) >= @filter_per_page)
-        |> assign(:has_more_sezione, length(Map.get(metadata, "sezione", [])) >= @filter_per_page)
-        |> assign(:has_more_edizione, length(Map.get(metadata, "edizione", [])) >= @filter_per_page)
-        |> assign(:has_more_featuring, length(Map.get(metadata, "featuring", [])) >= @filter_per_page)
-        |> track_loading(:global_load, false)
+        socket =
+          socket
+          |> assign(:available_director, Map.get(metadata, "director", []))
+          |> assign(:available_sezione, Map.get(metadata, "sezione", []))
+          |> assign(:available_edizione, Map.get(metadata, "edizione", []))
+          |> assign(:available_featuring, Map.get(metadata, "featuring", []))
+          |> assign(:director_page, 0)
+          |> assign(:sezione_page, 0)
+          |> assign(:edizione_page, 0)
+          |> assign(:featuring_page, 0)
+          |> assign(
+            :has_more_director,
+            length(Map.get(metadata, "director", [])) >= @filter_per_page
+          )
+          |> assign(
+            :has_more_sezione,
+            length(Map.get(metadata, "sezione", [])) >= @filter_per_page
+          )
+          |> assign(
+            :has_more_edizione,
+            length(Map.get(metadata, "edizione", [])) >= @filter_per_page
+          )
+          |> assign(
+            :has_more_featuring,
+            length(Map.get(metadata, "featuring", [])) >= @filter_per_page
+          )
+          |> track_loading(:global_load, false)
 
         {:noreply, socket}
 
       {:error, _} ->
-        socket = socket
-        |> put_flash(:error, l("Error fetching metadata"))
-        |> track_loading(:global_load, false)
+        socket =
+          socket
+          |> put_flash(:error, l("Error fetching metadata"))
+          |> track_loading(:global_load, false)
 
         {:noreply, socket}
     end
@@ -431,7 +455,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   def handle_info({:do_search, term}, socket) do
     do_search(socket, term)
   end
-
 
   # Handle the DOWN message that follows
   def handle_info({:DOWN, _ref, :process, _pid, :normal}, socket) do
@@ -463,7 +486,9 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         )
         |> then(fn socket ->
           case fetch_metadata(socket, []) do
-            {:ok, socket} -> socket
+            {:ok, socket} ->
+              socket
+
             {:error, socket} ->
               # Even if metadata fails, keep the search results
               socket
@@ -474,6 +499,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
       error ->
         debug("Error in initial data fetch: #{inspect(error)}")
+
         socket
         |> track_loading(:initial_load, false)
         |> put_flash(:error, l("Error loading initial data"))
@@ -485,14 +511,15 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
     case Client.fetch_grouped_metadata(conditions, per_page: @filter_per_page) do
       {:ok, metadata} ->
-        {:ok, socket
-          |> assign(
-            available_director: Map.get(metadata, "director", []),
-            available_sezione: Map.get(metadata, "sezione", []),
-            available_edizione: Map.get(metadata, "edizione", []),
-            available_featuring: Map.get(metadata, "featuring", [])
-          )
-          |> track_loading(:metadata_load, false)}
+        {:ok,
+         socket
+         |> assign(
+           available_director: Map.get(metadata, "director", []),
+           available_sezione: Map.get(metadata, "sezione", []),
+           available_edizione: Map.get(metadata, "edizione", []),
+           available_featuring: Map.get(metadata, "featuring", [])
+         )
+         |> track_loading(:metadata_load, false)}
 
       {:error, reason} ->
         debug("Metadata fetch error: #{inspect(reason)}")
@@ -505,23 +532,26 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
     case Client.find(
            sort: [%{key: "title", operator: "+"}],
-           range: [0, @default_per_page],  # Use range instead of page/per_page
+           # Use range instead of page/per_page
+           range: [0, @default_per_page],
            keys: @default_keys
          ) do
       {:ok, %{items: items}} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
 
         # First update the stream and basic assigns
-        socket = socket
-        |> stream(:search_results, prepare_items(items_to_show))
-        |> assign(
-          has_more_items: has_more,
-          current_count: length(items_to_show),
-          page: 0
-        )
+        socket =
+          socket
+          |> stream(:search_results, prepare_items(items_to_show))
+          |> assign(
+            has_more_items: has_more,
+            current_count: length(items_to_show),
+            page: 0
+          )
 
         # Then update metadata with current conditions
         conditions = build_search_conditions(socket.assigns)
+
         socket
         |> update_metadata_with_conditions(conditions)
         |> track_loading(:global_load, false)
@@ -531,34 +561,42 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     end
   end
 
-  defp toggle_filter(socket, filter_type, value) when filter_type in @filter_types and is_binary(value) do
-    filter_key = case filter_type do
-      "sezione" -> :selected_sezione
-      "edizione" -> :selected_edizione
-      "featuring" -> :selected_featuring
-      "director" -> :selected_director
-    end
+  defp toggle_filter(socket, filter_type, value)
+       when filter_type in @filter_types and is_binary(value) do
+    filter_key =
+      case filter_type do
+        "sezione" -> :selected_sezione
+        "edizione" -> :selected_edizione
+        "featuring" -> :selected_featuring
+        "director" -> :selected_director
+      end
 
     current_filters = Map.get(socket.assigns, filter_key, [])
 
     {updated_filters, first_filter} =
       if value in current_filters do
         filters = List.delete(current_filters, value)
-        first_filter = if filters == [] && socket.assigns.first_selected_filter == filter_type do
-          nil
-        else
-          socket.assigns.first_selected_filter
-        end
+
+        first_filter =
+          if filters == [] && socket.assigns.first_selected_filter == filter_type do
+            nil
+          else
+            socket.assigns.first_selected_filter
+          end
+
         {filters, first_filter}
       else
-        first_filter = case socket.assigns.first_selected_filter do
-          nil -> filter_type
-          existing -> existing
-        end
+        first_filter =
+          case socket.assigns.first_selected_filter do
+            nil -> filter_type
+            existing -> existing
+          end
+
         {[value | current_filters], first_filter}
       end
 
-    socket = socket
+    socket =
+      socket
       |> assign(filter_key, updated_filters)
       |> assign(:first_selected_filter, first_filter)
       |> track_loading(:global_load, true)
@@ -566,11 +604,11 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     conditions = build_search_conditions(socket.assigns)
 
     case Client.find(
-      conditions: conditions,
-      range: [0, @default_per_page],
-      keys: @default_keys,
-      total: true
-    ) do
+           conditions: conditions,
+           range: [0, @default_per_page],
+           keys: @default_keys,
+           total: true
+         ) do
       {:ok, %{items: items}} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
 
@@ -594,17 +632,18 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   defp track_loading(socket, state, is_loading) do
     current_loading = Map.get(socket.assigns, :loading_states, MapSet.new())
-    new_loading = if is_loading do
-      MapSet.put(current_loading, state)
-    else
-      MapSet.delete(current_loading, state)
-    end
+
+    new_loading =
+      if is_loading do
+        MapSet.put(current_loading, state)
+      else
+        MapSet.delete(current_loading, state)
+      end
 
     socket
     |> assign(:loading_states, new_loading)
     |> assign(:loading, MapSet.size(new_loading) > 0)
   end
-
 
   defp build_search_conditions(%{
          term: term,
@@ -624,12 +663,16 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     case {term, filters} do
       {nil, []} ->
         []
+
       {term, []} when is_binary(term) and term != "" ->
         [%{key: "*", operator: "=", value: term}]
+
       {nil, [single]} ->
         [single]
+
       {nil, multiple} when length(multiple) > 0 ->
         [%{conditions: multiple, operator: "&"}]
+
       {term, filters} when is_binary(term) and term != "" ->
         [
           %{
@@ -641,13 +684,16 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   end
 
   defp add_filter_condition(conditions, _type, []), do: conditions
+
   defp add_filter_condition(conditions, type, [single]),
     do: [%{key: type, operator: "==", value: single} | conditions]
+
   defp add_filter_condition(conditions, type, values) when length(values) > 0,
     do: [
       %{
         conditions: Enum.map(values, &%{key: type, operator: "==", value: &1}),
-        operator: "|"  # Use OR operator for multiple values of same type
+        # Use OR operator for multiple values of same type
+        operator: "|"
       }
       | conditions
     ]
@@ -687,14 +733,17 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         case fetch_metadata(socket, conditions) do
           {:ok, socket} ->
             {:noreply, socket |> track_loading(:search_load, false)}
+
           {:error, socket} ->
-            {:noreply, socket
-              |> track_loading(:search_load, false)
-              |> put_flash(:error, l("Error updating filters"))}
+            {:noreply,
+             socket
+             |> track_loading(:search_load, false)
+             |> put_flash(:error, l("Error updating filters"))}
         end
 
       other ->
         error(other, "Search failed")
+
         {:noreply,
          socket
          |> assign_error(l("Search failed"))
@@ -724,14 +773,17 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
           current_count: socket.assigns.current_count + length(items_to_show)
         )
         |> track_loading(:more_load, false)
-        |> track_loading(:global_load, false)  # Make sure to clear the legacy loading state too
+        # Make sure to clear the legacy loading state too
+        |> track_loading(:global_load, false)
 
       other ->
         error(other, l("Failed to load more"))
+
         socket
         |> assign_error(l("Failed to load more"))
         |> track_loading(:more_load, false)
-        |> track_loading(:global_load, false)  # Clear both loading states
+        # Clear both loading states
+        |> track_loading(:global_load, false)
     end
   end
 
@@ -743,6 +795,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   defp handle_pagination_results(items, per_page) when is_list(items) do
     items_received = length(items)
+
     if items_received > per_page do
       {Enum.take(items, per_page), true}
     else
@@ -761,5 +814,4 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       |> Map.put("order", index)
     end)
   end
-
 end

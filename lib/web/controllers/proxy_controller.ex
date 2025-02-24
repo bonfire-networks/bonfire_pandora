@@ -35,7 +35,9 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
               Enum.find_value(headers, default_content_type, fn
                 {key, value} when is_binary(key) ->
                   if String.downcase(key) == "content-type", do: value
-                _ -> nil
+
+                _ ->
+                  nil
               end)
 
             # Ensure content_type is a string and split it
@@ -49,7 +51,9 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
             # Split content type into main type and subtype
             {type, subtype} =
               case String.split(content_type || "", "/", parts: 2) do
-                [t, s] -> {t, s}
+                [t, s] ->
+                  {t, s}
+
                 _ ->
                   [t, s] = String.split(default_content_type, "/", parts: 2)
                   {t, s}

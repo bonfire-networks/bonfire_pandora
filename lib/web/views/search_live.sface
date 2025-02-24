@@ -22,14 +22,17 @@
         <div class="flex justify-between items-center p-3 pb-2 px-4">
           <h2 class="text-sm font-medium text-base-content/50">{l("Directors")}</h2>
         </div>
-        <div           
+        <div
           :hook
           id="director-container"
           data-page={@director_page}
           data-type="filter"
           phx-update="append"
         >
-          <ul class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative" id="directors-list">
+          <ul
+            class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
+            id="directors-list"
+          >
             {#for %{"name" => director, "items" => count} <- @available_director}
               <li class="w-full" id={"director-#{director}"}>
                 <a
@@ -49,7 +52,7 @@
           </ul>
           {#if @director_loading}
             <div class="flex justify-center p-2">
-              <div class="loading loading-spinner loading-sm"></div>
+              <div class="loading loading-spinner loading-sm" />
             </div>
           {/if}
         </div>
@@ -58,14 +61,17 @@
         <div class="flex justify-between items-center p-3 pb-2 px-4">
           <h2 class="text-sm font-medium text-base-content/50">{l("Sezione")}</h2>
         </div>
-        <div 
+        <div
           :hook
           id="sezione-container"
           data-page={@sezione_page}
           phx-update="append"
           data-type="filter"
         >
-          <ul class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative" id="sezione-list">
+          <ul
+            class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
+            id="sezione-list"
+          >
             {#for %{"name" => sezione, "items" => count} <- @available_sezione}
               <li class="w-full" id={"sezione-#{sezione}"}>
                 <a
@@ -85,7 +91,7 @@
           </ul>
           {#if @sezione_loading}
             <div class="flex justify-center p-2">
-              <div class="loading loading-spinner loading-sm"></div>
+              <div class="loading loading-spinner loading-sm" />
             </div>
           {/if}
         </div>
@@ -95,14 +101,17 @@
         <div class="flex justify-between items-center p-3 pb-2 px-4">
           <h2 class="text-sm font-medium text-base-content/50">{l("Edizione")}</h2>
         </div>
-        <div 
+        <div
           :hook
           id="edizione-container"
           data-page={@edizione_page}
           phx-update="append"
           data-type="filter"
         >
-          <ul class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative" id="edizione-list">
+          <ul
+            class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
+            id="edizione-list"
+          >
             {#for %{"name" => edizione, "items" => count} <- @available_edizione}
               <li class="w-full" id={"edizione-#{edizione}"}>
                 <a
@@ -122,7 +131,7 @@
           </ul>
           {#if @edizione_loading}
             <div class="flex justify-center p-2">
-              <div class="loading loading-spinner loading-sm"></div>
+              <div class="loading loading-spinner loading-sm" />
             </div>
           {/if}
         </div>
@@ -132,14 +141,17 @@
         <div class="flex justify-between items-center p-3 pb-2 px-4">
           <h2 class="text-sm font-medium text-base-content/50">{l("Featuring")}</h2>
         </div>
-        <div 
+        <div
           :hook
           id="featuring-container"
           data-page={@featuring_page}
           phx-update="append"
           data-type="filter"
         >
-          <ul class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative" id="featuring-list">
+          <ul
+            class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
+            id="featuring-list"
+          >
             {#for %{"name" => featuring, "items" => count} <- @available_featuring}
               <li class="w-full" id={"featuring-#{featuring}"}>
                 <a
@@ -162,68 +174,68 @@
     </div>
 
     <!-- Active filters and search term display -->
-    <div 
-      :if={not is_nil(@term) or length(@selected_director) > 0 or length(@selected_sezione) > 0 or length(@selected_edizione) > 0 or length(@selected_featuring) > 0}
-      class="p-3 bg-base-200 rounded-lg flex justify-between items-center">
-    <div 
-      class="flex flex-1 flex-wrap gap-2">
-      <!-- Search term chip -->
-      {#if @term}
-        <div class="badge badge-accent badge-soft">
-          <span>Search: {String.slice(@term, 0, 30)}{if String.length(@term) > 30, do: "..."}</span>
-        </div>
-      {/if}
-
-      <!-- Director filters -->
-      {#for director <- @selected_director}
-        <div class="badge badge-accent badge-soft">
-          <span>Director: {director}</span>
-        </div>
-      {/for}
-
-      <!-- Sezione filters -->
-      {#for sezione <- @selected_sezione}
-        <div class="badge badge-accent badge-soft">
-          <span>Section: {sezione}</span>
-        </div>
-      {/for}
-
-      <!-- Edizione filters -->
-      {#for edizione <- @selected_edizione}
-        <div class="badge badge-accent badge-soft">
-          <span>Edition: {edizione}</span>
-        </div>
-      {/for}
-
-      <!-- Featuring filters -->
-      {#for featuring <- @selected_featuring}
-        <div class="badge badge-accent badge-soft">
-          <span>Featuring: {featuring}</span>
-        </div>
-      {/for}
-
-    </div>
-     <button
-      type="button"
-      phx-click="clear_filters"
-      class="btn btn-ghost btn-soft gap-2"
-      disabled={@loading}
+    <div
+      :if={not is_nil(@term) or length(@selected_director) > 0 or length(@selected_sezione) > 0 or
+        length(@selected_edizione) > 0 or length(@selected_featuring) > 0}
+      class="p-3 bg-base-200 rounded-lg flex justify-between items-center"
     >
-      <#Icon iconify="carbon:filter-remove" class="w-4 h-4" />
-      {l("Clear filters")}
-    </button>
+      <div class="flex flex-1 flex-wrap gap-2">
+        <!-- Search term chip -->
+        {#if @term}
+          <div class="badge badge-accent badge-soft">
+            <span>Search: {String.slice(@term, 0, 30)}{if String.length(@term) > 30, do: "..."}</span>
+          </div>
+        {/if}
+
+        <!-- Director filters -->
+        {#for director <- @selected_director}
+          <div class="badge badge-accent badge-soft">
+            <span>Director: {director}</span>
+          </div>
+        {/for}
+
+        <!-- Sezione filters -->
+        {#for sezione <- @selected_sezione}
+          <div class="badge badge-accent badge-soft">
+            <span>Section: {sezione}</span>
+          </div>
+        {/for}
+
+        <!-- Edizione filters -->
+        {#for edizione <- @selected_edizione}
+          <div class="badge badge-accent badge-soft">
+            <span>Edition: {edizione}</span>
+          </div>
+        {/for}
+
+        <!-- Featuring filters -->
+        {#for featuring <- @selected_featuring}
+          <div class="badge badge-accent badge-soft">
+            <span>Featuring: {featuring}</span>
+          </div>
+        {/for}
+      </div>
+      <button
+        type="button"
+        phx-click="clear_filters"
+        class="btn btn-ghost btn-soft gap-2"
+        disabled={@loading}
+      >
+        <#Icon iconify="carbon:filter-remove" class="w-4 h-4" />
+        {l("Clear filters")}
+      </button>
     </div>
   </div>
 
   <div class="overflow-x-auto relative">
-  {#if @loading && @page == 0}
-    <div class="bg-base-200/50 p-20 flex items-center justify-center z-10">
-      <div class="loading loading-spinner loading-lg text-primary" />
-    </div>
-  {/if}
+    {#if @loading && @page == 0}
+      <div class="bg-base-200/50 p-20 flex items-center justify-center z-10">
+        <div class="loading loading-spinner loading-lg text-primary" />
+      </div>
+    {/if}
     <div class="search-results-container" id="search-results-container" :hook data-type="results">
-      <ul 
-        id="search_results" 
+      <ul
+        id="search_results"
         phx-update="stream"
         data-page={@page}
         data-loading={@loading}
@@ -233,19 +245,19 @@
           <Bonfire.PanDoRa.Components.MoviePreviewLive movie={result} movie_id={id} />
         {/for}
       </ul>
-        <div id="search-results-sentinel" phx-update="ignore">
+      <div id="search-results-sentinel" phx-update="ignore">
         <Bonfire.PanDoRa.Components.LoadingSentinelLive
-          loading={@loading} 
-          page={@page} 
-          has_more={@has_more_items} 
+          loading={@loading}
+          page={@page}
+          has_more={@has_more_items}
         />
       </div>
-  <!-- <div class="flex flex-col items-center gap-2 py-4 border-t border-base-content/10">
+      <!-- <div class="flex flex-col items-center gap-2 py-4 border-t border-base-content/10">
     {#if @has_more_items && @loading && @page > 0}
       <div class="loading loading-spinner loading-lg text-primary"></div>
     {/if}
   </div> -->
-</div>
-  <!-- <ResultsDisplay :if={@results} results={@results} search_term={@search_term} /> -->
-</div>
+    </div>
+    <!-- <ResultsDisplay :if={@results} results={@results} search_term={@search_term} /> -->
+  </div>
 </div>

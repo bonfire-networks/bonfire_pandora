@@ -34,12 +34,18 @@ defmodule Bonfire.PanDoRa.Archives do
     filter_conditions = build_filter_conditions(filters)
 
     case {term, filter_conditions} do
-      {nil, []} -> []
+      {nil, []} ->
+        []
+
       {term, []} when is_binary(term) and term != "" ->
         [%{key: "*", operator: "=", value: term}]
-      {nil, [single]} -> [single]
+
+      {nil, [single]} ->
+        [single]
+
       {nil, multiple} when length(multiple) > 0 ->
         [%{conditions: multiple, operator: "&"}]
+
       {term, filters} when is_binary(term) and term != "" ->
         [%{conditions: [%{key: "*", operator: "=", value: term} | filters], operator: "&"}]
     end
@@ -49,7 +55,9 @@ defmodule Bonfire.PanDoRa.Archives do
     filters
     |> Enum.reject(fn {_type, values} -> values == [] end)
     |> Enum.map(fn
-      {type, [value]} -> %{key: type, operator: "==", value: value}
+      {type, [value]} ->
+        %{key: type, operator: "==", value: value}
+
       {type, values} when length(values) > 0 ->
         %{
           conditions: Enum.map(values, &%{key: type, operator: "==", value: &1}),
