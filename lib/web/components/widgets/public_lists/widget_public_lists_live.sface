@@ -3,7 +3,7 @@
     <ul class="list gap-3">
       <li :for={list <- @lists} id={e(list, "id", "")} class="list-row p-0 pb-3">
         <div><img
-            class="size-10 rounded-box"
+            class="w-10 h-10 rounded-box"
             src={with frames when is_list(frames) <- e(list, "posterFrames", []),
                  frame when is_map(frame) <- Enum.at(frames, 0) do
               frame |> Map.keys() |> List.first() || ""

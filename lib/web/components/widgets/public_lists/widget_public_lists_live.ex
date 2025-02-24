@@ -36,10 +36,8 @@ defmodule Bonfire.PanDoRa.Web.WidgetPublicListsLive do
     Client.find_lists(
       keys: ["id", "description", "poster_frames", "posterFrames", "name", "status", "user"],
       sort: [%{key: "name", operator: "+"}],
-      type: :user,
-      query: [
-        %{key: "status", operator: "==", value: "public"}
-      ]
+      type: :public,
+      user: "bernini"
     )
   end
 end

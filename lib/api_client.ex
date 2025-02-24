@@ -363,6 +363,10 @@ defmodule PanDoRa.API.Client do
         :featured -> [%{key: "status", operator: "==", value: "featured"}]
         :user -> [%{key: "user", operator: "==", value: get_auth_default_user()}]
         :subscribed -> [%{key: "subscribed", operator: "==", value: true}]
+        :public -> [
+          %{key: "status", operator: "==", value: "public"},
+          %{key: "user", operator: "==", value: Keyword.get(opts, :user)}
+        ]
         # Return all lists if no type specified
         _ -> []
       end

@@ -26,6 +26,7 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
       |> assign(:has_more_items, false)
       |> assign(:loading, true)
       |> assign(:error, nil)
+      |> assign(:uploaded_files, nil)
 
     if connected?(socket) do
       send(self(), :load_initial_data)
@@ -56,6 +57,57 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
     items_result = fetch_list_items(list_id, page: next_page, per_page: per_page)
 
     {:noreply, socket |> assign(:page, next_page) |> handle_items_result(items_result)}
+  end
+
+  def handle_event("validate_update_list", _params, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("update_list", %{"list" => list_params} = _params, socket) do
+    debug(list_params, "update_list_params")
+    debug(socket.assigns.uploaded_files, "Uploaded files during list update")
+
+    list_params =
+      case socket.assigns.uploaded_files do
+        %{} = uploaded_media ->
+          debug(uploaded_media, "Adding icon to list params")
+          Map.put(list_params, "posterFrames", [{uploaded_media.path, 0}])
+
+        _ ->
+          debug("No icon available")
+          list_params
+      end
+
+    # Extract the ID and remove it from params to be updated
+    id = Map.get(list_params, "id")
+    update_params = Map.drop(list_params, ["id"])
+
+    case Client.edit_list(id, update_params) do
+      {:ok, updated_list} ->
+        {:noreply,
+         socket
+         |> assign(:list, updated_list)
+         |> assign(:page_title, e(updated_list, "name", l("List")))
+         |> assign(:uploaded_files, nil)
+         |> assign_flash(:info, l("List updated successfully"))}
+
+      {:error, error} ->
+        {:noreply,
+         socket
+         |> assign_flash(:error, error)}
+    end
+  end
+
+  def handle_info({:update_list_icon, media}, socket) do
+    debug(media, "Received list icon update")
+
+    {:noreply,
+     socket
+     |> assign(uploaded_files: media)}
+  end
+
+  def handle_info(msg, socket) do
+    {:noreply, socket}
   end
 
   # Handle successful list fetch
