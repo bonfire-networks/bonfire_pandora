@@ -25,29 +25,29 @@
         <div           
           :hook
           id="director-container"
-          data-page={@directors_page}
+          data-page={@director_page}
           data-type="filter"
           phx-update="append"
         >
           <ul class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative" id="directors-list">
-            {#for %{"name" => director, "items" => count} <- @available_directors}
+            {#for %{"name" => director, "items" => count} <- @available_director}
               <li class="w-full" id={"director-#{director}"}>
                 <a
                   phx-click="filter_by_director"
                   phx-value-director={director}
-                  class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": director in @selected_directors}
+                  class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": director in @selected_director}
                   disabled={@loading}
                 >
                   <span class="flex-1">{director}</span>
                   <span class="text-sm opacity-50">({count})</span>
-                  {#if director in @selected_directors}
+                  {#if director in @selected_director}
                     <span class="text-primary">✓</span>
                   {/if}
                 </a>
               </li>
             {/for}
           </ul>
-          {#if @directors_loading}
+          {#if @director_loading}
             <div class="flex justify-center p-2">
               <div class="loading loading-spinner loading-sm"></div>
             </div>
@@ -163,7 +163,7 @@
 
     <!-- Active filters and search term display -->
     <div 
-      :if={not is_nil(@term) or length(@selected_directors) > 0 or length(@selected_sezione) > 0 or length(@selected_edizione) > 0 or length(@selected_featuring) > 0}
+      :if={not is_nil(@term) or length(@selected_director) > 0 or length(@selected_sezione) > 0 or length(@selected_edizione) > 0 or length(@selected_featuring) > 0}
       class="p-3 bg-base-200 rounded-lg flex justify-between items-center">
     <div 
       class="flex flex-1 flex-wrap gap-2">
@@ -175,7 +175,7 @@
       {/if}
 
       <!-- Director filters -->
-      {#for director <- @selected_directors}
+      {#for director <- @selected_director}
         <div class="badge badge-accent badge-soft">
           <span>Director: {director}</span>
         </div>

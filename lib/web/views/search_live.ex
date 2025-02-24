@@ -1,7 +1,7 @@
 defmodule Bonfire.PanDoRa.Web.SearchLive do
   use Bonfire.UI.Common.Web, :surface_live_view
   alias PanDoRa.API.Client
-
+  alias Bonfire.PanDoRa.Utils
   @behaviour Bonfire.UI.Common.LiveHandler
 
   # Keep your existing extension declarations
@@ -28,41 +28,48 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   # Clean initial assigns with defaults
   @initial_assigns %{
     page: 0,
-    has_more_items: true,
     term: nil,
     loading: false,
-    current_count: 0,
-    total_count: 0,
-    without_secondary_widgets: true,
-    page_title: "Search in your archive",
+    has_more_items: true,
     per_page: @default_per_page,
-    available_directors: [],
+
+    # Filters list (to be abstracted)
+    available_director: [],
     available_sezione: [],
     available_edizione: [],
     available_featuring: [],
-    selected_directors: [],
+
+    # Selected filters (to be abstracted)
+    selected_director: [],
     selected_sezione: [],
     selected_edizione: [],
     selected_featuring: [],
+
+    # Filter pagination state
+    director_page: 0,
+    sezione_page: 0,
+    edizione_page: 0,
+    featuring_page: 0,
+
+    # Filter loading state
+    director_loading: false,
+    sezione_loading: false,
+    edizione_loading: false,
+    featuring_loading: false,
+
+    # Filter more items flags
+    has_more_director: true,
+    has_more_sezione: true,
+    has_more_edizione: true,
+    has_more_featuring: true,
+
+
     first_selected_filter: nil,
     is_keyword_search: false,
     keep_keyword_filtering: false,
     error: nil,
-    # Add pagination state for each filter
-    directors_page: 0,
-    sezione_page: 0,
-    edizione_page: 0,
-    featuring_page: 0,
-    directors_loading: false,
-    sezione_loading: false,
-    edizione_loading: false,
-    featuring_loading: false,
-    has_more_directors: true,
-    has_more_sezione: true,
-    has_more_edizione: true,
-    filter_update_count: 0,  # Add this to help track filter updates
-  current_filters: %{},    # Add this to track current filter state
-    has_more_featuring: true
+
+    current_filters: %{},    # Add this to track current filter state
   }
 
   on_mount {LivePlugs, [Bonfire.UI.Me.LivePlugs.LoadCurrentUser]}
@@ -73,14 +80,16 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     socket =
       socket
       |> stream_configure(:search_results,
-        dom_id: &"result-#{&1["stable_id"] || generate_stable_id(&1)}"
+        dom_id: &"result-#{&1["stable_id"] || Utils.generate_stable_id(&1)}"
       )
       |> stream(:search_results, [])
       |> assign(@initial_assigns)
+      |> assign(:page_title, "Search in your archive")
+      |> assign(:without_secondary_widgets, true)
       |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
       |> assign(:loading_states, MapSet.new())
       |> track_loading(:initial_load, true)
-      |> debug_loading_states("mount")
+      # |> debug_loading_states("mount")
 
     if connected?(socket) do
       send(self(), :load_initial_data)
@@ -100,7 +109,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   def handle_info({_ref, {filter_type, data}}, socket) when filter_type in @filter_types do
     # Update the corresponding filter data in assigns
     assign_key = case filter_type do
-      "director" -> :available_directors
+      "director" -> :available_director
       "sezione" -> :available_sezione
       "edizione" -> :available_edizione
       "featuring" -> :available_featuring
@@ -139,15 +148,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   def handle_params(_, _, socket), do: {:noreply, socket}
 
-    # Handle specific filter events
-    def handle_event("filter_by_sezione", %{"id" => value} = params, socket) when is_binary(value) do
-      {:noreply, toggle_filter(socket, "sezione", value)}
-    end
-
-    def handle_event("filter_by_edizione", %{"id" => value} = params, socket) when is_binary(value) do
-      {:noreply, toggle_filter(socket, "edizione", value)}
-    end
-
   # Unified filter handling using pattern matching
   def handle_event("filter_by_" <> filter_type, params, socket)
     when filter_type in @filter_types do
@@ -157,8 +157,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     socket =
       socket
       |> toggle_filter(filter_type, params[filter_type])
-      |> update(:filter_update_count, &(&1 + 1))
-      |> debug_loading_states("after filter toggle")
 
     {:noreply, socket}
   end
@@ -167,7 +165,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   def handle_event("load_more_" <> filter_type, _params, socket) when filter_type in @filter_types do
     # Map the filter type to the correct assign key
     assign_key = case filter_type do
-      "director" -> :available_directors
+      "director" -> :available_director
       "sezione" -> :available_sezione
       "edizione" -> :available_edizione
       "featuring" -> :available_featuring
@@ -221,7 +219,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       socket =
         socket
         |> track_loading(:more_load, true)
-        |> set_loading_state(true)
         |> do_load_more()
 
       {:noreply, socket}
@@ -260,7 +257,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
         socket
         |> assign(
-          available_directors: metadata["director"] || [],
+          available_director: metadata["director"] || [],
           available_sezione: metadata["sezione"] || [],
           available_edizione: metadata["edizione"] || [],
           available_featuring: metadata["featuring"] || []
@@ -274,7 +271,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   defp get_current_filter_list(socket, filter_type) do
     case filter_type do
-      "director" -> socket.assigns.available_directors
+      "director" -> socket.assigns.available_director
       "sezione" -> socket.assigns.available_sezione
       "edizione" -> socket.assigns.available_edizione
       "featuring" -> socket.assigns.available_featuring
@@ -282,22 +279,13 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     end
   end
 
-  # Update the existing update_metadata_for_term to use the new function
-  defp update_metadata_for_term(socket, term) do
-    conditions = [%{key: "title", operator: "~=", value: term}]
-    update_metadata_with_conditions(socket, conditions)
-  end
-
-  # def handle_event("search", %{"term" => term}, socket) do
-  #   do_search(socket, term)
-  # end
 
   def handle_event("search", %{"term" => term}, socket) do
     # First reset all filters
     socket =
       socket
       |> assign(
-        selected_directors: [],
+        selected_director: [],
         selected_sezione: [],
         selected_edizione: [],
         selected_featuring: [],
@@ -345,14 +333,14 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   end
 
   def handle_event("clear_search", _, socket) do
-    socket = set_loading_state(socket, true)
+    socket = track_loading(socket, :global_load, true)
 
     {:noreply,
      socket
      |> assign(@initial_assigns)
      |> stream(:search_results, [], reset: true)
      |> maybe_fetch_initial_results()
-     |> set_loading_state(false)}
+     |> track_loading(:global_load, false)}
   end
 
   def handle_event("clear_filters", _, socket) do
@@ -360,7 +348,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       socket
       |> assign(
         term: nil,
-        selected_directors: [],
+        selected_director: [],
         selected_sezione: [],
         selected_edizione: [],
         selected_featuring: [],
@@ -370,7 +358,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         page: 0
       )
       |> stream(:search_results, [], reset: true)  # Reset the stream first
-      |> assign(:loading, true)
+      |> track_loading(:global_load, true)
 
     # Fetch initial results directly instead of using trigger_search
     case Client.find(
@@ -388,10 +376,11 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
           |> assign(
             has_more_items: has_more,
             current_count: length(items_to_show),
-            loading: false
+            page: 0
           )
           # Update metadata without conditions to get full lists
           |> update_metadata_with_conditions([])
+          |> track_loading(:global_load, false)
 
         {:noreply, socket}
 
@@ -399,45 +388,44 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         {:noreply,
          socket
          |> put_flash(:error, l("Error loading results"))
-         |> assign(:loading, false)}
+         |> track_loading(:global_load, false)}
     end
   end
 
   # Add back the handle_info implementation for metadata
   def handle_info({:fetch_initial_metadata, conditions}, socket) do
-    socket = set_loading_state(socket, true)
+    socket = track_loading(socket, :global_load, true)
 
     case Client.fetch_grouped_metadata(conditions, per_page: @filter_per_page) do
       {:ok, metadata} ->
         socket = socket
-        |> assign(:available_directors, Map.get(metadata, "director", []))
+        |> assign(:available_director, Map.get(metadata, "director", []))
         |> assign(:available_sezione, Map.get(metadata, "sezione", []))
         |> assign(:available_edizione, Map.get(metadata, "edizione", []))
         |> assign(:available_featuring, Map.get(metadata, "featuring", []))
-        |> assign(:directors_page, 0)
+        |> assign(:director_page, 0)
         |> assign(:sezione_page, 0)
         |> assign(:edizione_page, 0)
         |> assign(:featuring_page, 0)
-        |> assign(:has_more_directors, length(Map.get(metadata, "director", [])) >= @filter_per_page)
+        |> assign(:has_more_director, length(Map.get(metadata, "director", [])) >= @filter_per_page)
         |> assign(:has_more_sezione, length(Map.get(metadata, "sezione", [])) >= @filter_per_page)
         |> assign(:has_more_edizione, length(Map.get(metadata, "edizione", [])) >= @filter_per_page)
         |> assign(:has_more_featuring, length(Map.get(metadata, "featuring", [])) >= @filter_per_page)
-        |> set_loading_state(false)
+        |> track_loading(:global_load, false)
 
         {:noreply, socket}
 
       {:error, _} ->
         socket = socket
         |> put_flash(:error, l("Error fetching metadata"))
-        |> set_loading_state(false)
+        |> track_loading(:global_load, false)
 
         {:noreply, socket}
     end
   end
 
   def handle_info({:set_loading_state, state}, socket) do
-    IO.inspect(state, label: "Loading stateeee")
-    {:noreply, assign(socket, loading: state)}
+    {:noreply, track_loading(socket, :global_load, state)}
   end
 
   def handle_info({:do_search, term}, socket) do
@@ -449,11 +437,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   def handle_info({:DOWN, _ref, :process, _pid, :normal}, socket) do
     {:noreply, socket}
   end
-
-  # Private functions for better state management
-  def error_message(%{assigns: %{error: nil}}), do: nil
-  def error_message(%{assigns: %{error: error}}), do: "Error: #{error}"
-
 
   def fetch_initial_data(socket) do
     debug("Starting initial data fetch")
@@ -504,7 +487,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       {:ok, metadata} ->
         {:ok, socket
           |> assign(
-            available_directors: Map.get(metadata, "director", []),
+            available_director: Map.get(metadata, "director", []),
             available_sezione: Map.get(metadata, "sezione", []),
             available_edizione: Map.get(metadata, "edizione", []),
             available_featuring: Map.get(metadata, "featuring", [])
@@ -518,7 +501,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   end
 
   defp maybe_fetch_initial_results(socket) do
-    socket = set_loading_state(socket, true)
+    socket = track_loading(socket, :global_load, true)
 
     case Client.find(
            sort: [%{key: "title", operator: "+"}],
@@ -541,10 +524,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         conditions = build_search_conditions(socket.assigns)
         socket
         |> update_metadata_with_conditions(conditions)
-        |> set_loading_state(false)
+        |> track_loading(:global_load, false)
 
       _ ->
-        set_loading_state(socket, false)
+        track_loading(socket, :global_load, false)
     end
   end
 
@@ -553,7 +536,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       "sezione" -> :selected_sezione
       "edizione" -> :selected_edizione
       "featuring" -> :selected_featuring
-      other -> String.to_existing_atom("selected_#{other}s")
+      "director" -> :selected_director
     end
 
     current_filters = Map.get(socket.assigns, filter_key, [])
@@ -578,7 +561,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     socket = socket
       |> assign(filter_key, updated_filters)
       |> assign(:first_selected_filter, first_filter)
-      |> assign(:loading, true)
+      |> track_loading(:global_load, true)
 
     conditions = build_search_conditions(socket.assigns)
 
@@ -596,38 +579,36 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         |> assign(
           has_more_items: has_more,
           current_count: length(items_to_show),
-          page: 0,
-          loading: false
+          page: 0
         )
         # Pass current_filter to preserve its list
         |> update_metadata_with_conditions(conditions, filter_type)
+        |> track_loading(:global_load, false)
 
       _ ->
         socket
         |> put_flash(:error, l("Error updating results"))
-        |> assign(:loading, false)
+        |> track_loading(:global_load, false)
     end
   end
 
-  defp reset_pagination(socket) do
+  defp track_loading(socket, state, is_loading) do
+    current_loading = Map.get(socket.assigns, :loading_states, MapSet.new())
+    new_loading = if is_loading do
+      MapSet.put(current_loading, state)
+    else
+      MapSet.delete(current_loading, state)
+    end
+
     socket
-    |> assign(page: 0)
-    |> stream(:search_results, [], reset: true)
+    |> assign(:loading_states, new_loading)
+    |> assign(:loading, MapSet.size(new_loading) > 0)
   end
 
-  def set_loading_state(socket, loading) do
-    assign(socket, loading: loading)
-  end
-
-  defp trigger_search(socket) do
-    socket = assign(socket, :loading, true)
-    send(self(), {:do_search, socket.assigns.term})
-    socket
-  end
 
   defp build_search_conditions(%{
          term: term,
-         selected_directors: directors,
+         selected_director: directors,
          selected_sezione: sezione,
          selected_edizione: edizione,
          selected_featuring: featuring
@@ -678,7 +659,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     conditions =
       build_search_conditions(%{
         term: term,
-        selected_directors: socket.assigns.selected_directors,
+        selected_director: socket.assigns.selected_director,
         selected_sezione: socket.assigns.selected_sezione,
         selected_edizione: socket.assigns.selected_edizione,
         selected_featuring: socket.assigns.selected_featuring
@@ -721,39 +702,6 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     end
   end
 
-  defp sort_years(years) do
-    Enum.sort_by(years, fn %{"name" => year} ->
-      case Integer.parse(year) do
-        # Negative to sort in descending order
-        {num, _} -> -num
-        _ -> 0
-      end
-    end)
-  end
-
-  defp assign_metadata(socket, metadata) do
-    socket
-    |> assign(
-      available_directors: metadata["director"] || [],
-      available_sezione: metadata["sezione"] || [],
-      available_edizione: metadata["edizione"] || [],
-      available_featuring: metadata["featuring"] || []
-    )
-  end
-
-  defp handle_search_error(socket, error) do
-    debug("Search error: #{inspect(error)}")
-
-    socket
-    |> assign(
-      error: error,
-      loading: false,
-      current_count: 0,
-      total_count: 0,
-      has_more_items: false
-    )
-  end
-
   defp do_load_more(socket) do
     socket = track_loading(socket, :more_load, true)
     next_page = socket.assigns.page + 1
@@ -776,33 +724,15 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
           current_count: socket.assigns.current_count + length(items_to_show)
         )
         |> track_loading(:more_load, false)
-        |> set_loading_state(false)  # Make sure to clear the legacy loading state too
+        |> track_loading(:global_load, false)  # Make sure to clear the legacy loading state too
 
       other ->
         error(other, l("Failed to load more"))
         socket
         |> assign_error(l("Failed to load more"))
         |> track_loading(:more_load, false)
-        |> set_loading_state(false)  # Clear both loading states
+        |> track_loading(:global_load, false)  # Clear both loading states
     end
-  end
-
-  defp debug_loading_states(socket, label) do
-    debug("Loading states at #{label}: #{inspect(socket.assigns.loading_states)}")
-    socket
-  end
-
-  defp track_loading(socket, state, is_loading) do
-    current_loading = Map.get(socket.assigns, :loading_states, MapSet.new())
-    new_loading = if is_loading do
-      MapSet.put(current_loading, state)
-    else
-      MapSet.delete(current_loading, state)
-    end
-
-    socket
-    |> assign(:loading_states, new_loading)
-    |> assign(:loading, MapSet.size(new_loading) > 0)
   end
 
   defp is_loading?(socket, state) do
@@ -824,7 +754,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     items
     |> Enum.with_index()
     |> Enum.map(fn {item, index} ->
-      stable_id = generate_stable_id(item)
+      stable_id = Utils.generate_stable_id(item)
       # Add an order field to help maintain sequence
       item
       |> Map.put("stable_id", stable_id)
@@ -832,36 +762,4 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     end)
   end
 
-  defp generate_stable_id(item) do
-    # Ensure we have all parts for a unique ID
-    [
-      Map.get(item, "title", ""),
-      Map.get(item, "director", []) |> Enum.join("-"),
-      Map.get(item, "year", ""),
-      # Add something unique for the same item in different pages
-      Map.get(item, "id", "") || Ecto.UUID.generate()
-    ]
-    |> Enum.join("-")
-    |> :erlang.phash2()
-    |> to_string()
-  end
-
-  def format_duration(duration) when is_binary(duration) do
-    case Float.parse(duration) do
-      {seconds, _} -> format_duration(seconds)
-      :error -> duration
-    end
-  end
-
-  def format_duration(seconds) when is_float(seconds) do
-    total_minutes = trunc(seconds / 60)
-    hours = div(total_minutes, 60)
-    minutes = rem(total_minutes, 60)
-
-    cond do
-      hours > 0 -> "#{hours}h #{minutes}min"
-      minutes > 0 -> "#{minutes}min"
-      true -> "< 1min"
-    end
-  end
 end
