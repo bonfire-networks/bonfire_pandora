@@ -1,8 +1,51 @@
-<div class="flex flex-col w-full gap-4">
-  <video controls>
-    <source src={Client.get_pandora_url() <> "/" <> @movie["id"] <> "/480p1.mp4?"} type="video/mp4">
-    Your browser does not support the video tag.
-  </video>
+<div class="flex flex-col w-full gap-4" phx-update="ignore" :hook id="vidstack_movie_player">
+  <media-player class="player" tabindex="0">
+    <media-provider>
+      <video src={Client.get_pandora_url() <> "/" <> @movie["id"] <> "/480p1.mp4?"} 
+        preload="auto">
+      </video>
+    </media-provider>
+
+    <media-controls style="pointer-events: auto;">
+      <div class="controls-container" style="pointer-events: auto;">
+        <!-- Play/Pause button with dynamic icon -->
+        <button class="control-button play-button" data-action="play-pause" style="pointer-events: auto;">
+          <span class="play-icon">▶</span>
+          <span class="pause-icon" style="display: none;">⏸</span>
+        </button>
+        
+        <!-- Custom buttons -->
+        <button class="custom-button" data-action="mark-in" style="pointer-events: auto;">
+          IN
+        </button>
+        
+        <button class="custom-button" data-action="mark-out" style="pointer-events: auto;">
+          OUT
+        </button>
+        
+        <!-- Mute button with dynamic icon -->
+        <button class="control-button mute-button" data-action="mute" style="pointer-events: auto;">
+          <span class="unmuted-icon">🔊</span>
+          <span class="muted-icon" style="display: none;">🔇</span>
+        </button>
+        
+        <!-- Time slider and display -->
+        <div class="time-controls" style="pointer-events: auto; flex: 1; display: flex; align-items: center;">
+          <span class="current-time">0:00</span>
+          <input type="range" class="time-slider" min="0" max="100" value="0" step="0.1" style="flex: 1; margin: 0 10px;">
+          <span class="duration">0:00</span>
+        </div>
+        
+        <!-- Fullscreen button -->
+        <button class="control-button fullscreen-button" data-action="fullscreen" style="pointer-events: auto;">
+          ⤢
+        </button>
+      </div>
+    </media-controls>
+  </media-player>
+  
+  <!-- Rest of your component -->
+
 
   <div class="bg-base-100 rounded-lg shadow">
     <div class="border-b border-base-content/10 text-sm font-semibold p-3">{l("Public notes")}</div>

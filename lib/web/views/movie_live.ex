@@ -88,6 +88,16 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     # end
   end
 
+  def handle_event("mark_in_timestamp", %{"timestamp" => timestamp}, socket) do
+    # Handle the in timestamp - for example, store it in socket assigns
+    {:noreply, assign(socket, :in_timestamp, timestamp)}
+  end
+
+  def handle_event("mark_out_timestamp", %{"timestamp" => timestamp}, socket) do
+    # Handle the out timestamp - for example, store it in socket assigns
+    {:noreply, assign(socket, :out_timestamp, timestamp)}
+  end
+
   # Add a private function to fetch movies
   def fetch_movies(id) do
     debug("Fetching movie with ID: #{inspect(id)}")

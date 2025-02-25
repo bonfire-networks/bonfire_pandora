@@ -9,6 +9,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "split.js": "^1.6.5"
+    "split.js": "^1.6.5",
+    "vidstack": "^1.12.13"
   }
 }
