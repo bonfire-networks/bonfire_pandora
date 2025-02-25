@@ -1,6 +1,7 @@
 defmodule Bonfire.PanDoRa.Web.MovieLive do
   use Bonfire.UI.Common.Web, :surface_live_view
   alias PanDoRa.API.Client
+  alias Bonfire.PanDoRa.Utils
 
   @behaviour Bonfire.UI.Common.LiveHandler
 
@@ -30,6 +31,9 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> assign(:back, true)
         |> assign(:page_title, movie["title"] || "")
         |> assign(:movie, movie)
+        |> assign(:in_timestamp, nil)
+        |> assign(:out_timestamp, nil)
+        |> assign(:note_content, "") # Initialize note_content
         |> assign(:public_notes, public_notes)
         |> assign(:sidebar_widgets,
           users: [
@@ -53,49 +57,55 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
         {:noreply, socket}
     end
-
-    # case fetch_movies(id) do
-    #   nil ->
-    #     socket =
-    #       socket
-    #       |> assign(:movie, nil)
-    #       |> assign(:back, true)
-    #       |> assign(:page_title, "Movie not found")
-
-    #     {:noreply, socket}
-
-    #   movie ->
-    #     debug("Movie found: #{inspect(movie)}")
-
-    #     socket =
-    #       socket
-    #       |> assign(:params, id)
-    #       |> assign(:back, true)
-    #       |> assign(:page_title, movie["title"] || "")
-    #       |> assign(:movie, movie)
-    #       |> assign(:sidebar_widgets,
-    #         users: [
-    #           secondary: [
-    #             {Bonfire.PanDoRa.Web.WidgetMovieInfoLive,
-    #              [movie: movie, widget_title: "Movie Info"]},
-    #             {Bonfire.PanDoRa.Web.WidgetMoviePropertiesLive,
-    #              [movie: movie, widget_title: "Movie Properties"]}
-    #           ]
-    #         ]
-    #       )
-
-    #     {:noreply, socket}
-    # end
   end
 
-  def handle_event("mark_in_timestamp", %{"timestamp" => timestamp}, socket) do
+
+  def handle_event("mark_in_timestamp", %{"timestamp" => timestamp} = _params, socket) do
     # Handle the in timestamp - for example, store it in socket assigns
-    {:noreply, assign(socket, :in_timestamp, timestamp)}
+    socket =
+      socket
+      |> assign(:in_timestamp, timestamp)
+    {:noreply, socket}
   end
 
   def handle_event("mark_out_timestamp", %{"timestamp" => timestamp}, socket) do
     # Handle the out timestamp - for example, store it in socket assigns
     {:noreply, assign(socket, :out_timestamp, timestamp)}
+  end
+
+  def handle_event("validate_note", %{"note" => note}, socket) do
+    # Simple validation - ensure note is not empty
+    valid = String.trim(note) != ""
+    # Store the note content in socket assigns to preserve it
+    {:noreply, socket |> assign(:note_valid, valid) |> assign(:note_content, note)}
+  end
+
+  def handle_event("create_note", %{"note" => note}, socket) do
+    with movie_id <- socket.assigns.movie["id"],
+         in_timestamp <- socket.assigns.in_timestamp || 0.0,
+         out_timestamp <- socket.assigns.out_timestamp || in_timestamp,
+         annotation_data = %{
+           item: movie_id,
+           layer: "publicnotes", # assuming this is your layer ID for public notes
+           in: in_timestamp,
+           out: out_timestamp,
+           value: note
+         },
+         {:ok, response} <- Client.add_annotation(annotation_data) do
+
+      # Update the public_notes list in the socket
+      updated_notes = [response | socket.assigns.public_notes]
+
+      {:noreply,
+       socket
+       |> assign(:public_notes, updated_notes)
+       |> assign(:note_content, "") # Clear the note content after successful submission
+       |> assign_flash(:info, l("Annotation added successfully"))}
+    else
+      error ->
+        error("Error creating note: #{inspect(error)}")
+        {:noreply, assign_flash(socket, :error, l("Could not create note"))}
+    end
   end
 
   # Add a private function to fetch movies
@@ -113,22 +123,5 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     end
   end
 
-  def format_duration(duration) when is_binary(duration) do
-    case Float.parse(duration) do
-      {seconds, _} -> format_duration(seconds)
-      :error -> duration
-    end
-  end
 
-  def format_duration(seconds) when is_float(seconds) do
-    total_minutes = trunc(seconds / 60)
-    hours = div(total_minutes, 60)
-    minutes = rem(total_minutes, 60)
-
-    cond do
-      hours > 0 -> "#{hours}h #{minutes}min"
-      minutes > 0 -> "#{minutes}min"
-      true -> "< 1min"
-    end
-  end
 end

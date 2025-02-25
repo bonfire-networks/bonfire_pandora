@@ -1,56 +1,74 @@
-<div class="flex flex-col w-full gap-4" phx-update="ignore" :hook id="vidstack_movie_player">
-  <media-player class="player" tabindex="0">
-    <media-provider>
-      <video src={Client.get_pandora_url() <> "/" <> @movie["id"] <> "/480p1.mp4?"} 
-        preload="auto">
-      </video>
-    </media-provider>
+<div class="flex flex-col w-full gap-4">
+  <div phx-update="ignore" id="movie_container">
+    <div :hook id="vidstack_movie_player">
+      <media-player class="player" tabindex="0">
+        <media-provider>
+          <video src={Client.get_pandora_url() <> "/" <> @movie["id"] <> "/480p1.mp4?"} 
+            preload="auto">
+          </video>
+        </media-provider>
 
-    <media-controls style="pointer-events: auto;">
-      <div class="controls-container" style="pointer-events: auto;">
-        <!-- Play/Pause button with dynamic icon -->
-        <button class="control-button play-button" data-action="play-pause" style="pointer-events: auto;">
-          <span class="play-icon">▶</span>
-          <span class="pause-icon" style="display: none;">⏸</span>
-        </button>
-        
-        <!-- Custom buttons -->
-        <button class="custom-button" data-action="mark-in" style="pointer-events: auto;">
-          IN
-        </button>
-        
-        <button class="custom-button" data-action="mark-out" style="pointer-events: auto;">
-          OUT
-        </button>
-        
-        <!-- Mute button with dynamic icon -->
-        <button class="control-button mute-button" data-action="mute" style="pointer-events: auto;">
-          <span class="unmuted-icon">🔊</span>
-          <span class="muted-icon" style="display: none;">🔇</span>
-        </button>
-        
-        <!-- Time slider and display -->
-        <div class="time-controls" style="pointer-events: auto; flex: 1; display: flex; align-items: center;">
-          <span class="current-time">0:00</span>
-          <input type="range" class="time-slider" min="0" max="100" value="0" step="0.1" style="flex: 1; margin: 0 10px;">
-          <span class="duration">0:00</span>
-        </div>
-        
-        <!-- Fullscreen button -->
-        <button class="control-button fullscreen-button" data-action="fullscreen" style="pointer-events: auto;">
-          ⤢
-        </button>
-      </div>
-    </media-controls>
-  </media-player>
-  
-  <!-- Rest of your component -->
+        <media-controls style="pointer-events: auto;">
+          <div class="controls-container" style="pointer-events: auto;">
+            <!-- Play/Pause button with dynamic icon -->
+            <button class="control-button play-button" data-action="play-pause" style="pointer-events: auto;">
+              <span class="play-icon">▶</span>
+              <span class="pause-icon" style="display: none;">⏸</span>
+            </button>
+            
+            <!-- Custom buttons -->
+            <button class="custom-button" data-action="mark-in" style="pointer-events: auto;">
+              IN
+            </button>
+            
+            <button class="custom-button" data-action="mark-out" style="pointer-events: auto;">
+              OUT
+            </button>
+            
+            <!-- Mute button with dynamic icon -->
+            <button class="control-button mute-button" data-action="mute" style="pointer-events: auto;">
+              <span class="unmuted-icon">🔊</span>
+              <span class="muted-icon" style="display: none;">🔇</span>
+            </button>
+            
+            <!-- Time slider and display -->
+            <div class="time-controls" style="pointer-events: auto; flex: 1; display: flex; align-items: center;">
+              <span class="current-time">0:00</span>
+              <input type="range" class="time-slider" min="0" value="0" step="0.1" style="flex: 1; margin: 0 10px; pointer-events: auto !important;">          
+              <span class="duration">0:00</span>
+            </div>
+            
+            <!-- Fullscreen button -->
+            <button class="control-button fullscreen-button" data-action="fullscreen" style="pointer-events: auto;">
+              ⤢
+            </button>
+          </div>
+        </media-controls>
+      </media-player>
+    </div>
+  </div>
 
 
   <div class="bg-base-100 rounded-lg shadow">
-    <div class="border-b border-base-content/10 text-sm font-semibold p-3">{l("Public notes")}</div>
+    <div class="border-b border-base-content/10 text-sm font-semibold p-3">{l("Public annotations")}</div>
     <div class="p-3 flex flex-col gap-4 divide-y divide-base-content/10">
       <!-- <div class="prose prose-sm">{@movie["summary"]}</div> -->
+
+      <form phx-submit="create_note" id="create_annotation_form" phx-change="validate_note" class="flex flex-col gap-3 pb-3">
+        <textarea name="note" class="w-full textarea" placeholder={l("Add a public annotation")} value={@note_content}>{@note_content}</textarea>
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-2">
+            <div class="badge badge-sm badge-accent badge-soft">in: {e(@in_timestamp, 0) || "00:00:00"}</div>
+            <div class="badge badge-sm badge-accent badge-soft">out: {e(@out_timestamp, 0) || "00:00:00"}</div>
+          </div>
+          <button 
+            type="submit" 
+            class="btn btn-sm btn-primary" 
+            disabled={is_nil(@note_content) || @note_content == "" || is_nil(@in_timestamp) || is_nil(@out_timestamp)}>
+            {l("Submit")}
+          </button>
+        </div>
+      </form>
       <div
         :for={note <- @public_notes}
         id={"note-" <> to_string(note["id"])}
@@ -68,7 +86,7 @@
           <div class="flex items-baseline justify-between gap-2">
             <div class="font-semibold flex-1 text-lg">{e(note, "user", "")}</div>
             <div class="flex items-center gap-2">
-              <div class="badge badge-accent badge-soft badge-sm">From {format_duration(e(note, "in", ""))} to {format_duration(e(note, "out", ""))}</div>
+              <button data-role="annotation-checkpoint" data-in={e(note, "in", "")} data-out={e(note, "out", "")} class="btn btn-soft btn-accent btn-xs">From {Utils.format_duration(e(note, "in", ""))} to {Utils.format_duration(e(note, "out", ""))}</button>
               <div class="text-sm text-base-content/50">{DatesTimes.date_from_now(e(note, "created", ""))}</div>
             </div>
           </div>

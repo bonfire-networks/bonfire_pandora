@@ -646,6 +646,28 @@ defmodule PanDoRa.API.Client do
     end
   end
 
+  @doc """
+  Creates a new annotation for a movie
+
+  ## Parameters
+    * `data` - Map containing:
+      * `:item` - item id (movie id)
+      * `:layer` - annotation layer id
+      * `:in` - in point in seconds
+      * `:out` - out point in seconds
+      * `:value` - annotation value (the note text)
+  """
+  def add_annotation(data) when is_map(data) do
+    # Validate required fields
+    required_fields = [:item, :layer, :in, :out, :value]
+    IO.inspect(data, label: "CAZZ")
+    if Enum.all?(required_fields, &Map.has_key?(data, &1)) do
+      make_request("addAnnotation", data)
+    else
+      {:error, "Missing required fields"}
+    end
+  end
+
   # Helper to conditionally add conditions based on options
   defp maybe_add_condition(conditions, opts, key, field) do
     case Keyword.get(opts, key) do
