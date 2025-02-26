@@ -14,6 +14,9 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       socket
       |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
       |> assign(:back, true)
+      |> assign(:deleting_annotation_id, nil)
+      |> assign(:editing_annotation, nil)  # Add this to track which annotation is being edited
+      |> assign(:editing_mode, false)      # Add this to track if we're in editing mode
 
     {:ok, socket}
   end
@@ -35,6 +38,8 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> assign(:out_timestamp, nil)
         |> assign(:note_content, "") # Initialize note_content
         |> assign(:public_notes, public_notes)
+        |> assign(:editing_annotation, nil)  # Initialize editing state
+        |> assign(:editing_mode, false)      # Initialize editing mode
         |> assign(:sidebar_widgets,
           users: [
             secondary: [
@@ -105,6 +110,101 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       error ->
         error("Error creating note: #{inspect(error)}")
         {:noreply, assign_flash(socket, :error, l("Could not create note"))}
+    end
+  end
+
+  def handle_event("delete_annotation", %{"note-id" => note_id}, socket) do
+    case Client.remove_annotation(note_id) do
+      {:ok, _response} ->
+        # Remove the deleted note from the public_notes list
+        updated_notes = Enum.reject(socket.assigns.public_notes, fn note ->
+          note["id"] == note_id
+        end)
+
+        # Update the socket with the new list of notes
+        Bonfire.UI.Common.OpenModalLive.close()
+
+        {:noreply,
+         socket
+         |> assign(:public_notes, updated_notes)
+         |> assign_flash(:info, l("Annotation deleted successfully"))}
+      error ->
+        error("Error deleting annotation: #{inspect(error)}")
+        {:noreply, assign_flash(socket, :error, l("Could not delete annotation"))}
+    end
+  end
+
+  # Handle the edit annotation button click
+  def handle_event("edit_annotation", %{"note-id" => note_id}, socket) do
+    # Find the annotation to edit
+    annotation_to_edit = Enum.find(socket.assigns.public_notes, fn note ->
+      note["id"] == note_id
+    end)
+
+    if annotation_to_edit do
+      # Set the form fields with the annotation data
+      socket = socket
+        |> assign(:editing_mode, true)
+        |> assign(:editing_annotation, annotation_to_edit)
+        |> assign(:note_content, annotation_to_edit["value"])
+        |> assign(:in_timestamp, annotation_to_edit["in"])
+        |> assign(:out_timestamp, annotation_to_edit["out"])
+
+      {:noreply, socket}
+    else
+      {:noreply, assign_flash(socket, :error, l("Could not find annotation to edit"))}
+    end
+  end
+
+  # Handle canceling the edit
+  def handle_event("cancel_edit", _params, socket) do
+    socket = socket
+      |> assign(:editing_mode, false)
+      |> assign(:editing_annotation, nil)
+      |> assign(:note_content, "")
+      |> assign(:in_timestamp, nil)
+      |> assign(:out_timestamp, nil)
+
+    {:noreply, socket}
+  end
+
+  # Handle submitting the edit
+  def handle_event("update_note", %{"note" => note}, socket) do
+    with annotation_id <- socket.assigns.editing_annotation["id"],
+         in_timestamp <- socket.assigns.in_timestamp,
+         out_timestamp <- socket.assigns.out_timestamp,
+         edit_data = %{
+           id: annotation_id,
+           in: in_timestamp,
+           out: out_timestamp,
+           value: note
+         },
+         {:ok, updated_annotation} <- Client.edit_annotation(edit_data) do
+
+      # Update the public_notes list in the socket
+      updated_notes = Enum.map(socket.assigns.public_notes, fn note ->
+        if note["id"] == annotation_id do
+          updated_annotation
+        else
+          note
+        end
+      end)
+
+      # Reset the editing state
+      socket = socket
+        |> assign(:public_notes, updated_notes)
+        |> assign(:editing_mode, false)
+        |> assign(:editing_annotation, nil)
+        |> assign(:note_content, "")
+        |> assign(:in_timestamp, nil)
+        |> assign(:out_timestamp, nil)
+        |> assign_flash(:info, l("Annotation updated successfully"))
+
+      {:noreply, socket}
+    else
+      error ->
+        error("Error updating annotation: #{inspect(error)}")
+        {:noreply, assign_flash(socket, :error, l("Could not update annotation"))}
     end
   end
 

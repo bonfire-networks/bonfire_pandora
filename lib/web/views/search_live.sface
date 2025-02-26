@@ -32,6 +32,7 @@
           <ul
             class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
             id="directors-list"
+            style="overscroll-behavior: contain;"
           >
             {#for %{"name" => director, "items" => count} <- @available_director}
               <li class="w-full" id={"director-#{director}"}>
@@ -71,6 +72,7 @@
           <ul
             class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
             id="sezione-list"
+            style="overscroll-behavior: contain;"
           >
             {#for %{"name" => sezione, "items" => count} <- @available_sezione}
               <li class="w-full" id={"sezione-#{sezione}"}>
@@ -111,6 +113,7 @@
           <ul
             class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
             id="edizione-list"
+            style="overscroll-behavior: contain;"
           >
             {#for %{"name" => edizione, "items" => count} <- @available_edizione}
               <li class="w-full" id={"edizione-#{edizione}"}>
@@ -151,6 +154,7 @@
           <ul
             class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
             id="featuring-list"
+            style="overscroll-behavior: contain;"
           >
             {#for %{"name" => featuring, "items" => count} <- @available_featuring}
               <li class="w-full" id={"featuring-#{featuring}"}>

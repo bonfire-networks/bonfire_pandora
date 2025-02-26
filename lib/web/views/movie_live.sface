@@ -11,24 +11,42 @@
         <media-controls style="pointer-events: auto;">
           <div class="controls-container" style="pointer-events: auto;">
             <!-- Play/Pause button with dynamic icon -->
-            <button class="control-button play-button" data-action="play-pause" style="pointer-events: auto;">
-              <span class="play-icon">▶</span>
-              <span class="pause-icon" style="display: none;">⏸</span>
+            <button class="control-button btn btn-sm btn-circle btn-soft btn-ghost play-button" data-action="play-pause" style="pointer-events: auto;">
+              <span class="play-icon">
+                <#Icon iconify="heroicons:play-16-solid" class="w-4 h-4" />
+              </span>
+              <span class="pause-icon btn btn-sm btn-circle btn-soft btn-ghost" style="display: none;">
+                <#Icon iconify="heroicons:pause-16-solid" class="w-4 h-4" />
+              </span>
+            </button>
+            <button class="control-button btn btn-sm btn-circle btn-soft btn-ghost play-button" data-action="next-frame" style="pointer-events: auto;">
+              <span class="play-icon">
+                <#Icon iconify="heroicons:forward-16-solid" class="w-4 h-4" />
+              </span>
+            </button>
+            <button class="btn btn-sm btn-circle btn-soft btn-ghost control-button play-button" data-action="prev-frame" style="pointer-events: auto;">
+              <span class="play-icon">
+                <#Icon iconify="heroicons:backward-16-solid" class="w-4 h-4" />
+              </span>
             </button>
             
             <!-- Custom buttons -->
-            <button class="custom-button" data-action="mark-in" style="pointer-events: auto;">
+            <button class="custom-button btn btn-sm btn-circle btn-soft btn-ghost" data-action="mark-in" style="pointer-events: auto;">
               IN
             </button>
             
-            <button class="custom-button" data-action="mark-out" style="pointer-events: auto;">
+            <button class="custom-button btn btn-sm btn-circle btn-soft btn-ghost" data-action="mark-out" style="pointer-events: auto;">
               OUT
             </button>
             
             <!-- Mute button with dynamic icon -->
-            <button class="control-button mute-button" data-action="mute" style="pointer-events: auto;">
-              <span class="unmuted-icon">🔊</span>
-              <span class="muted-icon" style="display: none;">🔇</span>
+            <button class="control-button btn btn-sm btn-circle btn-soft btn-ghost mute-button" data-action="mute" style="pointer-events: auto;">
+              <span class="unmuted-icon">
+                <#Icon iconify="heroicons-solid:volume-up" class="w-4 h-4" />
+              </span>
+              <span class="muted-icon" style="display: none;">
+                <#Icon iconify="heroicons-solid:volume-off" class="w-4 h-4" />
+              </span>
             </button>
             
             <!-- Time slider and display -->
@@ -39,8 +57,8 @@
             </div>
             
             <!-- Fullscreen button -->
-            <button class="control-button fullscreen-button" data-action="fullscreen" style="pointer-events: auto;">
-              ⤢
+            <button class="control-button btn btn-sm btn-circle btn-soft btn-ghost fullscreen-button" data-action="fullscreen" style="pointer-events: auto;">
+              <#Icon iconify="heroicons-outline:arrows-expand" class="w-4 h-4" />
             </button>
           </div>
         </media-controls>
@@ -51,28 +69,57 @@
 
   <div class="bg-base-100 rounded-lg shadow">
     <div class="border-b border-base-content/10 text-sm font-semibold p-3">{l("Public annotations")}</div>
-    <div class="p-3 flex flex-col gap-4 divide-y divide-base-content/10">
+    
+    <div class="flex flex-col gap-4">
+      <div class="p-3 bg-base-200 border-b border-base-content/10">
       <!-- <div class="prose prose-sm">{@movie["summary"]}</div> -->
-
-      <form phx-submit="create_note" id="create_annotation_form" phx-change="validate_note" class="flex flex-col gap-3 pb-3">
+      {#if @editing_mode}
+      <div class="text-xs mt-2 uppercase font-semibold text-base-content/50">{l "Edit the annotation"}</div>
+      {#else}
+      <div class="text-xs mt-2 uppercase font-semibold text-base-content/50">{l "Add a new annotation"}</div>
+      {/if}
+      <form 
+        phx-submit={if @editing_mode, do: "update_note", else: "create_note"} 
+        id="create_annotation_form" 
+        phx-change="validate_note" 
+        class="flex flex-col gap-3 pb-3 mt-3"
+      >
         <textarea name="note" class="w-full textarea" placeholder={l("Add a public annotation")} value={@note_content}>{@note_content}</textarea>
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-2">
-            <div class="badge badge-sm badge-accent badge-soft">in: {e(@in_timestamp, 0) || "00:00:00"}</div>
-            <div class="badge badge-sm badge-accent badge-soft">out: {e(@out_timestamp, 0) || "00:00:00"}</div>
+            <button type="button" data-role="annotation-checkpoint" data-in={e(@in_timestamp, "")} class="btn btn-xs btn-accent btn-soft">in: {Utils.format_duration(e(@in_timestamp, "0000")) || "00:00:00"}</button>
+            <button type="button" data-role="annotation-checkpoint" data-out={e(@out_timestamp, "")} class="btn btn-xs btn-accent btn-soft">out: {Utils.format_duration(e(@out_timestamp, "0000")) || "00:00:00"}</button>
           </div>
-          <button 
-            type="submit" 
-            class="btn btn-sm btn-primary" 
-            disabled={is_nil(@note_content) || @note_content == "" || is_nil(@in_timestamp) || is_nil(@out_timestamp)}>
-            {l("Submit")}
-          </button>
+          <div class="flex gap-2">
+            {#if @editing_mode}
+              <button 
+                type="button" 
+                phx-click="cancel_edit"
+                class="btn btn-sm btn-outline">
+                {l("Cancel")}
+              </button>
+              <button 
+                type="submit" 
+                class="btn btn-sm btn-primary" 
+                disabled={is_nil(@note_content) || @note_content == "" || is_nil(@in_timestamp) || is_nil(@out_timestamp)}>
+                {l("Update")}
+              </button>
+            {#else}
+              <button 
+                type="submit" 
+                class="btn btn-sm btn-primary" 
+                disabled={is_nil(@note_content) || @note_content == "" || is_nil(@in_timestamp) || is_nil(@out_timestamp)}>
+                {l("Submit")}
+              </button>
+            {/if}
+          </div>
         </div>
       </form>
+    </div>
       <div
         :for={note <- @public_notes}
         id={"note-" <> to_string(note["id"])}
-        class="flex items-top gap-3 pb-4"
+        class="flex items-top gap-3 p-3 border-b border-base-content/10 pb-4"
       >
         <div class="avatar">
           <div class="w-12 rounded">
@@ -83,11 +130,64 @@
           </div>
         </div>
         <div class="flex flex-col flex-1">
-          <div class="flex items-baseline justify-between gap-2">
+          <div class="flex items-center justify-between gap-2">
             <div class="font-semibold flex-1 text-lg">{e(note, "user", "")}</div>
             <div class="flex items-center gap-2">
               <button data-role="annotation-checkpoint" data-in={e(note, "in", "")} data-out={e(note, "out", "")} class="btn btn-soft btn-accent btn-xs">From {Utils.format_duration(e(note, "in", ""))} to {Utils.format_duration(e(note, "out", ""))}</button>
               <div class="text-sm text-base-content/50">{DatesTimes.date_from_now(e(note, "created", ""))}</div>
+              <div
+                data-position="bottom"
+                phx-hook="Tooltip"
+                id={"my_note_" <> e(note, "id", "")}
+                class="relative"
+              >
+                <label
+                  class="tooltip-button btn btn-sm btn-circle btn-ghost"
+                  tabindex="0"
+                  role="button"
+                  aria-haspopup="true"
+                  aria-expanded="true"
+                >
+                  <#Icon solid="DotsHorizontal" class="w-4 h-4 opacity/70" />
+                </label>
+                  <ul
+                    tabindex="0"
+                    class="tooltip z-[99999999] menu shadow-sm bg-base-100 border border-base-content/10 w-52 absolute rounded-xl top-0 left-0 hidden"
+                    role="menu"
+                    aria-orientation="vertical"
+                  >
+                    <li>
+                      <button 
+                        type="button" 
+                        phx-click="edit_annotation" 
+                        phx-value-note-id={e(note, "id", "")}
+                        class="text-left cursor-pointer w-full"
+                      >
+                        {l("Edit annotation")}
+                      </button>
+                    </li>
+                    <li>
+                      <Bonfire.UI.Common.OpenModalLive
+                        id={"remove_annotation_for_#{e(note, "id", "")}"}
+                        title_text={l("Delete annotation")}
+                        no_actions
+                        open_btn_wrapper_class="text-left cursor-pointer text-error"
+                      >
+                        <div class="p-3 border-error/30 mt-3 border rounded-xl bg-error/10">
+                           <p class="text-error">{l("Are you sure you want to delete this annotation?")}</p>
+                          <button
+                            phx-click="delete_annotation"
+                            phx-value-note-id={e(note, "id", "")}
+                            class="btn btn-error w-full mt-3"
+                          >{l("Delete")}</button>
+                        </div>
+                        <:open_btn>
+                          {l("Delete annotation")}
+                        </:open_btn>
+                      </Bonfire.UI.Common.OpenModalLive>
+                    </li>
+                  </ul>
+                </div>
             </div>
           </div>
           <div class="prose">{e(note, "value", "")}</div>

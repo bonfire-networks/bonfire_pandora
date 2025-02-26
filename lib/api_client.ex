@@ -606,7 +606,7 @@ defmodule PanDoRa.API.Client do
       else
         page = Keyword.get(opts, :page, 0)
         per_page = Keyword.get(opts, :per_page, 20)
-        [page * per_page, (page + 1) * per_page - 1]
+        [page * per_page, (page + 1) * per_page]
       end
 
     payload = %{
@@ -660,12 +660,48 @@ defmodule PanDoRa.API.Client do
   def add_annotation(data) when is_map(data) do
     # Validate required fields
     required_fields = [:item, :layer, :in, :out, :value]
-    IO.inspect(data, label: "CAZZ")
     if Enum.all?(required_fields, &Map.has_key?(data, &1)) do
       make_request("addAnnotation", data)
     else
       {:error, "Missing required fields"}
     end
+  end
+
+  @doc """
+  Edits an existing annotation
+
+  ## Parameters
+    * `data` - Map containing:
+      * `:id` - annotation id (required)
+      * `:in` - in point in seconds (optional)
+      * `:out` - out point in seconds (optional)
+      * `:value` - annotation value/text (optional)
+
+  ## Examples
+      iex> edit_annotation(%{id: "annotation123", value: "Updated note text"})
+      {:ok, %{"id" => "annotation123", ...}}
+  """
+  def edit_annotation(data) when is_map(data) do
+    # Validate required fields
+    if Map.has_key?(data, :id) do
+      make_request("editAnnotation", data)
+    else
+      {:error, "Missing required id field"}
+    end
+  end
+
+  @doc """
+  Removes an annotation by its ID
+
+  ## Parameters
+    * `id` - The annotation ID to remove
+
+  ## Examples
+      iex> remove_annotation("annotation123")
+      {:ok, %{}}
+  """
+  def remove_annotation(id) when is_binary(id) do
+    make_request("removeAnnotation", %{id: id})
   end
 
   # Helper to conditionally add conditions based on options
