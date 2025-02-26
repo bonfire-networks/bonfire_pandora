@@ -704,6 +704,27 @@ defmodule PanDoRa.API.Client do
     make_request("removeAnnotation", %{id: id})
   end
 
+  @doc """
+  Edits metadata of a movie item
+
+  ## Parameters
+    * `data` - Map containing:
+      * `:id` - The item id (required)
+      * Additional key/value pairs for the fields to update
+
+  ## Examples
+      iex> edit_movie(%{id: "movie123", title: "New Title", year: "2023"})
+      {:ok, %{title: "New Title", year: "2023"}}
+  """
+  def edit_movie(data) when is_map(data) do
+    # Validate required fields
+    if Map.has_key?(data, :id) do
+      make_request("edit", data)
+    else
+      {:error, "Missing required field: id"}
+    end
+  end
+
   # Helper to conditionally add conditions based on options
   defp maybe_add_condition(conditions, opts, key, field) do
     case Keyword.get(opts, key) do

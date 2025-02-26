@@ -208,6 +208,37 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     end
   end
 
+  # Handle editing a movie
+  def handle_event("edit_movie", %{"movie" => movie_data}, socket) do
+    movie_id = socket.assigns.movie["id"]
+
+    # Convert string keys to atoms for the API client
+    edit_data =
+      movie_data
+      |> Map.new(fn {k, v} -> {String.to_existing_atom(k), v} end)
+      |> Map.put(:id, movie_id)
+
+    case Client.edit_movie(edit_data) do
+      {:ok, updated_fields} ->
+        # Update the movie in the socket with the updated fields
+        updated_movie = Map.merge(socket.assigns.movie, updated_fields)
+
+        socket =
+          socket
+          |> assign(:movie, updated_movie)
+          |> assign_flash(:info, l("Movie updated successfully"))
+
+        {:noreply, socket}
+
+      {:error, reason} ->
+        socket =
+          socket
+          |> assign_flash(:error, l("Failed to update movie: %{reason}", reason: reason))
+
+        {:noreply, socket}
+    end
+  end
+
   # Add a private function to fetch movies
   def fetch_movies(id) do
     debug("Fetching movie with ID: #{inspect(id)}")

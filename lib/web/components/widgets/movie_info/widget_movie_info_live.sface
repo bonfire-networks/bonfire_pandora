@@ -1,5 +1,101 @@
-<Bonfire.UI.Common.WidgetBlockLive widget_title={e(@widget_title, l("Movie Summary"))}>
-  <div x-data="{ show: false }" class="">
+<Bonfire.UI.Common.WidgetBlockLive>
+  <div class="flex justify-between items-center">
+    <div class="flex-1 text-sm font-semibold">{l "Movie info"}</div>
+    <span>
+    <Bonfire.UI.Common.OpenModalLive
+      id={"edit_movie_#{e(@movie, "id", "")}"}
+      title_text={l("Edit movie")}
+      no_actions
+      open_btn_wrapper_class="w-[24px] min-w-[24px] cursor-pointer btn-circle btn btn-soft btn-xs btn-ghost"
+    >
+      <div>
+        <form phx-submit="edit_movie" class="flex flex-col gap-4">
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text">{l("Title")}</span>
+            </label>
+            <input 
+              type="text" 
+              name="movie[title]" 
+              value={e(@movie, "title", "")} 
+              class="input input-bordered w-full" 
+              required
+            />
+          </div>
+          
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text">{l("Director")}</span>
+            </label>
+            <input 
+              type="text" 
+              name="movie[director]" 
+              value={is_list(@movie["director"]) && Enum.join(@movie["director"], ", ") || e(@movie, "director", "")} 
+              class="input input-bordered w-full"
+            />
+          </div>
+          
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text">{l("Year")}</span>
+            </label>
+            <input 
+              type="text" 
+              name="movie[year]" 
+              value={e(@movie, "year", "")} 
+              class="input input-bordered w-full"
+            />
+          </div>
+          
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text">{l("Duration (seconds)")}</span>
+            </label>
+            <input 
+              type="text" 
+              name="movie[duration]" 
+              value={e(@movie, "duration", "")} 
+              class="input input-bordered w-full"
+            />
+          </div>
+          
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text">{l("Section")}</span>
+            </label>
+            <input 
+              type="text" 
+              name="movie[sezione]" 
+              value={e(@movie, "sezione", "")} 
+              class="input input-bordered w-full"
+            />
+          </div>
+          
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text">{l("Summary")}</span>
+            </label>
+            <textarea 
+              name="movie[summary]" 
+              class="textarea textarea-bordered w-full h-32"
+            >{e(@movie, "summary", "")}</textarea>
+          </div>
+          
+          <div class="mt-4 flex justify-end">
+            <button type="submit" class="btn btn-primary">
+              {l("Save Changes")}
+            </button>
+          </div>
+        </form>
+      </div>
+      <:open_btn>
+        <#Icon iconify="ant-design:edit-filled" class="w-4 h-4" />
+      </:open_btn>
+    </Bonfire.UI.Common.OpenModalLive>
+    </span>
+  </div>
+  <div x-data="{ show: false }" class="mt-4">
+    
     <div class="text-base-content/70">
       <span class="font-semibold text-base-content">{e(@movie, "title", "")}</span>,
       {#if @movie["director"]}

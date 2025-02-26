@@ -87,8 +87,8 @@
         <textarea name="note" class="w-full textarea" placeholder={l("Add a public annotation")} value={@note_content}>{@note_content}</textarea>
         <div class="flex justify-between items-center">
           <div class="flex items-center gap-2">
-            <button type="button" data-role="annotation-checkpoint" data-in={e(@in_timestamp, "")} class="btn btn-xs btn-accent btn-soft">in: {Utils.format_duration(e(@in_timestamp, "0000")) || "00:00:00"}</button>
-            <button type="button" data-role="annotation-checkpoint" data-out={e(@out_timestamp, "")} class="btn btn-xs btn-accent btn-soft">out: {Utils.format_duration(e(@out_timestamp, "0000")) || "00:00:00"}</button>
+            <div data-role="annotation-checkpoint" data-in={e(@in_timestamp, "")} class="btn btn-xs btn-accent btn-soft">in: {e(@in_timestamp, "0000") || "00:00:00"}</div>
+            <div data-role="annotation-checkpoint" data-out={e(@out_timestamp, "")} class="btn btn-xs btn-accent btn-soft">out: {e(@out_timestamp, "0000") || "00:00:00"}</div>
           </div>
           <div class="flex gap-2">
             {#if @editing_mode}
