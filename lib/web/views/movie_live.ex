@@ -44,7 +44,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
           users: [
             secondary: [
               {Bonfire.PanDoRa.Web.WidgetMovieInfoLive,
-               [movie: movie, widget_title: "Movie Info"]}
+               [type: Surface.LiveComponent, id: "movie_info", movie: movie, widget_title: "Movie Info"]}
             ]
           ]
         )
@@ -212,6 +212,12 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   def handle_event("edit_movie", %{"movie" => movie_data}, socket) do
     movie_id = socket.assigns.movie["id"]
 
+    # Process the director and section fields to ensure they're lists
+    movie_data =
+      movie_data
+      |> process_director_field()
+      |> process_section_field()
+
     # Convert string keys to atoms for the API client
     edit_data =
       movie_data
@@ -236,6 +242,101 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
           |> assign_flash(:error, l("Failed to update movie: %{reason}", reason: reason))
 
         {:noreply, socket}
+    end
+  end
+
+  # Handle the live_select_change event for autocomplete
+  def handle_event("live_select_change", %{"field" => field, "text" => search_text}, socket) do
+    # Extract the field name from the form field identifier
+    field_name =
+      case field do
+        "movie_form_movie[sezione]" -> "sezione"
+        _ -> nil
+      end
+
+    if field_name do
+      # Perform a search for sections matching the text
+      case Client.fetch_grouped_metadata([], field: field_name, per_page: 10) do
+        {:ok, metadata} ->
+          sections = Map.get(metadata, field_name, [])
+          # Filter sections that match the search text
+          matching_sections =
+            sections
+            |> Enum.filter(fn %{"name" => name} ->
+              String.contains?(String.downcase(name), String.downcase(search_text))
+            end)
+            |> Enum.map(fn %{"name" => name} -> {name, name} end)
+
+          # Send the matching options back to the LiveSelect component
+          send_update(Bonfire.UI.Common.LiveSelectIntegrationLive,
+            id: "#{field}_live_select_component",
+            options: matching_sections
+          )
+
+          {:noreply, socket}
+
+        {:error, _reason} ->
+          {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Process the director field to ensure it's a list
+  defp process_director_field(movie_data) do
+    if Map.has_key?(movie_data, "director") do
+      director = movie_data["director"]
+
+      # Split the comma-separated string into a list, trim whitespace, and remove empty entries
+      director_list =
+        director
+        |> String.split(",")
+        |> Enum.map(&String.trim/1)
+        |> Enum.filter(&(&1 != ""))
+
+      # Update the movie_data with the director as a list
+      Map.put(movie_data, "director", director_list)
+    else
+      movie_data
+    end
+  end
+
+  # Process the section field to ensure it's a list
+  defp process_section_field(movie_data) do
+    if Map.has_key?(movie_data, "sezione") do
+      section = movie_data["sezione"]
+
+      section_list = cond do
+        # If it's already a list of strings, keep it as is
+        is_list(section) && Enum.all?(section, &is_binary/1) ->
+          section
+
+        # If it's a list of maps with "value" key (from LiveSelect), extract values
+        is_list(section) && Enum.all?(section, &(is_map(&1) && Map.has_key?(&1, "value"))) ->
+          Enum.map(section, & &1["value"])
+
+        # If it's a single string, convert to a list
+        is_binary(section) && String.trim(section) != "" ->
+          # Check if it's a comma-separated list
+          if String.contains?(section, ",") do
+            section
+            |> String.split(",")
+            |> Enum.map(&String.trim/1)
+            |> Enum.filter(&(&1 != ""))
+          else
+            [section]
+          end
+
+        # If it's nil or empty string, use an empty list
+        true ->
+          []
+      end
+
+      # Update the movie_data with the section as a list
+      Map.put(movie_data, "sezione", section_list)
+    else
+      movie_data
     end
   end
 
