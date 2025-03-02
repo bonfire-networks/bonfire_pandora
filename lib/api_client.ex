@@ -660,6 +660,7 @@ defmodule PanDoRa.API.Client do
   def add_annotation(data) when is_map(data) do
     # Validate required fields
     required_fields = [:item, :layer, :in, :out, :value]
+
     if Enum.all?(required_fields, &Map.has_key?(data, &1)) do
       make_request("addAnnotation", data)
     else

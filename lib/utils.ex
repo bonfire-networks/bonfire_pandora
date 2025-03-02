@@ -10,7 +10,7 @@ defmodule Bonfire.PanDoRa.Utils do
     total_minutes = trunc(seconds / 60)
     hours = div(total_minutes, 60)
     minutes = rem(total_minutes, 60)
-    remaining_seconds = seconds - (total_minutes * 60)
+    remaining_seconds = seconds - total_minutes * 60
 
     cond do
       hours > 0 -> "#{hours}h #{minutes}min"
@@ -31,11 +31,13 @@ defmodule Bonfire.PanDoRa.Utils do
   def generate_stable_id(item) do
     # Ensure we have all parts for a unique ID
     director = Map.get(item, "director", [])
-    director_string = cond do
-      is_list(director) -> Enum.join(director, "-")
-      is_binary(director) -> director
-      true -> ""
-    end
+
+    director_string =
+      cond do
+        is_list(director) -> Enum.join(director, "-")
+        is_binary(director) -> director
+        true -> ""
+      end
 
     [
       Map.get(item, "title", ""),

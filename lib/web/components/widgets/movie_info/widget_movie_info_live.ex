@@ -8,10 +8,9 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
 
   def mount(socket) do
     {:ok,
-      socket
-      |> assign(:available_sections, [])
-      |> fetch_available_sections()
-    }
+     socket
+     |> assign(:available_sections, [])
+     |> fetch_available_sections()}
   end
 
   def fetch_available_sections(socket) do

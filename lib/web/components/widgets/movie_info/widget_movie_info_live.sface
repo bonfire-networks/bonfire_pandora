@@ -1,59 +1,59 @@
 <div>
-<Bonfire.UI.Common.WidgetBlockLive>
-  <div>
-    <div class="flex justify-between items-center">
-      <div class="flex-1 text-sm font-semibold">{l "Movie info"}</div>
-      <span>
-      <Bonfire.UI.Common.OpenModalLive
-        id={"edit_movie_#{e(@movie, "id", "")}"}
-        title_text={l("Edit movie")}
-        no_actions
-        open_btn_wrapper_class="w-[24px] min-w-[24px] cursor-pointer btn-circle btn btn-soft btn-xs btn-ghost"
-      >
-        <div>
-          <form phx-submit="edit_movie" class="flex flex-col gap-4">
-            <div class="form-control w-full">
-              <label class="label">
-                <span class="label-text">{l("Title")}</span>
-              </label>
-              <input 
-                type="text" 
-                name="movie[title]" 
-                value={e(@movie, "title", "")} 
-                class="input input-bordered w-full" 
-                required
-              />
-            </div>
-            
-            <div class="form-control w-full">
-              <label class="label">
-                <span class="label-text">{l("Director")}</span>
-              </label>
-              <input 
-                type="text" 
-                name="movie[director]" 
-                value={is_list(@movie["director"]) && Enum.join(@movie["director"], ", ") || ""} 
-                placeholder={l("Enter directors separated by commas")}
-                class="input input-bordered w-full"
-              />
-              <label class="label">
-                <span class="label-text-alt">{l("Enter multiple directors separated by commas")}</span>
-              </label>
-            </div>
-            
-            <div class="form-control w-full">
-              <label class="label">
-                <span class="label-text">{l("Year")}</span>
-              </label>
-              <input 
-                type="text" 
-                name="movie[year]" 
-                value={e(@movie, "year", "")} 
-                class="input input-bordered w-full"
-              />
-            </div>
-            
-            <!-- <div class="form-control w-full">
+  <Bonfire.UI.Common.WidgetBlockLive>
+    <div>
+      <div class="flex justify-between items-center">
+        <div class="flex-1 text-sm font-semibold">{l("Movie info")}</div>
+        <span>
+          <Bonfire.UI.Common.OpenModalLive
+            id={"edit_movie_#{e(@movie, "id", "")}"}
+            title_text={l("Edit movie")}
+            no_actions
+            open_btn_wrapper_class="w-[24px] min-w-[24px] cursor-pointer btn-circle btn btn-soft btn-xs btn-ghost"
+          >
+            <div>
+              <form phx-submit="edit_movie" class="flex flex-col gap-4">
+                <div class="form-control w-full">
+                  <label class="label">
+                    <span class="label-text">{l("Title")}</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="movie[title]"
+                    value={e(@movie, "title", "")}
+                    class="input input-bordered w-full"
+                    required
+                  />
+                </div>
+
+                <div class="form-control w-full">
+                  <label class="label">
+                    <span class="label-text">{l("Director")}</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="movie[director]"
+                    value={(is_list(@movie["director"]) && Enum.join(@movie["director"], ", ")) || ""}
+                    placeholder={l("Enter directors separated by commas")}
+                    class="input input-bordered w-full"
+                  />
+                  <label class="label">
+                    <span class="label-text-alt">{l("Enter multiple directors separated by commas")}</span>
+                  </label>
+                </div>
+
+                <div class="form-control w-full">
+                  <label class="label">
+                    <span class="label-text">{l("Year")}</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="movie[year]"
+                    value={e(@movie, "year", "")}
+                    class="input input-bordered w-full"
+                  />
+                </div>
+
+                <!-- <div class="form-control w-full">
               <label class="label">
                 <span class="label-text">{l("Duration (seconds)")}</span>
               </label>
@@ -64,179 +64,175 @@
                 class="input input-bordered w-full"
               />
             </div> -->
-            
-            <div class="form-control w-full">
-              <label class="label">
-                <span class="label-text">{l("Section")}</span>
-              </label>
-              <Bonfire.UI.Common.BasicMultiselectLive
-                id={"section_multiselect_#{System.unique_integer()}"}
-                form_input_name={"movie[sezione][]"}
-                label={l("Select sections")}
-                preloaded_options={@available_sections || []}
-                selected_options={
-                  cond do
-                    is_list(@movie["sezione"]) -> 
-                      Enum.map(@movie["sezione"], fn section -> {section, section} end)
-                    is_binary(@movie["sezione"]) && @movie["sezione"] != "" -> 
-                      [{@movie["sezione"], @movie["sezione"]}]
-                    true -> 
-                      []
-                  end
-                }
-                show_search={true}
-                class="flex items-center w-full px-2 bg-opacity-75 border rounded-md cursor-pointer border-base-content/30 bg-base-100 sm:text-sm"
-              />
-              <label class="label">
-                <span class="label-text-alt">{l("Select existing sections or type to create new ones")}</span>
-              </label>
-            </div>
-            
-            <div class="form-control w-full">
-              <label class="label">
-                <span class="label-text">{l("Summary")}</span>
-              </label>
-              <textarea 
-                name="movie[summary]" 
-                class="textarea textarea-bordered w-full h-32"
-              >{e(@movie, "summary", "")}</textarea>
-            </div>
-            
-            <div class="mt-4 flex justify-end">
-              <button type="submit" class="btn btn-primary">
-                {l("Save Changes")}
-              </button>
-            </div>
-          </form>
-        </div>
-        <:open_btn>
-          <#Icon iconify="ant-design:edit-filled" class="w-4 h-4" />
-        </:open_btn>
-      </Bonfire.UI.Common.OpenModalLive>
-      </span>
-    </div>
-    <div x-data="{ show: false }" class="mt-4">
-      
-      <div class="text-base-content/70">
-        <span class="font-semibold text-base-content">{e(@movie, "title", "")}</span>,
-        {#if @movie["director"]}
-          {#for director <- List.wrap(@movie["director"]) |> Enum.intersperse(", ")}
-            {director}
-          {/for}
-        {/if}
-        ,
-        {#if @movie["year"]}
-          {e(@movie, "year", "")}
-        {/if}
-        ,
-        {#if @movie["duration"]}
-          {format_duration(e(@movie, "duration", ""))}
-        {/if}
-      </div>
 
-      <div class="mt-3">
-        <div class="">
-          <div class="transition text-sm prose prose-sm">
-            {rich(e(@movie, "summary", ""))}
+                <div class="form-control w-full">
+                  <label class="label">
+                    <span class="label-text">{l("Section")}</span>
+                  </label>
+                  <Bonfire.UI.Common.BasicMultiselectLive
+                    id={"section_multiselect_#{System.unique_integer()}"}
+                    form_input_name="movie[sezione][]"
+                    label={l("Select sections")}
+                    preloaded_options={@available_sections || []}
+                    selected_options={cond do
+                      is_list(@movie["sezione"]) ->
+                        Enum.map(@movie["sezione"], fn section -> {section, section} end)
+
+                      is_binary(@movie["sezione"]) && @movie["sezione"] != "" ->
+                        [{@movie["sezione"], @movie["sezione"]}]
+
+                      true ->
+                        []
+                    end}
+                    show_search
+                    class="flex items-center w-full px-2 bg-opacity-75 border rounded-md cursor-pointer border-base-content/30 bg-base-100 sm:text-sm"
+                  />
+                  <label class="label">
+                    <span class="label-text-alt">{l("Select existing sections or type to create new ones")}</span>
+                  </label>
+                </div>
+
+                <div class="form-control w-full">
+                  <label class="label">
+                    <span class="label-text">{l("Summary")}</span>
+                  </label>
+                  <textarea name="movie[summary]" class="textarea textarea-bordered w-full h-32">{e(@movie, "summary", "")}</textarea>
+                </div>
+
+                <div class="mt-4 flex justify-end">
+                  <button type="submit" class="btn btn-primary">
+                    {l("Save Changes")}
+                  </button>
+                </div>
+              </form>
+            </div>
+            <:open_btn>
+              <#Icon iconify="ant-design:edit-filled" class="w-4 h-4" />
+            </:open_btn>
+          </Bonfire.UI.Common.OpenModalLive>
+        </span>
+      </div>
+      <div x-data="{ show: false }" class="mt-4">
+        <div class="text-base-content/70">
+          <span class="font-semibold text-base-content">{e(@movie, "title", "")}</span>,
+          {#if @movie["director"]}
+            {#for director <- List.wrap(@movie["director"]) |> Enum.intersperse(", ")}
+              {director}
+            {/for}
+          {/if}
+          ,
+          {#if @movie["year"]}
+            {e(@movie, "year", "")}
+          {/if}
+          ,
+          {#if @movie["duration"]}
+            {format_duration(e(@movie, "duration", ""))}
+          {/if}
+        </div>
+
+        <div class="mt-3">
+          <div class="">
+            <div class="transition text-sm prose prose-sm">
+              {rich(e(@movie, "summary", ""))}
+            </div>
           </div>
+
+          <ul x-show="show" x-collapse x-cloak class="flex flex-col gap-3 w-full mt-3">
+            {#if @movie["sezione"]}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Sezione")}</span>
+                <button
+                  class="btn btn-xs btn-soft btn-primary"
+                  phx-click="filter_by_sezione"
+                  phx-value-id={e(@movie, "sezione", "")}
+                >
+                  <#Icon iconify="material-symbols:category-rounded" class="w-4 h-4" />
+                  {e(@movie, "sezione", "")}
+                </button>
+              </li>
+            {/if}
+            {#if @movie["edizione"]}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Edizione")}</span>
+                <button
+                  class="btn btn-xs btn-soft btn-primary"
+                  phx-click="filter_by_edizione"
+                  phx-value-id={e(@movie, "edizione", "")}
+                >
+                  <#Icon solid="calendar" class="w-4 h-4" />
+                  {e(@movie, "edizione", "")}
+                </button>
+              </li>
+            {/if}
+
+            {#if @movie["genre"]}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Genre")}</span>
+                <div class="badge badge-soft badge-info">
+                  <#Icon iconify="tabler:cards" class="w-4 h-4" />
+                  {@movie["genre"] |> List.wrap() |> Enum.join(", ")}
+                </div>
+              </li>
+            {/if}
+
+            {#if @movie["stream"]}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Aspect Ratio")}</span>
+                <span class="font-semibold text-sm">{Float.round(@movie["stream"]["aspectratio"], 3)}</span>
+              </li>
+            {/if}
+            {#if @movie["hue"]}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("HUE")}</span>
+                <span
+                  class="font-semibold text-sm px-2 py-1 rounded"
+                  style={"background-color: hsl(#{@movie["hue"]}, #{Float.round(@movie["saturation"] * 100, 1)}%, #{Float.round(@movie["lightness"] * 100, 1)}%);"}
+                >{Float.round(@movie["hue"], 3)}</span>
+              </li>
+            {/if}
+            {#if @movie["saturation"]}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Saturation")}</span>
+                <span class="font-semibold text-sm">{Float.round(@movie["saturation"] * 100, 3)}%</span>
+              </li>
+            {/if}
+            {#if @movie["lightness"]}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Lightness")}</span>
+                <span class="font-semibold text-sm">{Float.round(@movie["lightness"] * 100, 3)}%</span>
+              </li>
+            {/if}
+            {#if @movie["volume"]}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Volume")}</span>
+                <span class="font-semibold text-sm">{Float.round(@movie["volume"], 3)}</span>
+              </li>
+            {/if}
+            {#if @movie["cut"]}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Cuts per minute")}</span>
+                <span class="font-semibold text-sm">{@movie["cut"]}</span>
+              </li>
+            {/if}
+            {#if @movie["rights"]}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Rights level")}</span>
+                <span class="font-semibold text-sm">{@movie["rights"]}</span>
+              </li>
+            {/if}
+          </ul>
         </div>
 
-        <ul x-show="show" x-collapse x-cloak class="flex flex-col gap-3 w-full mt-3">
-          {#if @movie["sezione"]}
-            <li class="items-center flex justify-between">
-              <span class="text-sm text-base-content/50 font-medium">{l("Sezione")}</span>
-              <button
-                class="btn btn-xs btn-soft btn-primary"
-                phx-click="filter_by_sezione"
-                phx-value-id={e(@movie, "sezione", "")}
-              >
-                <#Icon iconify="material-symbols:category-rounded" class="w-4 h-4" />
-                {e(@movie, "sezione", "")}
-              </button>
-            </li>
-          {/if}
-          {#if @movie["edizione"]}
-            <li class="items-center flex justify-between">
-              <span class="text-sm text-base-content/50 font-medium">{l("Edizione")}</span>
-              <button
-                class="btn btn-xs btn-soft btn-primary"
-                phx-click="filter_by_edizione"
-                phx-value-id={e(@movie, "edizione", "")}
-              >
-                <#Icon solid="calendar" class="w-4 h-4" />
-                {e(@movie, "edizione", "")}
-              </button>
-            </li>
-          {/if}
-
-          {#if @movie["genre"]}
-            <li class="items-center flex justify-between">
-              <span class="text-sm text-base-content/50 font-medium">{l("Genre")}</span>
-              <div class="badge badge-soft badge-info">
-                <#Icon iconify="tabler:cards" class="w-4 h-4" />
-                {@movie["genre"] |> List.wrap() |> Enum.join(", ")}
-              </div>
-            </li>
-          {/if}
-
-          {#if @movie["stream"]}
-            <li class="items-center flex justify-between">
-              <span class="text-sm text-base-content/50 font-medium">{l("Aspect Ratio")}</span>
-              <span class="font-semibold text-sm">{Float.round(@movie["stream"]["aspectratio"], 3)}</span>
-            </li>
-          {/if}
-          {#if @movie["hue"]}
-            <li class="items-center flex justify-between">
-              <span class="text-sm text-base-content/50 font-medium">{l("HUE")}</span>
-              <span
-                class="font-semibold text-sm px-2 py-1 rounded"
-                style={"background-color: hsl(#{@movie["hue"]}, #{Float.round(@movie["saturation"] * 100, 1)}%, #{Float.round(@movie["lightness"] * 100, 1)}%);"}
-              >{Float.round(@movie["hue"], 3)}</span>
-            </li>
-          {/if}
-          {#if @movie["saturation"]}
-            <li class="items-center flex justify-between">
-              <span class="text-sm text-base-content/50 font-medium">{l("Saturation")}</span>
-              <span class="font-semibold text-sm">{Float.round(@movie["saturation"] * 100, 3)}%</span>
-            </li>
-          {/if}
-          {#if @movie["lightness"]}
-            <li class="items-center flex justify-between">
-              <span class="text-sm text-base-content/50 font-medium">{l("Lightness")}</span>
-              <span class="font-semibold text-sm">{Float.round(@movie["lightness"] * 100, 3)}%</span>
-            </li>
-          {/if}
-          {#if @movie["volume"]}
-            <li class="items-center flex justify-between">
-              <span class="text-sm text-base-content/50 font-medium">{l("Volume")}</span>
-              <span class="font-semibold text-sm">{Float.round(@movie["volume"], 3)}</span>
-            </li>
-          {/if}
-          {#if @movie["cut"]}
-            <li class="items-center flex justify-between">
-              <span class="text-sm text-base-content/50 font-medium">{l("Cuts per minute")}</span>
-              <span class="font-semibold text-sm">{@movie["cut"]}</span>
-            </li>
-          {/if}
-          {#if @movie["rights"]}
-            <li class="items-center flex justify-between">
-              <span class="text-sm text-base-content/50 font-medium">{l("Rights level")}</span>
-              <span class="font-semibold text-sm">{@movie["rights"]}</span>
-            </li>
-          {/if}
-        </ul>
-      </div>
-
-      <div class="flex justify-end">
-        <button
-          x-show={"#{is_long_summary?(@movie)}"}
-          @click="show = !show"
-          class="mt-4 btn btn-sm btn-secondary btn-soft"
-          x-text="show ? 'Read less' : 'Read more'"
-        >
-        </button>
+        <div class="flex justify-end">
+          <button
+            x-show={"#{is_long_summary?(@movie)}"}
+            @click="show = !show"
+            class="mt-4 btn btn-sm btn-secondary btn-soft"
+            x-text="show ? 'Read less' : 'Read more'"
+          >
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-</Bonfire.UI.Common.WidgetBlockLive>
+  </Bonfire.UI.Common.WidgetBlockLive>
 </div>

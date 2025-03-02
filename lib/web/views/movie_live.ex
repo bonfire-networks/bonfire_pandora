@@ -15,8 +15,10 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
       |> assign(:back, true)
       |> assign(:deleting_annotation_id, nil)
-      |> assign(:editing_annotation, nil)  # Add this to track which annotation is being edited
-      |> assign(:editing_mode, false)      # Add this to track if we're in editing mode
+      # Add this to track which annotation is being edited
+      |> assign(:editing_annotation, nil)
+      # Add this to track if we're in editing mode
+      |> assign(:editing_mode, false)
 
     {:ok, socket}
   end
@@ -36,15 +38,23 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> assign(:movie, movie)
         |> assign(:in_timestamp, nil)
         |> assign(:out_timestamp, nil)
-        |> assign(:note_content, "") # Initialize note_content
+        # Initialize note_content
+        |> assign(:note_content, "")
         |> assign(:public_notes, public_notes)
-        |> assign(:editing_annotation, nil)  # Initialize editing state
-        |> assign(:editing_mode, false)      # Initialize editing mode
+        # Initialize editing state
+        |> assign(:editing_annotation, nil)
+        # Initialize editing mode
+        |> assign(:editing_mode, false)
         |> assign(:sidebar_widgets,
           users: [
             secondary: [
               {Bonfire.PanDoRa.Web.WidgetMovieInfoLive,
-               [type: Surface.LiveComponent, id: "movie_info", movie: movie, widget_title: "Movie Info"]}
+               [
+                 type: Surface.LiveComponent,
+                 id: "movie_info",
+                 movie: movie,
+                 widget_title: "Movie Info"
+               ]}
             ]
           ]
         )
@@ -64,12 +74,12 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     end
   end
 
-
   def handle_event("mark_in_timestamp", %{"timestamp" => timestamp} = _params, socket) do
     # Handle the in timestamp - for example, store it in socket assigns
     socket =
       socket
       |> assign(:in_timestamp, timestamp)
+
     {:noreply, socket}
   end
 
@@ -91,20 +101,21 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
          out_timestamp <- socket.assigns.out_timestamp || in_timestamp,
          annotation_data = %{
            item: movie_id,
-           layer: "publicnotes", # assuming this is your layer ID for public notes
+           # assuming this is your layer ID for public notes
+           layer: "publicnotes",
            in: in_timestamp,
            out: out_timestamp,
            value: note
          },
          {:ok, response} <- Client.add_annotation(annotation_data) do
-
       # Update the public_notes list in the socket
       updated_notes = [response | socket.assigns.public_notes]
 
       {:noreply,
        socket
        |> assign(:public_notes, updated_notes)
-       |> assign(:note_content, "") # Clear the note content after successful submission
+       # Clear the note content after successful submission
+       |> assign(:note_content, "")
        |> assign_flash(:info, l("Annotation added successfully"))}
     else
       error ->
@@ -117,9 +128,10 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     case Client.remove_annotation(note_id) do
       {:ok, _response} ->
         # Remove the deleted note from the public_notes list
-        updated_notes = Enum.reject(socket.assigns.public_notes, fn note ->
-          note["id"] == note_id
-        end)
+        updated_notes =
+          Enum.reject(socket.assigns.public_notes, fn note ->
+            note["id"] == note_id
+          end)
 
         # Update the socket with the new list of notes
         Bonfire.UI.Common.OpenModalLive.close()
@@ -128,6 +140,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
          socket
          |> assign(:public_notes, updated_notes)
          |> assign_flash(:info, l("Annotation deleted successfully"))}
+
       error ->
         error("Error deleting annotation: #{inspect(error)}")
         {:noreply, assign_flash(socket, :error, l("Could not delete annotation"))}
@@ -137,13 +150,15 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   # Handle the edit annotation button click
   def handle_event("edit_annotation", %{"note-id" => note_id}, socket) do
     # Find the annotation to edit
-    annotation_to_edit = Enum.find(socket.assigns.public_notes, fn note ->
-      note["id"] == note_id
-    end)
+    annotation_to_edit =
+      Enum.find(socket.assigns.public_notes, fn note ->
+        note["id"] == note_id
+      end)
 
     if annotation_to_edit do
       # Set the form fields with the annotation data
-      socket = socket
+      socket =
+        socket
         |> assign(:editing_mode, true)
         |> assign(:editing_annotation, annotation_to_edit)
         |> assign(:note_content, annotation_to_edit["value"])
@@ -158,7 +173,8 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
   # Handle canceling the edit
   def handle_event("cancel_edit", _params, socket) do
-    socket = socket
+    socket =
+      socket
       |> assign(:editing_mode, false)
       |> assign(:editing_annotation, nil)
       |> assign(:note_content, "")
@@ -180,18 +196,19 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
            value: note
          },
          {:ok, updated_annotation} <- Client.edit_annotation(edit_data) do
-
       # Update the public_notes list in the socket
-      updated_notes = Enum.map(socket.assigns.public_notes, fn note ->
-        if note["id"] == annotation_id do
-          updated_annotation
-        else
-          note
-        end
-      end)
+      updated_notes =
+        Enum.map(socket.assigns.public_notes, fn note ->
+          if note["id"] == annotation_id do
+            updated_annotation
+          else
+            note
+          end
+        end)
 
       # Reset the editing state
-      socket = socket
+      socket =
+        socket
         |> assign(:public_notes, updated_notes)
         |> assign(:editing_mode, false)
         |> assign(:editing_annotation, nil)
@@ -307,31 +324,32 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     if Map.has_key?(movie_data, "sezione") do
       section = movie_data["sezione"]
 
-      section_list = cond do
-        # If it's already a list of strings, keep it as is
-        is_list(section) && Enum.all?(section, &is_binary/1) ->
-          section
-
-        # If it's a list of maps with "value" key (from LiveSelect), extract values
-        is_list(section) && Enum.all?(section, &(is_map(&1) && Map.has_key?(&1, "value"))) ->
-          Enum.map(section, & &1["value"])
-
-        # If it's a single string, convert to a list
-        is_binary(section) && String.trim(section) != "" ->
-          # Check if it's a comma-separated list
-          if String.contains?(section, ",") do
+      section_list =
+        cond do
+          # If it's already a list of strings, keep it as is
+          is_list(section) && Enum.all?(section, &is_binary/1) ->
             section
-            |> String.split(",")
-            |> Enum.map(&String.trim/1)
-            |> Enum.filter(&(&1 != ""))
-          else
-            [section]
-          end
 
-        # If it's nil or empty string, use an empty list
-        true ->
-          []
-      end
+          # If it's a list of maps with "value" key (from LiveSelect), extract values
+          is_list(section) && Enum.all?(section, &(is_map(&1) && Map.has_key?(&1, "value"))) ->
+            Enum.map(section, & &1["value"])
+
+          # If it's a single string, convert to a list
+          is_binary(section) && String.trim(section) != "" ->
+            # Check if it's a comma-separated list
+            if String.contains?(section, ",") do
+              section
+              |> String.split(",")
+              |> Enum.map(&String.trim/1)
+              |> Enum.filter(&(&1 != ""))
+            else
+              [section]
+            end
+
+          # If it's nil or empty string, use an empty list
+          true ->
+            []
+        end
 
       # Update the movie_data with the section as a list
       Map.put(movie_data, "sezione", section_list)
@@ -354,6 +372,4 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         nil
     end
   end
-
-
 end
