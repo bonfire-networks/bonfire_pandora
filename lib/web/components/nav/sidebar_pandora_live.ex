@@ -1,5 +1,5 @@
 defmodule Bonfire.PanDoRa.Components.SidebarPandoraLive do
-  use Bonfire.UI.Common.Web, :stateful_component
+  use Bonfire.UI.Common.Web, :stateless_component
 
   declare_nav_component("Links to user's groups (and optionally topics)", exclude_from_nav: false)
 end
