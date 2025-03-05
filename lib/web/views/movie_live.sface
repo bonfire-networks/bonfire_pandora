@@ -3,7 +3,7 @@
     <div :hook id="vidstack_movie_player">
       <media-player class="player" tabindex="0">
         <media-provider>
-          <video src={Client.get_pandora_url() <> "/" <> @movie["id"] <> "/480p1.mp4?"} preload="auto">
+          <video src={"#{Client.get_pandora_url()}/#{@movie["id"]}/480p1.mp4?"} preload="auto">
           </video>
         </media-provider>
 
@@ -166,7 +166,7 @@
       </div>
       <div
         :for={note <- @public_notes}
-        id={"note-" <> to_string(note["id"])}
+        id={"note-#{note["id"]}"}
         class="flex items-top gap-3 p-3 border-b border-base-content/10 pb-4"
       >
         <div class="avatar">
@@ -191,7 +191,7 @@
               <div
                 data-position="bottom"
                 phx-hook="Tooltip"
-                id={"my_note_" <> e(note, "id", "")}
+                id={"my_note_#{e(note, "id", "")}"}
                 class="relative"
               >
                 <label

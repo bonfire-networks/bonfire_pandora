@@ -27,7 +27,7 @@
     <div
       data-position="bottom"
       phx-hook="Tooltip"
-      id={"my_list_" <> e(list, "id", "")}
+      id={"my_list_#{e(list, "id", "")}"}
       class="relative"
     >
       <label
