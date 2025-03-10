@@ -285,6 +285,8 @@ defmodule PanDoRa.API.Client do
         "format",
         "sezione",
         "edizione",
+        "selezionato",
+        "cutsperminute",
         "featuring"
       ]
     }

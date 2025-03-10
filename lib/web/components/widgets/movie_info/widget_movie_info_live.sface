@@ -9,7 +9,7 @@
             title_text={l("Edit movie")}
             no_actions
             open_btn_wrapper_class="w-[24px] min-w-[24px] cursor-pointer btn-circle btn btn-soft btn-xs btn-ghost"
-          >
+            >
             <div>
               <form phx-submit="edit_movie" class="flex flex-col gap-4">
                 <div class="form-control w-full">
@@ -112,21 +112,19 @@
           </Bonfire.UI.Common.OpenModalLive>
         </span>
       </div>
-      <div x-data="{ show: false }" class="mt-4">
+      <div  class="mt-4">
         <div class="text-base-content/70">
           <span class="font-semibold text-base-content">{e(@movie, "title", "")}</span>,
           {#if @movie["director"]}
             {#for director <- List.wrap(@movie["director"]) |> Enum.intersperse(", ")}
               {director}
-            {/for}
+            {/for},
           {/if}
-          ,
           {#if @movie["year"]}
-            {e(@movie, "year", "")}
+            {e(@movie, "year", "")},
           {/if}
-          ,
           {#if @movie["duration"]}
-            {format_duration(e(@movie, "duration", ""))}
+            {Utils.format_duration(e(@movie, "duration", ""))}
           {/if}
         </div>
 
@@ -137,7 +135,7 @@
             </div>
           </div>
 
-          <ul x-show="show" x-collapse x-cloak class="flex flex-col gap-3 w-full mt-3">
+          <ul id="movie_more_info" class="flex flex-col gap-3 w-full mt-3">
             {#if @movie["sezione"]}
               <li class="items-center flex justify-between">
                 <span class="text-sm text-base-content/50 font-medium">{l("Sezione")}</span>
@@ -161,6 +159,19 @@
                 >
                   <#Icon solid="calendar" class="w-4 h-4" />
                   {e(@movie, "edizione", "")}
+                </button>
+              </li>
+            {/if}
+            {#if @movie["selezionato"]}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Selezionato")}</span>
+                <button
+                  class="btn btn-xs btn-soft btn-primary"
+                  phx-click="filter_by_selezionato"
+                  phx-value-id={e(@movie, "selezionato", "")}
+                >
+                  <#Icon solid="calendar" class="w-4 h-4" />
+                  {e(@movie, "selezionato", "")}
                 </button>
               </li>
             {/if}
@@ -208,10 +219,10 @@
                 <span class="font-semibold text-sm">{Float.round(@movie["volume"], 3)}</span>
               </li>
             {/if}
-            {#if @movie["cut"]}
+            {#if @movie["cutsperminute"]}
               <li class="items-center flex justify-between">
                 <span class="text-sm text-base-content/50 font-medium">{l("Cuts per minute")}</span>
-                <span class="font-semibold text-sm">{@movie["cut"]}</span>
+                <span class="font-semibold text-sm">{Float.round(@movie["cutsperminute"], 3)}</span>
               </li>
             {/if}
             {#if @movie["rights"]}
@@ -223,15 +234,16 @@
           </ul>
         </div>
 
-        <div class="flex justify-end">
+        <!-- <div class="flex justify-end">
+
           <button
-            x-show={"#{is_long_summary?(@movie)}"}
-            @click="show = !show"
+            :if={is_long_summary?(@movie)}
+            phx-click={JS.toggle(to: "#movie_more_info")}
             class="mt-4 btn btn-sm btn-secondary btn-soft"
-            x-text="show ? 'Read less' : 'Read more'"
           >
+            {l("Read more")}
           </button>
-        </div>
+        </div> -->
       </div>
     </div>
   </Bonfire.UI.Common.WidgetBlockLive>

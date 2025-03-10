@@ -17,7 +17,7 @@
         {#if @movie["duration"]}
           <div class="badge badge-sm badge-ghost">
             <#Icon iconify="carbon:time" class="w-4 h-4" />
-            {format_duration(e(@movie, "duration", ""))}
+            {Utils.format_duration(e(@movie, "duration", ""))}
           </div>
         {/if}
         {#if @movie["sezione"]}
