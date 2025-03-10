@@ -8,7 +8,7 @@
     {#else}
       <img
         class="size-24 rounded-box"
-        src={"/archive/proxy/image/#{e(@movie, "id", "")}/icon128.jpg"}
+        src={"#{Client.get_pandora_url()}/#{e(@movie, "id", "")}/icon128.jpg"}
         data-movie-id={e(@movie, "id", "")}
       />
     {/if}

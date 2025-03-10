@@ -88,18 +88,23 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   #   end
   # end
 
-  def update(assigns, socket) do
-    debug("Updating SearchComponent")
-
-    socket =
-      socket
-      |> stream_configure(:search_results,
+  def mount(socket) do
+    socket = socket
+    |> stream_configure(:search_results,
         dom_id: &"result-#{&1["stable_id"] || Utils.generate_stable_id(&1)}"
       )
       |> stream(:search_results, [])
       |> assign(@initial_assigns)
       |> assign(:loading_states, MapSet.new())
       |> track_loading(:initial_load, true)
+    {:ok, socket}
+  end
+
+  def update(assigns, socket) do
+    debug("Updating SearchComponent")
+
+    socket =
+      socket
       |> assign(assigns) # Apply incoming assigns last
 
     # if connected?(socket) do
