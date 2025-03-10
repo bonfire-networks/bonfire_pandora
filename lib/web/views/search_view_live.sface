@@ -1,0 +1,5 @@
+ <Bonfire.PanDoRa.Web.SearchLive 
+      id="search-component"
+      term={@term}
+      current_user={@current_user}
+    />

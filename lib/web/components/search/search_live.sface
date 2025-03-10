@@ -1,6 +1,6 @@
 <div class="w-full max-w-full flex flex-col feed w-full max-w-full lg:rounded-xl lg:shadow bg-base-100">
   <div class="flex rounded-t-xl border-b border-base-content/10 flex-col gap-2 p-3">
-    <form change="validate" phx-submit="search" action="?" autocomplete="off">
+    <form change="validate" phx-submit="search" phx-target={@myself} action="?" autocomplete="off">
       <div class="flex gap-4">
         <div class="flex-grow relative">
           <input
@@ -38,6 +38,7 @@
               <li class="w-full" id={"director-#{director}"}>
                 <a
                   phx-click="filter_by_director"
+                phx-target={@myself}
                   phx-value-director={director}
                   class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": director in @selected_director}
                   disabled={@loading}
@@ -79,6 +80,7 @@
                 <a
                   phx-click="filter_by_sezione"
                   phx-value-sezione={sezione}
+                   phx-target={@myself}
                   class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": sezione in @selected_sezione}
                   disabled={@loading}
                 >
@@ -120,6 +122,7 @@
                 <a
                   phx-click="filter_by_edizione"
                   phx-value-edizione={edizione}
+                   phx-target={@myself}
                   class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": edizione in @selected_edizione}
                   disabled={@loading}
                 >
@@ -161,6 +164,7 @@
                 <a
                   phx-click="filter_by_featuring"
                   phx-value-featuring={featuring}
+                   phx-target={@myself}
                   class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": featuring in @selected_featuring}
                   disabled={@loading}
                 >
@@ -222,6 +226,7 @@
       <button
         type="button"
         phx-click="clear_filters"
+         phx-target={@myself}
         class="btn btn-ghost btn-soft gap-2"
         disabled={@loading}
       >

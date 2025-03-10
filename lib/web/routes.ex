@@ -11,7 +11,7 @@ defmodule Bonfire.PanDoRa.Web.Routes do
       scope "/archive/", Bonfire.PanDoRa.Web do
         pipe_through(:browser)
 
-        live("/", SearchLive)
+        live("/", SearchViewLive)
         get("/proxy/image/*path", ProxyController, :proxy_image)
         get("/proxy/video/*path", ProxyController, :proxy_video)
       end

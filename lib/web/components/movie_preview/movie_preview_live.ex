@@ -4,5 +4,6 @@ defmodule Bonfire.PanDoRa.Components.MoviePreviewLive do
   alias Bonfire.PanDoRa.Utils
   prop movie_id, :string, required: true
   prop movie, :map, required: true
-
+  # New prop to support the optimized image approach
+  prop image_src, :string, default: nil
 end

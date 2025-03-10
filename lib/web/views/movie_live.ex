@@ -15,6 +15,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
       |> assign(:back, true)
       |> assign(:deleting_annotation_id, nil)
+      |> assign(:note_content, "")
       # Add this to track which annotation is being edited
       |> assign(:editing_annotation, nil)
       # Add this to track if we're in editing mode
