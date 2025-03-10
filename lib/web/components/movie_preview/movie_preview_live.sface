@@ -1,10 +1,10 @@
 <li id={@movie_id} class="list-row">
   <div><img
       class="size-24 rounded-box"
-      src={"#{Client.get_pandora_url()}/#{e(@movie, "id", "")}/icon128.jpg"}
+      src={"/archive/proxy/image/#{e(@movie, "id", "")}/icon128.jpg"}
     /></div>
   <div>
-    <LinkLive to={"/archive/movies/#{e(@movie, "id", "")}"} class="link link-hover text-base">{rich(e(@movie, "title", ""))}</LinkLive>
+    <LinkLive to={~p"archive/movies/#{e(@movie, "id", "")}"} class="link link-hover text-base">{rich(e(@movie, "title", ""))}</LinkLive>
     {#if @movie["director"]}
       <div class="">
         {#for director <- List.wrap(@movie["director"]) |> Enum.intersperse(", ")}
