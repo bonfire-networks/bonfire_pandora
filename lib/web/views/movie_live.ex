@@ -5,7 +5,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
   @behaviour Bonfire.UI.Common.LiveHandler
 
-  on_mount {LivePlugs, [Bonfire.UI.Me.LivePlugs.LoadCurrentUser]}
+  on_mount {LivePlugs, [Bonfire.UI.Me.LivePlugs.UserRequired]}
 
   def mount(_params, _session, socket) do
     debug("Mounting MovieLive")

@@ -12,8 +12,6 @@ defmodule Bonfire.PanDoRa.Web.Routes do
         pipe_through(:browser)
 
         live("/", SearchViewLive)
-        get("/proxy/image/*path", ProxyController, :proxy_image)
-        get("/proxy/video/*path", ProxyController, :proxy_video)
       end
 
       # pages only guests can view
