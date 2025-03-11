@@ -17,7 +17,12 @@
       <LinkLive to={~p"archive/movies/#{e(@movie, "id", "")}"} class="link link-hover text-base font-semibold break-words max-w-full">{rich(e(@movie, "title", ""))}</LinkLive>    {#if @movie["director"]}
       <div class="">
         {#for director <- List.wrap(@movie["director"]) |> Enum.intersperse(", ")}
-          <span class="text-xs uppercase font-semibold opacity-60">{director}</span>
+          <span 
+            phx-click="filter_by_director"
+            phx-target={@event_target}
+            phx-value-id={director}
+            class="link link-hover text-xs uppercase font-semibold opacity-60">{director}
+          </span>
         {/for}
       </div>
     {/if}
@@ -33,6 +38,7 @@
           <button
             class="btn btn-xs btn-soft btn-primary"
             phx-click="filter_by_sezione"
+            phx-target={@event_target}
             phx-value-id={e(@movie, "sezione", "")}
           >
             <#Icon iconify="material-symbols:category-rounded" class="w-4 h-4" />
@@ -43,6 +49,7 @@
           <button
             class="btn btn-xs btn-soft btn-primary"
             phx-click="filter_by_edizione"
+            phx-target={@event_target}
             phx-value-id={e(@movie, "edizione", "")}
           >
             <#Icon solid="calendar" class="w-4 h-4" />

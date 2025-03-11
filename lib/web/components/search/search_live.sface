@@ -38,8 +38,8 @@
               <li class="w-full" id={"director-#{director}"}>
                 <a
                   phx-click="filter_by_director"
-                phx-target={@myself}
-                  phx-value-director={director}
+                  phx-target={@myself}
+                  phx-value-id={director}
                   class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": director in @selected_director}
                   disabled={@loading}
                 >
@@ -79,7 +79,7 @@
               <li class="w-full" id={"sezione-#{sezione}"}>
                 <a
                   phx-click="filter_by_sezione"
-                  phx-value-sezione={sezione}
+                  phx-value-id={sezione}
                    phx-target={@myself}
                   class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": sezione in @selected_sezione}
                   disabled={@loading}
@@ -121,7 +121,7 @@
               <li class="w-full" id={"edizione-#{edizione}"}>
                 <a
                   phx-click="filter_by_edizione"
-                  phx-value-edizione={edizione}
+                  phx-value-id={edizione}
                    phx-target={@myself}
                   class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": edizione in @selected_edizione}
                   disabled={@loading}
@@ -163,7 +163,7 @@
               <li class="w-full" id={"featuring-#{featuring}"}>
                 <a
                   phx-click="filter_by_featuring"
-                  phx-value-featuring={featuring}
+                  phx-value-id={featuring}
                    phx-target={@myself}
                   class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": featuring in @selected_featuring}
                   disabled={@loading}
@@ -251,7 +251,7 @@
         class="list bg-base-100 rounded-box shadow-md"
       >
         {#for {id, result} <- @streams.search_results}
-          <Bonfire.PanDoRa.Components.MoviePreviewLive movie={result} movie_id={id} />
+          <Bonfire.PanDoRa.Components.MoviePreviewLive event_target={@myself} movie={result} movie_id={id} />
         {/for}
       </ul>
       <div id="search-results-sentinel" phx-update="ignore">

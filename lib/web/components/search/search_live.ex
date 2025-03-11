@@ -384,7 +384,7 @@ end
 
     socket =
       socket
-      |> toggle_filter(filter_type, params[filter_type])
+      |> toggle_filter(filter_type, params["id"])
 
     {:noreply, socket}
   end
@@ -730,6 +730,11 @@ end
         track_loading(socket, :global_load, false)
     end
   end
+
+  # def toggle_filter(socket, filter_type, value) do
+  #   debug("Toggling filter: #{filter_type} = #{value}")
+  #   {:noreply, socket}
+  # end
 
   defp toggle_filter(socket, filter_type, value)
        when filter_type in @filter_types and is_binary(value) do
