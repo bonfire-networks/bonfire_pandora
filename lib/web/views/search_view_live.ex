@@ -23,6 +23,7 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
   def mount(_params, _session, socket) do
     {:ok,
       socket
+      |> assign(:force_live, true)
       |> assign(:page_title, "Search in your archive")
       |> assign(:without_secondary_widgets, true)
       |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
