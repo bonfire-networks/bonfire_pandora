@@ -114,18 +114,22 @@
       </div>
       <div  class="mt-4">
         <div class="text-base-content/70">
-          <span class="font-semibold text-base-content">{e(@movie, "title", "")}</span>,
+          <span class="font-semibold text-base-content">{raw e(@movie, "title", "")}</span>
           {#if @movie["director"]}
+            ,
             {#for director <- List.wrap(@movie["director"]) |> Enum.intersperse(", ")}
               {director}
-            {/for},
+            {/for}
           {/if}
           {#if @movie["year"]}
+          ,
             {e(@movie, "year", "")},
           {/if}
           {#if @movie["duration"]}
+          ,
             {Utils.format_duration(e(@movie, "duration", ""))}
           {/if}
+          
         </div>
 
         <div class="mt-3">
