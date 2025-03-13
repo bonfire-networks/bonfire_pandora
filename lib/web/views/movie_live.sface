@@ -109,7 +109,7 @@
     <div class="flex flex-col gap-4">
       <div class="p-3 bg-base-200 border-b border-base-content/10">
         <form
-          phx-submit={if @editing_mode, do: "update_note", else: "create_note"}
+          phx-submit={if @editing_mode, do: "update_annotation", else: "add_annotation"}
           id="create_annotation_form"
           phx-change="validate_note"
           class="flex flex-col gap-3 pb-3"
@@ -149,6 +149,7 @@
                 <a
                   href="https://wiki.archivioperilcinemaindipendenteitaliano.it/"
                   class="btn btn-sm btn-info btn-soft"
+                  target="_blank"
                 ><#Icon iconify="ph:info-fill" class="w-4 h-4" />{l("Learn")}</a>
                 <button
                   type="submit"
@@ -162,6 +163,15 @@
           </div>
         </form>
       </div>
+
+      <StatefulComponent
+        module={Bonfire.UI.Social.ThreadLive}
+        :if={@media}
+        id={id(@media)}
+        thread_id={id(@media)}
+        showing_within={:annotations}
+      />
+
       <div
         :for={note <- @public_notes}
         id={"note-#{note["id"]}"}
@@ -184,7 +194,7 @@
                 data-in={e(note, "in", "")}
                 data-out={e(note, "out", "")}
                 class="btn btn-soft btn-accent btn-xs"
-              >From {Utils.format_duration(e(note, "in", ""))} to {Utils.format_duration(e(note, "out", ""))}</button>
+              >From {Bonfire.Common.DatesTimes.format_duration(e(note, "in", ""))} to {Bonfire.Common.DatesTimes.format_duration(e(note, "out", ""))}</button>
               <div class="text-sm text-base-content/50">{DatesTimes.date_from_now(e(note, "created", ""))}</div>
               <div
                 data-position="bottom"

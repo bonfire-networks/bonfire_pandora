@@ -127,7 +127,7 @@
           {/if}
           {#if @movie["duration"]}
             ,
-            {Utils.format_duration(e(@movie, "duration", ""))}
+            {Bonfire.Common.DatesTimes.format_duration(e(@movie, "duration", ""))}
           {/if}
         </div>
 

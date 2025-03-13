@@ -2,6 +2,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   use Bonfire.UI.Common.Web, :surface_live_view
   alias PanDoRa.API.Client
   alias Bonfire.PanDoRa.Utils
+  alias Bonfire.PanDoRa.Archives
 
   @behaviour Bonfire.UI.Common.LiveHandler
 
@@ -37,6 +38,10 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> assign(:back, true)
         |> assign(:page_title, movie["title"] || "")
         |> assign(:movie, movie)
+        |> assign(
+          :media,
+          ok_unwrap(Archives.movie_get_media(movie["id"]) |> debug("movie_get_media"))
+        )
         |> assign(:in_timestamp, nil)
         |> assign(:out_timestamp, nil)
         # Initialize note_content
@@ -96,21 +101,17 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     {:noreply, socket |> assign(:note_valid, valid) |> assign(:note_content, note)}
   end
 
-  def handle_event("create_note", %{"note" => note}, socket) do
-    with movie_id <- socket.assigns.movie["id"],
-         in_timestamp <- socket.assigns.in_timestamp || 0.0,
-         out_timestamp <- socket.assigns.out_timestamp || in_timestamp,
-         annotation_data = %{
-           item: movie_id,
-           # assuming this is your layer ID for public notes
-           layer: "publicnotes",
-           in: in_timestamp,
-           out: out_timestamp,
-           value: note
-         },
-         {:ok, response} <- Client.add_annotation(annotation_data) do
+  def handle_event("add_annotation", %{"note" => note}, socket) do
+    with {:ok, annotation} <-
+           Archives.add_annotation(
+             socket.assigns.movie,
+             note,
+             socket.assigns.in_timestamp,
+             socket.assigns.out_timestamp,
+             current_user: current_user(socket)
+           ) do
       # Update the public_notes list in the socket
-      updated_notes = [response | socket.assigns.public_notes]
+      updated_notes = [annotation | socket.assigns.public_notes]
 
       {:noreply,
        socket
@@ -120,7 +121,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
        |> assign_flash(:info, l("Annotation added successfully"))}
     else
       error ->
-        error("Error creating note: #{inspect(error)}")
+        error(error, "Error creating note")
         {:noreply, assign_flash(socket, :error, l("Could not create note"))}
     end
   end
@@ -143,7 +144,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
          |> assign_flash(:info, l("Annotation deleted successfully"))}
 
       error ->
-        error("Error deleting annotation: #{inspect(error)}")
+        error(error, "Error deleting annotation")
         {:noreply, assign_flash(socket, :error, l("Could not delete annotation"))}
     end
   end
@@ -186,7 +187,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   end
 
   # Handle submitting the edit
-  def handle_event("update_note", %{"note" => note}, socket) do
+  def handle_event("update_annotation", %{"note" => note}, socket) do
     with annotation_id <- socket.assigns.editing_annotation["id"],
          in_timestamp <- socket.assigns.in_timestamp,
          out_timestamp <- socket.assigns.out_timestamp,
