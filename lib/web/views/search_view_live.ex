@@ -22,13 +22,12 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
 
   def mount(_params, _session, socket) do
     {:ok,
-      socket
-      |> assign(:force_live, true)
-      |> assign(:page_title, "Search in your archive")
-      |> assign(:without_secondary_widgets, true)
-      |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
-      |> assign(:term, nil)
-    }
+     socket
+     |> assign(:force_live, true)
+     |> assign(:page_title, "Search in your archive")
+     |> assign(:without_secondary_widgets, true)
+     |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
+     |> assign(:term, nil)}
   end
 
   # Keep your existing handle_params implementation
@@ -37,5 +36,4 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
   end
 
   def handle_params(_, _, socket), do: {:noreply, socket}
-
 end

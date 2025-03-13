@@ -12,7 +12,10 @@
             end}
           /></div>
         <div class="flex flex-col gap-0">
-          <LinkLive to={~p"/archive/lists/#{e(list, "id", "")}"} class="text-sm link link-hover font-medium">{e(list, "name", "")}</LinkLive>
+          <LinkLive
+            to={~p"/archive/lists/#{e(list, "id", "")}"}
+            class="text-sm link link-hover font-medium"
+          >{e(list, "name", "")}</LinkLive>
           <p class="list-col-wrap text-xs text-base-content/70">
             {e(list, "description", "")}
           </p>

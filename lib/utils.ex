@@ -50,5 +50,4 @@ defmodule Bonfire.PanDoRa.Utils do
     |> :erlang.phash2()
     |> to_string()
   end
-
 end

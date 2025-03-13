@@ -89,14 +89,16 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   # end
 
   def mount(socket) do
-    socket = socket
-    |> stream_configure(:search_results,
+    socket =
+      socket
+      |> stream_configure(:search_results,
         dom_id: &"result-#{&1["stable_id"] || Utils.generate_stable_id(&1)}"
       )
       |> stream(:search_results, [])
       |> assign(@initial_assigns)
       |> assign(:loading_states, MapSet.new())
       |> track_loading(:initial_load, true)
+
     {:ok, socket}
   end
 
@@ -105,69 +107,72 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
     socket =
       socket
-      |> assign(assigns) # Apply incoming assigns last
+      # Apply incoming assigns last
+      |> assign(assigns)
 
     # if connected?(socket) do
-      socket =
-        if not is_nil(assigns[:term]) and assigns.term != "" do
-          # If we have a term, perform a search
-          do_initial_search(socket, assigns.term)
-        else
-          # Otherwise load the initial data
-          fetch_initial_data(socket)
-        end
+    socket =
+      if not is_nil(assigns[:term]) and assigns.term != "" do
+        # If we have a term, perform a search
+        do_initial_search(socket, assigns.term)
+      else
+        # Otherwise load the initial data
+        fetch_initial_data(socket)
+      end
 
-      {:ok, socket}
+    {:ok, socket}
   end
 
   # Add this helper function for the initial search
-defp do_initial_search(socket, term) do
-  socket = track_loading(socket, :search_load, true)
+  defp do_initial_search(socket, term) do
+    socket = track_loading(socket, :search_load, true)
 
-  conditions =
-    build_search_conditions(%{
-      term: term,
-      selected_director: socket.assigns.selected_director,
-      selected_sezione: socket.assigns.selected_sezione,
-      selected_edizione: socket.assigns.selected_edizione,
-      selected_featuring: socket.assigns.selected_featuring
-    })
+    conditions =
+      build_search_conditions(%{
+        term: term,
+        selected_director: socket.assigns.selected_director,
+        selected_sezione: socket.assigns.selected_sezione,
+        selected_edizione: socket.assigns.selected_edizione,
+        selected_featuring: socket.assigns.selected_featuring
+      })
 
-  case Client.find(
-         conditions: conditions,
-         range: [0, @default_per_page],
-         keys: @default_keys,
-         total: true
-       ) do
-    {:ok, %{items: items}} when is_list(items) ->
-      {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
+    case Client.find(
+           conditions: conditions,
+           range: [0, @default_per_page],
+           keys: @default_keys,
+           total: true
+         ) do
+      {:ok, %{items: items}} when is_list(items) ->
+        {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
 
-      socket =
+        socket =
+          socket
+          |> stream(:search_results, prepare_items(items_to_show), reset: true)
+          |> assign(
+            has_more_items: has_more,
+            current_count: length(items_to_show),
+            page: 0
+          )
+          |> track_loading(:search_load, false)
+
+        # Handle metadata fetch separately
+        case fetch_metadata(socket, conditions) do
+          {:ok, updated_socket} ->
+            updated_socket
+
+          {:error, error_socket} ->
+            error_socket
+            |> put_flash(:error, l("Error updating filters"))
+        end
+
+      other ->
+        error(other, "Search failed")
+
         socket
-        |> stream(:search_results, prepare_items(items_to_show), reset: true)
-        |> assign(
-          has_more_items: has_more,
-          current_count: length(items_to_show),
-          page: 0
-        )
+        |> assign_error(l("Search failed"))
         |> track_loading(:search_load, false)
-
-      # Handle metadata fetch separately
-      case fetch_metadata(socket, conditions) do
-        {:ok, updated_socket} -> updated_socket
-        {:error, error_socket} ->
-          error_socket
-          |> put_flash(:error, l("Error updating filters"))
-      end
-
-    other ->
-      error(other, "Search failed")
-
-      socket
-      |> assign_error(l("Search failed"))
-      |> track_loading(:search_load, false)
+    end
   end
-end
 
   # def handle_info(:load_initial_data, socket) do
   #   socket = track_loading(socket, :initial_load, true)
@@ -184,6 +189,7 @@ end
 
   def do_component_search(socket, term) do
     socket = track_loading(socket, :search_load, true)
+
     conditions =
       build_search_conditions(%{
         term: term,
@@ -192,14 +198,15 @@ end
         selected_edizione: socket.assigns.selected_edizione,
         selected_featuring: socket.assigns.selected_featuring
       })
-      case Client.find(
+
+    case Client.find(
            conditions: conditions,
            range: [0, @default_per_page],
            keys: @default_keys,
            total: true
          ) do
-        {:ok, %{items: items}} when is_list(items) ->
-          {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
+      {:ok, %{items: items}} when is_list(items) ->
+        {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
 
         socket =
           socket
@@ -286,16 +293,16 @@ end
   # end
 
   # Keep these handlers for search operations triggered by events
-def handle_info({:do_component_search, id, term}, socket) when socket.id == id do
-  debug("Searching for #{term} in component #{id}")
-  socket = do_initial_search(socket, term)
-  {:noreply, socket}
-end
+  def handle_info({:do_component_search, id, term}, socket) when socket.id == id do
+    debug("Searching for #{term} in component #{id}")
+    socket = do_initial_search(socket, term)
+    {:noreply, socket}
+  end
 
-def handle_info({:do_search, term}, socket) do
-  socket = do_initial_search(socket, term)
-  {:noreply, socket}
-end
+  def handle_info({:do_search, term}, socket) do
+    socket = do_initial_search(socket, term)
+    {:noreply, socket}
+  end
 
   def handle_info({_ref, {filter_type, data}}, socket) when filter_type in @filter_types do
     # Update the corresponding filter data in assigns

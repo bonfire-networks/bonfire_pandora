@@ -146,7 +146,10 @@
                   {l("Update")}
                 </button>
               {#else}
-                <a href={"https://wiki.archivioperilcinemaindipendenteitaliano.it/"} class="btn btn-sm btn-info btn-soft"><#Icon iconify="ph:info-fill" class="w-4 h-4" />{l("Learn")}</a>
+                <a
+                  href="https://wiki.archivioperilcinemaindipendenteitaliano.it/"
+                  class="btn btn-sm btn-info btn-soft"
+                ><#Icon iconify="ph:info-fill" class="w-4 h-4" />{l("Learn")}</a>
                 <button
                   type="submit"
                   class="btn btn-sm btn-primary"

@@ -1,10 +1,7 @@
 <li id={@movie_id} class="list-row">
   <div>
     {#if @image_src}
-      <img
-        class="size-24 rounded-box"
-        src={@image_src}
-      />
+      <img class="size-24 rounded-box" src={@image_src}>
     {#else}
       <img
         class="size-24 rounded-box"
@@ -14,14 +11,18 @@
     {/if}
   </div>
   <div>
-      <LinkLive to={~p"/archive/movies/#{e(@movie, "id", "")}"} class="link link-hover text-base font-semibold break-words max-w-full">{rich(e(@movie, "title", ""))}</LinkLive>    {#if @movie["director"]}
+    <LinkLive
+      to={~p"/archive/movies/#{e(@movie, "id", "")}"}
+      class="link link-hover text-base font-semibold break-words max-w-full"
+    >{rich(e(@movie, "title", ""))}</LinkLive> {#if @movie["director"]}
       <div class="">
         {#for director <- List.wrap(@movie["director"]) |> Enum.intersperse(", ")}
-          <span 
+          <span
             phx-click="filter_by_director"
             phx-target={@event_target}
             phx-value-id={director}
-            class="link link-hover text-xs uppercase font-semibold opacity-60">{director}
+            class="link link-hover text-xs uppercase font-semibold opacity-60"
+          >{director}
           </span>
         {/for}
       </div>

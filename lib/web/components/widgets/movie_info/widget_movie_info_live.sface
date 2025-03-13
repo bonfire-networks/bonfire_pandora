@@ -9,7 +9,7 @@
             title_text={l("Edit movie")}
             no_actions
             open_btn_wrapper_class="w-[24px] min-w-[24px] cursor-pointer btn-circle btn btn-soft btn-xs btn-ghost"
-            >
+          >
             <div>
               <form phx-submit="edit_movie" class="flex flex-col gap-4">
                 <div class="form-control w-full">
@@ -112,9 +112,9 @@
           </Bonfire.UI.Common.OpenModalLive>
         </span>
       </div>
-      <div  class="mt-4">
+      <div class="mt-4">
         <div class="text-base-content/70">
-          <span class="font-semibold text-base-content">{raw e(@movie, "title", "")}</span>
+          <span class="font-semibold text-base-content">{raw(e(@movie, "title", ""))}</span>
           {#if @movie["director"]}
             ,
             {#for director <- List.wrap(@movie["director"]) |> Enum.intersperse(", ")}
@@ -122,14 +122,13 @@
             {/for}
           {/if}
           {#if @movie["year"]}
-          ,
+            ,
             {e(@movie, "year", "")},
           {/if}
           {#if @movie["duration"]}
-          ,
+            ,
             {Utils.format_duration(e(@movie, "duration", ""))}
           {/if}
-          
         </div>
 
         <div class="mt-3">

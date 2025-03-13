@@ -50,7 +50,6 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
     end
   end
 
-
   def is_long_summary?(movie) do
     summary = e(movie, "summary", "")
     String.length(summary) >= 240

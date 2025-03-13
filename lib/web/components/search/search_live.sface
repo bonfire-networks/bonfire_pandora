@@ -80,7 +80,7 @@
                 <a
                   phx-click="filter_by_sezione"
                   phx-value-id={sezione}
-                   phx-target={@myself}
+                  phx-target={@myself}
                   class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": sezione in @selected_sezione}
                   disabled={@loading}
                 >
@@ -122,7 +122,7 @@
                 <a
                   phx-click="filter_by_edizione"
                   phx-value-id={edizione}
-                   phx-target={@myself}
+                  phx-target={@myself}
                   class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": edizione in @selected_edizione}
                   disabled={@loading}
                 >
@@ -164,7 +164,7 @@
                 <a
                   phx-click="filter_by_featuring"
                   phx-value-id={featuring}
-                   phx-target={@myself}
+                  phx-target={@myself}
                   class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": featuring in @selected_featuring}
                   disabled={@loading}
                 >
@@ -226,7 +226,7 @@
       <button
         type="button"
         phx-click="clear_filters"
-         phx-target={@myself}
+        phx-target={@myself}
         class="btn btn-ghost btn-soft gap-2"
         disabled={@loading}
       >
@@ -251,7 +251,11 @@
         class="list bg-base-100 rounded-box shadow-md"
       >
         {#for {id, result} <- @streams.search_results}
-          <Bonfire.PanDoRa.Components.MoviePreviewLive event_target={@myself} movie={result} movie_id={id} />
+          <Bonfire.PanDoRa.Components.MoviePreviewLive
+            event_target={@myself}
+            movie={result}
+            movie_id={id}
+          />
         {/for}
       </ul>
       <div id="search-results-sentinel" phx-update="ignore">
