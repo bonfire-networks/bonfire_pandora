@@ -140,13 +140,15 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            conditions: conditions,
            range: [0, @default_per_page],
            keys: @default_keys,
-           total: true
+           total: true,
+           current_user: current_user(socket)
          ) do
-      {:ok, %{items: items}} when is_list(items) ->
+      {:ok, %{items: items} = data} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
 
         socket =
           socket
+          |> maybe_assign_context(data)
           |> stream(:search_results, prepare_items(items_to_show), reset: true)
           |> assign(
             has_more_items: has_more,
@@ -162,7 +164,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
           {:error, error_socket} ->
             error_socket
-            |> put_flash(:error, l("Error updating filters"))
+            |> assign_error(l("Error updating filters"))
         end
 
       other ->
@@ -203,7 +205,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            conditions: conditions,
            range: [0, @default_per_page],
            keys: @default_keys,
-           total: true
+           total: true,
+           current_user: current_user(socket)
          ) do
       {:ok, %{items: items}} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
@@ -256,7 +259,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   #          conditions: conditions,
   #          range: [0, @default_per_page],
   #          keys: @default_keys,
-  #          total: true
+  #          total: true, 
+  #  current_user: current_user(socket)
   #        ) do
   #     {:ok, %{items: items}} when is_list(items) ->
   #       {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
@@ -321,7 +325,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   def handle_info({:fetch_initial_metadata, conditions}, socket) do
     socket = track_loading(socket, :global_load, true)
 
-    case Client.fetch_grouped_metadata(conditions, per_page: @filter_per_page) do
+    case Client.fetch_grouped_metadata(conditions,
+           per_page: @filter_per_page,
+           current_user: current_user(socket)
+         ) do
       {:ok, metadata} ->
         socket =
           socket
@@ -421,7 +428,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     case Client.fetch_grouped_metadata(conditions,
            field: filter_type,
            page: current_page + 1,
-           per_page: @filter_per_page
+           per_page: @filter_per_page,
+           current_user: current_user(socket)
          ) do
       {:ok, metadata} ->
         items = Map.get(metadata, filter_type, [])
@@ -490,7 +498,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            conditions: [%{key: "*", operator: "=", value: term}],
            range: [0, @default_per_page],
            keys: @default_keys,
-           total: true
+           total: true,
+           current_user: current_user(socket)
          ) do
       {:ok, %{items: items}} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
@@ -556,7 +565,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            sort: [%{key: "title", operator: "+"}],
            range: [0, @default_per_page],
            keys: @default_keys,
-           total: true
+           total: true,
+           current_user: current_user(socket)
          ) do
       {:ok, %{items: items}} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
@@ -586,7 +596,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   # All helper functions remain unchanged
   defp update_metadata_with_conditions(socket, conditions, current_filter \\ nil) do
     # Code unchanged
-    case Client.fetch_grouped_metadata(conditions) do
+    case Client.fetch_grouped_metadata(conditions, current_user: current_user(socket)) do
       {:ok, filtered_metadata} ->
         metadata =
           cond do
@@ -602,7 +612,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
             socket.assigns.first_selected_filter ->
               key = socket.assigns.first_selected_filter
 
-              case Client.fetch_grouped_metadata([]) do
+              case Client.fetch_grouped_metadata([], current_user: current_user(socket)) do
                 {:ok, complete_metadata} ->
                   Map.put(filtered_metadata, key, complete_metadata[key])
 
@@ -647,14 +657,16 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            sort: [%{key: "title", operator: "+"}],
            range: [0, @default_per_page],
            keys: @default_keys,
-           total: true
+           total: true,
+           current_user: current_user(socket)
          ) do
-      {:ok, %{items: items}} when is_list(items) ->
+      {:ok, %{items: items} = data} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
 
         debug("Initial data fetch successful, fetching metadata")
 
         socket
+        |> maybe_assign_context(data)
         |> stream(:search_results, prepare_items(items_to_show), reset: true)
         |> assign(
           has_more_items: has_more,
@@ -686,7 +698,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   defp fetch_metadata(socket, conditions) do
     socket = track_loading(socket, :metadata_load, true)
 
-    case Client.fetch_grouped_metadata(conditions, per_page: @filter_per_page) do
+    case Client.fetch_grouped_metadata(conditions,
+           per_page: @filter_per_page,
+           current_user: current_user(socket)
+         ) do
       {:ok, metadata} ->
         {:ok,
          socket
@@ -711,7 +726,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            sort: [%{key: "title", operator: "+"}],
            # Use range instead of page/per_page
            range: [0, @default_per_page],
-           keys: @default_keys
+           keys: @default_keys,
+           current_user: current_user(socket)
          ) do
       {:ok, %{items: items}} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
@@ -790,7 +806,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            conditions: conditions,
            range: [0, @default_per_page],
            keys: @default_keys,
-           total: true
+           total: true,
+           current_user: current_user(socket)
          ) do
       {:ok, %{items: items}} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
@@ -890,7 +907,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     case Client.find(
            conditions: conditions,
            range: [start_index, start_index + @default_per_page],
-           keys: @default_keys
+           keys: @default_keys,
+           current_user: current_user(socket)
          ) do
       {:ok, %{items: items}} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)

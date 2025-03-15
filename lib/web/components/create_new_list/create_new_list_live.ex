@@ -75,7 +75,7 @@ defmodule Bonfire.PanDoRa.Components.CreateNewListLive do
   end
 
   defp handle_create_list(list_params, socket) do
-    case Client.add_list(list_params) do
+    case Client.add_list(list_params, socket) do
       {:ok, new_list} ->
         send(self(), {:list_created, new_list})
         Bonfire.UI.Common.OpenModalLive.close()

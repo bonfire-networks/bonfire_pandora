@@ -141,7 +141,11 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
       {"Anteprima", "Anteprima"}
     ]
 
-    case Client.fetch_grouped_metadata([], field: "sezione", per_page: 50) do
+    case Client.fetch_grouped_metadata([],
+           field: "sezione",
+           per_page: 50,
+           current_user: current_user(socket)
+         ) do
       {:ok, metadata} ->
         sections = Map.get(metadata, "sezione", [])
         # Transform the sections into the format expected by MultiselectLive

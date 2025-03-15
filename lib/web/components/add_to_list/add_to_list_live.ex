@@ -18,7 +18,7 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
 
   def update(assigns, socket) do
     # Fetch user's lists when component is updated
-    lists_result = fetch_my_lists()
+    lists_result = Client.my_lists(current_user: current_user(socket))
 
     socket =
       socket
@@ -31,12 +31,15 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
   end
 
   def handle_event("add_to_list", %{"id" => list_id}, socket) do
-    if movie_in_list?(list_id, socket.assigns.movie_id) do
+    if movie_in_list?(list_id, socket.assigns.movie_id, socket) do
       {:noreply,
        socket
        |> assign_flash(:error, l("Movie is already in this list"))}
     else
-      case Client.add_list_items(list_id, items: [socket.assigns.movie_id]) do
+      case Client.add_list_items(list_id,
+             items: [socket.assigns.movie_id],
+             current_user: current_user(socket)
+           ) do
         {:ok, _} ->
           # Bonfire.UI.Common.OpenModalLive.close()
 
@@ -56,7 +59,10 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
     current_presence = get_in(socket.assigns.movie_in_lists, [list_id]) || false
 
     if current_presence do
-      case Client.remove_list_items(list_id, items: [socket.assigns.movie_id]) do
+      case Client.remove_list_items(list_id,
+             items: [socket.assigns.movie_id],
+             current_user: current_user(socket)
+           ) do
         {:ok, _} ->
           {:noreply,
            socket
@@ -69,7 +75,10 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
            |> assign_flash(:error, error)}
       end
     else
-      case Client.add_list_items(list_id, items: [socket.assigns.movie_id]) do
+      case Client.add_list_items(list_id,
+             items: [socket.assigns.movie_id],
+             current_user: current_user(socket)
+           ) do
         {:ok, _} ->
           {:noreply,
            socket
@@ -100,20 +109,11 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
     |> assign(:error, error)
   end
 
-  # Fetch lists for the current user
-  defp fetch_my_lists() do
-    Client.find_lists(
-      keys: ["id", "name", "status", "posterFrames"],
-      sort: [%{key: "name", operator: "+"}],
-      type: :user
-    )
-  end
-
   # Check if movie exists in any of user's lists
   defp check_movie_in_lists(socket) do
     lists_with_items =
       Enum.map(socket.assigns.lists, fn list ->
-        case Client.find_list_items(list["id"]) do
+        case Client.find_list_items(list["id"], socket) do
           {:ok, %{items: items}} -> Map.put(list, "items", items)
           _ -> Map.put(list, "items", [])
         end
@@ -132,7 +132,7 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
   defp update_movie_presence(socket) do
     movie_in_lists =
       Enum.reduce(socket.assigns.lists, %{}, fn list, acc ->
-        Map.put(acc, list["id"], movie_in_list?(list["id"], socket.assigns.movie_id))
+        Map.put(acc, list["id"], movie_in_list?(list["id"], socket.assigns.movie_id, socket))
       end)
 
     assign(socket, :movie_in_lists, movie_in_lists)
@@ -144,8 +144,8 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
   end
 
   # Check if movie exists in a specific list
-  def movie_in_list?(list_id, movie_id) do
-    case Client.find_list_items(list_id) do
+  def movie_in_list?(list_id, movie_id, opts) do
+    case Client.find_list_items(list_id, opts) do
       {:ok, %{items: items}} -> Enum.any?(items, &(&1["id"] == movie_id))
       _ -> false
     end
@@ -153,7 +153,7 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
 
   # Update lists after adding/removing movie
   defp update_lists(socket) do
-    lists_result = fetch_my_lists()
+    lists_result = Client.my_lists(current_user: current_user(socket))
 
     socket
     |> handle_lists_result(lists_result)

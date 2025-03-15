@@ -9,64 +9,64 @@ defmodule Bonfire.PanDoRa.Archives do
   @filter_per_page 10
   @default_keys ~w(title id item_id public_id director sezione edizione featuring duration)
 
-  def search_items(conditions, opts \\ []) do
-    page = Keyword.get(opts, :page, 0)
-    per_page = Keyword.get(opts, :per_page, @default_per_page)
+  # def search_items(conditions, opts) do
+  #   page = Keyword.get(opts, :page, 0)
+  #   per_page = Keyword.get(opts, :per_page, @default_per_page)
 
-    Client.find(
-      conditions: conditions,
-      range: [page * per_page, per_page],
-      keys: @default_keys,
-      total: true
-    )
-  end
+  #   Client.find(opts ++ [
+  #     conditions: conditions,
+  #     range: [page * per_page, per_page],
+  #     keys: @default_keys,
+  #     total: true
+  #   ])
+  # end
 
-  def fetch_metadata(conditions, opts \\ []) do
-    field = Keyword.get(opts, :field)
-    page = Keyword.get(opts, :page, 0)
-    per_page = Keyword.get(opts, :per_page, @filter_per_page)
+  # def fetch_metadata(conditions, opts) do
+  #   field = Keyword.get(opts, :field)
+  #   page = Keyword.get(opts, :page, 0)
+  #   per_page = Keyword.get(opts, :per_page, @filter_per_page)
 
-    client_opts = [per_page: per_page]
-    client_opts = if field, do: [{:field, field}, {:page, page} | client_opts], else: client_opts
+  #   client_opts = [per_page: per_page]
+  #   client_opts = if field, do: [{:field, field}, {:page, page} | client_opts], else: client_opts
 
-    Client.fetch_grouped_metadata(conditions, client_opts)
-  end
+  #   Client.fetch_grouped_metadata(conditions, opts ++ client_opts)
+  # end
 
-  def build_search_query(term, filters) do
-    filter_conditions = build_filter_conditions(filters)
+  # def build_search_query(term, filters) do
+  #   filter_conditions = build_filter_conditions(filters)
 
-    case {term, filter_conditions} do
-      {nil, []} ->
-        []
+  #   case {term, filter_conditions} do
+  #     {nil, []} ->
+  #       []
 
-      {term, []} when is_binary(term) and term != "" ->
-        [%{key: "*", operator: "=", value: term}]
+  #     {term, []} when is_binary(term) and term != "" ->
+  #       [%{key: "*", operator: "=", value: term}]
 
-      {nil, [single]} ->
-        [single]
+  #     {nil, [single]} ->
+  #       [single]
 
-      {nil, multiple} when length(multiple) > 0 ->
-        [%{conditions: multiple, operator: "&"}]
+  #     {nil, multiple} when length(multiple) > 0 ->
+  #       [%{conditions: multiple, operator: "&"}]
 
-      {term, filters} when is_binary(term) and term != "" ->
-        [%{conditions: [%{key: "*", operator: "=", value: term} | filters], operator: "&"}]
-    end
-  end
+  #     {term, filters} when is_binary(term) and term != "" ->
+  #       [%{conditions: [%{key: "*", operator: "=", value: term} | filters], operator: "&"}]
+  #   end
+  # end
 
-  defp build_filter_conditions(filters) do
-    filters
-    |> Enum.reject(fn {_type, values} -> values == [] end)
-    |> Enum.map(fn
-      {type, [value]} ->
-        %{key: type, operator: "==", value: value}
+  # defp build_filter_conditions(filters) do
+  #   filters
+  #   |> Enum.reject(fn {_type, values} -> values == [] end)
+  #   |> Enum.map(fn
+  #     {type, [value]} ->
+  #       %{key: type, operator: "==", value: value}
 
-      {type, values} when length(values) > 0 ->
-        %{
-          conditions: Enum.map(values, &%{key: type, operator: "==", value: &1}),
-          operator: "|"
-        }
-    end)
-  end
+  #     {type, values} when length(values) > 0 ->
+  #       %{
+  #         conditions: Enum.map(values, &%{key: type, operator: "==", value: &1}),
+  #         operator: "|"
+  #       }
+  #   end)
+  # end
 
   def add_annotation(%{"id" => movie_id} = movie, note, in_timestamp, out_timestamp, opts) do
     with current_user = current_user(opts),
@@ -94,14 +94,17 @@ defmodule Bonfire.PanDoRa.Archives do
            ]),
          # next send it to Pandora
          {:ok, %{"id" => pandora_id} = annotation} <-
-           Client.add_annotation(%{
-             item: movie_id,
-             # assuming this is your layer ID for public notes - TODO: based on boundary?
-             layer: "publicnotes",
-             in: in_timestamp || 0.0,
-             out: out_timestamp || 0.0,
-             value: note
-           }),
+           Client.add_annotation(
+             %{
+               item: movie_id,
+               # assuming this is your layer ID for public notes - TODO: based on boundary?
+               layer: "publicnotes",
+               in: in_timestamp || 0.0,
+               out: out_timestamp || 0.0,
+               value: note
+             },
+             opts
+           ),
          # then save ExtraInfo on the Post with the timestamps and reference to the note on Pandora
          {:ok, extra_info} <-
            Bonfire.Data.Identity.ExtraInfo.changeset(%{

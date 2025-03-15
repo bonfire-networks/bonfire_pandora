@@ -39,8 +39,8 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
   def handle_info(:load_initial_data, socket) do
     %{list_id: list_id} = socket.assigns
 
-    list_result = fetch_list(list_id)
-    items_result = fetch_list_items(list_id)
+    list_result = fetch_list(list_id, current_user: current_user(socket))
+    items_result = fetch_list_items(list_id, current_user: current_user(socket))
 
     socket =
       socket
@@ -82,7 +82,7 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
     id = Map.get(list_params, "id")
     update_params = Map.drop(list_params, ["id"])
 
-    case Client.edit_list(id, update_params) do
+    case Client.edit_list(id, update_params, current_user: current_user(socket)) do
       {:ok, updated_list} ->
         {:noreply,
          socket
@@ -146,12 +146,12 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
   end
 
   # Fetch a specific list by ID
-  defp fetch_list(id) do
-    Client.get_list(id)
+  defp fetch_list(id, opts) do
+    Client.get_list(id, opts)
   end
 
   # Fetch items for a specific list
-  defp fetch_list_items(list_id, opts \\ []) do
+  defp fetch_list_items(list_id, opts) do
     Client.find_list_items(list_id, opts)
   end
 end

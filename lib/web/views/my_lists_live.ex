@@ -8,7 +8,7 @@ defmodule Bonfire.PanDoRa.Web.MyListsLive do
 
   def mount(_params, _session, socket) do
     # Fetch lists immediately in mount
-    lists_result = fetch_my_lists()
+    lists_result = Client.my_lists(current_user: current_user(socket))
 
     socket =
       socket
@@ -42,19 +42,10 @@ defmodule Bonfire.PanDoRa.Web.MyListsLive do
     |> assign(:error, error)
   end
 
-  # Fetch lists for the current user
-  defp fetch_my_lists() do
-    Client.find_lists(
-      keys: ["id", "description", "poster_frames", "posterFrames", "editable", "name", "status"],
-      sort: [%{key: "name", operator: "+"}],
-      type: :user
-    )
-  end
-
   def handle_event("delete_list", %{"list-id" => id} = _params, socket) do
     debug(id, "delete_list_params")
 
-    case Client.remove_list(id) do
+    case Client.remove_list(id, current_user: current_user(socket)) do
       {:ok, _} ->
         # Remove the list from the UI
         lists = Enum.reject(socket.assigns.lists, &(&1["id"] == id))
@@ -96,7 +87,7 @@ defmodule Bonfire.PanDoRa.Web.MyListsLive do
     id = Map.get(list_params, "id")
     update_params = Map.drop(list_params, ["id"])
 
-    case Client.edit_list(id, update_params) do
+    case Client.edit_list(id, update_params, current_user: current_user(socket)) do
       {:ok, updated_list} ->
         # Update the list in the lists array
         lists =

@@ -11,6 +11,12 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   def mount(_params, _session, socket) do
     debug("Mounting MovieLive")
 
+    # Client.sign_up(current_user(socket)) |> debug("signed up?")
+
+    # Client.save_credentials(current_user(socket), "social@mayel.space", "mayel_bonfire", "UPbtQfDOEIYu2ni54pCUBTu99oFYxERncZ1v/GlfWag=") |> debug("saaaved")
+
+    Settings.put([PanDoRa.API.Client, :my_session_cookie], nil, socket)
+
     socket =
       socket
       |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
@@ -21,6 +27,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       |> assign(:editing_annotation, nil)
       # Add this to track if we're in editing mode
       |> assign(:editing_mode, false)
+      |> assign(:movie, nil)
 
     {:ok, socket}
   end
@@ -30,8 +37,8 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     # annotations_result = Client.fetch_annotations(id)
     # debug("Annotations result: #{inspect(annotations_result)}")
 
-    with {:ok, movie} <- Client.get_movie(id),
-         {:ok, public_notes} <- Client.fetch_annotations(id) do
+    with {:ok, movie} <- Client.get_movie(id, current_user: current_user(socket)),
+         {:ok, public_notes} <- Client.fetch_annotations(id, current_user: current_user(socket)) do
       socket =
         socket
         |> assign(:params, id)
@@ -127,7 +134,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   end
 
   def handle_event("delete_annotation", %{"note-id" => note_id}, socket) do
-    case Client.remove_annotation(note_id) do
+    case Client.remove_annotation(note_id, current_user: current_user(socket)) do
       {:ok, _response} ->
         # Remove the deleted note from the public_notes list
         updated_notes =
@@ -197,7 +204,8 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
            out: out_timestamp,
            value: note
          },
-         {:ok, updated_annotation} <- Client.edit_annotation(edit_data) do
+         {:ok, updated_annotation} <-
+           Client.edit_annotation(edit_data, current_user: current_user(socket)) do
       # Update the public_notes list in the socket
       updated_notes =
         Enum.map(socket.assigns.public_notes, fn note ->
@@ -243,7 +251,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       |> Map.new(fn {k, v} -> {String.to_existing_atom(k), v} end)
       |> Map.put(:id, movie_id)
 
-    case Client.edit_movie(edit_data) do
+    case Client.edit_movie(edit_data, current_user: current_user(socket)) do
       {:ok, updated_fields} ->
         # Update the movie in the socket with the updated fields
         updated_movie = Map.merge(socket.assigns.movie, updated_fields)
@@ -328,7 +336,11 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       end
     if field_name do
       # Perform a search for sections matching the text
-      case Client.fetch_grouped_metadata([], field: field_name, per_page: 100) do
+      case Client.fetch_grouped_metadata([],
+             field: field_name,
+             per_page: 10,
+             current_user: current_user(socket)
+           ) do
         {:ok, metadata} ->
           sections = Map.get(metadata, field_name, [])
           # Filter sections that match the search text
@@ -416,17 +428,17 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   end
 
   # Add a private function to fetch movies
-  def fetch_movies(id) do
-    debug("Fetching movie with ID: #{inspect(id)}")
+  # def fetch_movies(id, opts) do
+  #   debug("Fetching movie with ID: #{inspect(id)}")
 
-    case Client.get_movie(id) do
-      {:ok, movie} ->
-        debug("Fetched movie: #{inspect(movie)}")
-        movie
+  #   case Client.get_movie(id, opts) do
+  #     {:ok, movie} ->
+  #       debug("Fetched movie: #{inspect(movie)}")
+  #       movie
 
-      error ->
-        debug("Error fetching movie: #{inspect(error)}")
-        nil
-    end
-  end
+  #     error ->
+  #       debug("Error fetching movie: #{inspect(error)}")
+  #       nil
+  #   end
+  # end
 end

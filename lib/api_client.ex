@@ -5,8 +5,13 @@ defmodule PanDoRa.API.Client do
 
   use Untangle
   use Bonfire.Common.Localise
+  use Bonfire.Common.E
+  alias Bonfire.Common.Utils
   alias Bonfire.Common.Config
+  alias Bonfire.Common.Settings
   alias Bonfire.Common.Cache
+  alias Bonfire.PanDoRa.Vault
+  import Bonfire.PanDoRa
 
   # Cache TTL of 1 hour
   @cache_ttl :timer.hours(1)
@@ -24,9 +29,9 @@ defmodule PanDoRa.API.Client do
     * `:conditions` - List of search conditions
     * `:total` - Whether to include total count in response
   """
-  def find(opts \\ []) do
+  def find(opts) do
     conditions = Keyword.get(opts, :conditions, [])
-    debug("Client.find called with opts: #{inspect(opts)}")
+    debug(opts, "Client.find called with opts")
 
     range = calculate_range(opts)
 
@@ -45,7 +50,7 @@ defmodule PanDoRa.API.Client do
 
     debug("Making request with payload: #{inspect(items_payload)}")
 
-    case make_request("find", items_payload) do
+    case make_request("find", items_payload, opts) do
       {:ok, %{"items" => items}} when is_list(items) ->
         requested_count = List.last(range) - List.first(range) + 1
         has_more = length(items) > requested_count
@@ -79,7 +84,7 @@ defmodule PanDoRa.API.Client do
   @doc """
   Fetches metadata efficiently using parallel requests and caching
   """
-  def fetch_all_metadata(conditions \\ []) do
+  def fetch_all_metadata(conditions \\ [], opts) do
     cache_key = "pandora_metadata_#{:erlang.phash2(conditions)}"
 
     case Cache.get(cache_key) do
@@ -89,7 +94,7 @@ defmodule PanDoRa.API.Client do
           @metadata_keys
           |> Enum.map(fn field ->
             Task.async(fn ->
-              fetch_field_metadata(field, conditions)
+              fetch_field_metadata(field, conditions, nil, opts)
             end)
           end)
 
@@ -125,7 +130,7 @@ defmodule PanDoRa.API.Client do
       @metadata_keys
       |> Enum.map(fn field ->
         Task.async(fn ->
-          fetch_field_metadata(field, conditions, limit)
+          fetch_field_metadata(field, conditions, limit, opts)
         end)
       end)
 
@@ -147,7 +152,7 @@ defmodule PanDoRa.API.Client do
   Accepts optional page and per_page parameters for pagination.
   """
   @decorate time()
-  def fetch_grouped_metadata(conditions \\ [], opts \\ []) do
+  def fetch_grouped_metadata(conditions, opts) do
     debug("Starting grouped metadata fetch")
 
     page = Keyword.get(opts, :page, 0)
@@ -182,7 +187,7 @@ defmodule PanDoRa.API.Client do
           }
 
           debug("Making request for field #{field}")
-          result = make_request("find", payload)
+          result = make_request("find", payload, opts)
           debug(result, "Got result for field #{field}")
 
           case result do
@@ -218,7 +223,7 @@ defmodule PanDoRa.API.Client do
   @doc """
   Fetches grouped values for a single metadata field.
   """
-  def fetch_grouped_field(field, conditions) when field in @metadata_fields do
+  def fetch_grouped_field(field, conditions, opts) when field in @metadata_fields do
     # Build the query payload according to API docs
     payload = %{
       query: %{
@@ -234,7 +239,7 @@ defmodule PanDoRa.API.Client do
       range: [0, 10]
     }
 
-    case make_request("find", payload) do
+    case make_request("find", payload, opts) do
       {:ok, %{"items" => items}} when is_list(items) ->
         # API returns items in format [%{"name" => value, "items" => count}, ...]
         items
@@ -244,7 +249,7 @@ defmodule PanDoRa.API.Client do
     end
   end
 
-  def get_movie(movie_id) do
+  def get_movie(movie_id, opts) do
     # Convert the ID to the required format
     # formatted_id = format_movie_id(movie_id)
 
@@ -292,7 +297,7 @@ defmodule PanDoRa.API.Client do
       ]
     }
 
-    case make_request("get", payload) do
+    case make_request("get", payload, opts) do
       {:ok, %{} = data} ->
         IO.inspect(data, label: "Movie data retrieved")
         {:ok, data}
@@ -316,8 +321,8 @@ defmodule PanDoRa.API.Client do
       iex> get_list("list123")
       {:ok, %{"id" => "list123", "section" => "personal", ...}}
   """
-  def get_list(id) when is_binary(id) do
-    case make_request("getList", %{id: id}) do
+  def get_list(id, opts) when is_binary(id) do
+    case make_request("getList", %{id: id}, opts) do
       {:ok, list} when is_map(list) ->
         debug(list, "List fetched")
         {:ok, list}
@@ -331,7 +336,7 @@ defmodule PanDoRa.API.Client do
   Makes an init request to get site configuration and user data.
   Returns `{:ok, data}` where data contains site and user information.
   """
-  def init(opts \\ []) do
+  def init(opts) do
     case make_request("init", %{}, opts) do
       {:ok, %{"site" => _site, "user" => _user} = data} ->
         {:ok, data}
@@ -354,7 +359,9 @@ defmodule PanDoRa.API.Client do
       - `:user` - Only user's personal lists
       - `:subscribed` - Only subscribed/favorite lists
   """
-  def find_lists(opts \\ []) do
+  def find_lists(opts) do
+    opts = Utils.to_options(opts)
+
     range =
       if range = Keyword.get(opts, :range) do
         range
@@ -371,7 +378,7 @@ defmodule PanDoRa.API.Client do
           [%{key: "status", operator: "==", value: "featured"}]
 
         :user ->
-          [%{key: "user", operator: "==", value: get_auth_default_user()}]
+          [%{key: "user", operator: "==", value: opts[:user]}]
 
         :subscribed ->
           [%{key: "subscribed", operator: "==", value: true}]
@@ -399,7 +406,7 @@ defmodule PanDoRa.API.Client do
 
     debug(payload, "Finding lists with payload")
 
-    case make_request("findLists", payload) do
+    case make_request("findLists", payload, opts) do
       {:ok, %{"items" => items}} when is_list(items) ->
         debug(items, "Received lists")
         {:ok, %{items: items, total: length(items)}}
@@ -407,6 +414,22 @@ defmodule PanDoRa.API.Client do
       other ->
         error(other, l("Could not find any lists"))
     end
+  end
+
+  # Fetch public lists for current user
+  def my_lists(opts) do
+    find_lists(
+      [
+        keys: ["id", "description", "poster_frames", "posterFrames", "name", "status", "user"],
+        sort: [%{key: "name", operator: "+"}],
+        type: :user,
+        # TODO: based on current creds?
+        user:
+          Settings.get([__MODULE__, :credentials], %{}, opts)[:username] ||
+            get_auth_default_user()
+      ] ++
+        opts
+    )
   end
 
   @doc """
@@ -423,14 +446,14 @@ defmodule PanDoRa.API.Client do
 
   Returns {:ok, updated_list} on success, {:error, reason} on failure
   """
-  def edit_list(id, params) when is_map(params) or is_list(params) do
+  def edit_list(id, params, opts) when is_map(params) or is_list(params) do
     # Convert params to map if they're keyword list
     params = if is_list(params), do: Map.new(params), else: params
 
     # Ensure we have an ID
     params = Map.put(params, "id", id)
 
-    case make_request("editList", params) do
+    case make_request("editList", params, opts) do
       {:ok, list} when is_map(list) ->
         debug(list, "List updated")
         {:ok, list}
@@ -448,8 +471,8 @@ defmodule PanDoRa.API.Client do
 
   Returns {:ok, %{}} on success, {:error, reason} on failure
   """
-  def remove_list(id) do
-    case make_request("removeList", %{id: id}) do
+  def remove_list(id, opts) do
+    case make_request("removeList", %{id: id}, opts) do
       {:ok, _} ->
         debug("List #{id} removed successfully")
         {:ok, %{}}
@@ -476,7 +499,7 @@ defmodule PanDoRa.API.Client do
       iex> add_list_items("list123", query: %{...})
       {:error, "Query-based addition not implemented"}
   """
-  def add_list_items(list_id, opts \\ []) do
+  def add_list_items(list_id, opts) do
     cond do
       items = Keyword.get(opts, :items) ->
         payload = %{
@@ -484,7 +507,7 @@ defmodule PanDoRa.API.Client do
           items: items
         }
 
-        case make_request("addListItems", payload) do
+        case make_request("addListItems", payload, opts) do
           {:ok, _} ->
             debug("Items #{inspect(items)} added to list #{list_id}")
             {:ok, %{}}
@@ -518,7 +541,7 @@ defmodule PanDoRa.API.Client do
       iex> remove_list_items("list123", query: %{...})
       {:error, "Query-based removal not implemented"}
   """
-  def remove_list_items(list_id, opts \\ []) do
+  def remove_list_items(list_id, opts) do
     cond do
       items = Keyword.get(opts, :items) ->
         payload = %{
@@ -526,7 +549,7 @@ defmodule PanDoRa.API.Client do
           items: items
         }
 
-        case make_request("removeListItems", payload) do
+        case make_request("removeListItems", payload, opts) do
           {:ok, _} ->
             debug("Items #{inspect(items)} removed from list #{list_id}")
             {:ok, %{}}
@@ -563,7 +586,7 @@ defmodule PanDoRa.API.Client do
       iex> add_list(name: "My Favorites", description: "A collection of my favorite movies")
       {:ok, %{"id" => "123", "name" => "My Favorites", ...}}
   """
-  def add_list(params \\ []) do
+  def add_list(params, opts) do
     # Convert params to map if they're keyword list
     params = if is_list(params), do: Map.new(params), else: params
 
@@ -574,7 +597,7 @@ defmodule PanDoRa.API.Client do
         if name == "", do: "Untitled", else: name
       end)
 
-    case make_request("addList", params) do
+    case make_request("addList", params, opts) do
       {:ok, list} when is_map(list) ->
         debug(list, "List created")
         {:ok, list}
@@ -602,7 +625,7 @@ defmodule PanDoRa.API.Client do
       iex> find_list_items("list123", keys: ["title", "year"])
       {:ok, %{items: [%{"id" => "movie1", "title" => "Movie 1"}, ...], total: 10}}
   """
-  def find_list_items(list_id, opts \\ []) do
+  def find_list_items(list_id, opts) do
     range =
       if range = Keyword.get(opts, :range) do
         range
@@ -639,7 +662,7 @@ defmodule PanDoRa.API.Client do
       sort: Keyword.get(opts, :sort, [%{key: "title", operator: "+"}])
     }
 
-    case make_request("find", payload) do
+    case make_request("find", payload, opts) do
       {:ok, %{"items" => items}} when is_list(items) ->
         debug(items, "List items fetched")
         {:ok, %{items: items, total: length(items)}}
@@ -660,12 +683,12 @@ defmodule PanDoRa.API.Client do
       * `:out` - out point in seconds
       * `:value` - annotation value (the note text)
   """
-  def add_annotation(data) when is_map(data) do
+  def add_annotation(data, opts) when is_map(data) do
     # Validate required fields
     required_fields = [:item, :layer, :in, :out, :value]
 
     if Enum.all?(required_fields, &Map.has_key?(data, &1)) do
-      make_request("addAnnotation", data)
+      make_request("addAnnotation", data, opts)
     else
       {:error, "Missing required fields"}
     end
@@ -685,10 +708,10 @@ defmodule PanDoRa.API.Client do
       iex> edit_annotation(%{id: "annotation123", value: "Updated note text"})
       {:ok, %{"id" => "annotation123", ...}}
   """
-  def edit_annotation(data) when is_map(data) do
+  def edit_annotation(data, opts) when is_map(data) do
     # Validate required fields
     if Map.has_key?(data, :id) do
-      make_request("editAnnotation", data)
+      make_request("editAnnotation", data, opts)
     else
       {:error, "Missing required id field"}
     end
@@ -704,8 +727,8 @@ defmodule PanDoRa.API.Client do
       iex> remove_annotation("annotation123")
       {:ok, %{}}
   """
-  def remove_annotation(id) when is_binary(id) do
-    make_request("removeAnnotation", %{id: id})
+  def remove_annotation(id, opts) when is_binary(id) do
+    make_request("removeAnnotation", %{id: id}, opts)
   end
 
   @doc """
@@ -720,10 +743,10 @@ defmodule PanDoRa.API.Client do
       iex> edit_movie(%{id: "movie123", title: "New Title", year: "2023"})
       {:ok, %{title: "New Title", year: "2023"}}
   """
-  def edit_movie(data) when is_map(data) do
+  def edit_movie(data, opts) when is_map(data) do
     # Validate required fields
     if Map.has_key?(data, :id) do
-      make_request("edit", data)
+      make_request("edit", data, opts)
     else
       {:error, "Missing required field: id"}
     end
@@ -806,7 +829,7 @@ defmodule PanDoRa.API.Client do
   end
 
   @decorate time()
-  defp fetch_field_metadata(field, conditions, limit \\ 1000) do
+  defp fetch_field_metadata(field, conditions, limit \\ nil, opts) do
     payload = %{
       query: %{
         conditions: conditions,
@@ -818,14 +841,14 @@ defmodule PanDoRa.API.Client do
         %{
           key: field,
           sort: [%{key: "items", operator: "-"}],
-          limit: limit
+          limit: limit || 1000
         }
       ]
     }
 
     debug(payload, "Making metadata request for #{field} with payload")
 
-    case make_request("find", payload) do
+    case make_request("find", payload, opts) do
       {:ok, %{"items" => items}} when is_list(items) ->
         items
         |> Enum.map(fn item ->
@@ -841,9 +864,14 @@ defmodule PanDoRa.API.Client do
   Makes a request to the API endpoint
   """
   @decorate time()
-  def make_request(endpoint, payload, opts \\ [], retry_count \\ 0) do
-    debug(payload, "Making request to #{endpoint} with payload")
+  def make_request(endpoint, payload, opts, retry_count \\ 0) do
     api_url = get_api_url()
+    debug(payload, "Making request to #{endpoint} on #{api_url} with payload")
+
+    opts =
+      Utils.to_options(opts)
+      |> debug("opts")
+
     username = opts[:username] || get_auth_default_user()
 
     req =
@@ -858,7 +886,7 @@ defmodule PanDoRa.API.Client do
         # Try twice more on failure
         max_retries: 2
       )
-      |> maybe_sign_in_and_or_put_auth_cookie(username, endpoint, retry_count)
+      |> maybe_sign_in_and_or_put_auth_cookie(username, endpoint, opts, retry_count)
 
     case Req.post(req,
            form: %{
@@ -867,11 +895,21 @@ defmodule PanDoRa.API.Client do
            }
          ) do
       {:ok, %Req.Response{status: 200, headers: headers, body: body}} ->
-        debug(body, label: "API Response (raw)")
+        # debug(body, "API Response (raw)")
 
-        save_cookie = maybe_save_auth_cookie(headers, username, endpoint)
+        save_cookie = maybe_save_auth_cookie(headers, username, endpoint, opts)
 
-        maybe_return_data(body) || save_cookie || error(l("No data received from API"))
+        case maybe_return_data(body) do
+          {:ok, data} ->
+            {:ok, Map.merge(data, Utils.ok_unwrap(save_cookie) || %{})}
+
+          {:error, e} ->
+            {:error, e}
+
+          _ ->
+            save_cookie || error(l("No data received from API"))
+        end
+        |> debug("API Response")
 
       {:ok, %Req.Response{status: 401}} ->
         error(l("Authentication failed"))
@@ -947,6 +985,67 @@ defmodule PanDoRa.API.Client do
     end
   end
 
+  defp sign_up(user, email, username, password)
+       when is_binary(email) and is_binary(username) and is_binary(password) do
+    payload = %{
+      email: email,
+      username: username,
+      password: password
+    }
+
+    with {:ok, %{"user" => %{} = pandora_user}} =
+           make_request("signup", payload, current_user: user, username: username) do
+      if user,
+        do: save_user_credentials(user, email, username, password),
+        else: {:ok, pandora_user}
+    end
+  end
+
+  defp sign_up(_user, email, username, password) do
+    error(email, "Invalid details to sign up to Pandora")
+  end
+
+  def save_user_credentials(user, email, username, password) do
+    case Vault.encrypt(password) do
+      {:ok, encrypted_password} ->
+        Settings.put(
+          [__MODULE__, :credentials],
+          %{
+            email: email,
+            username: username,
+            password: Base.encode64(encrypted_password)
+          },
+          current_user: user
+        )
+
+      e ->
+        error(
+          e,
+          "Could not encrypt your password to store it on the server, please save it in your own password vault: #{password}"
+        )
+    end
+  end
+
+  def sign_up(opts \\ []) do
+    user = Utils.current_user_required!(opts)
+    # |> debug("tuuu")
+    username = e(user, :character, :username, nil)
+
+    account =
+      repo().maybe_preload(e(user, :account, nil) || e(user, :accounted, :account, nil), :email)
+
+    email = e(account, :email, :email_address, nil)
+
+    pw = :crypto.strong_rand_bytes(32) |> Base.encode64()
+
+    with {:error, %{"username" => "Username already exists"}} <-
+           sign_up(user, email, username, pw),
+         username = "#{username}_bonfire",
+         {:error, e} <- sign_up(user, email, username, pw) do
+      error(e)
+    end
+  end
+
   @doc """
   Signs in a user with the given username and password.
   ## Parameters
@@ -962,7 +1061,7 @@ defmodule PanDoRa.API.Client do
       iex> sign_in("unknown", "wrongpassword")
       {:error, %{username: "Unknown Username"}}
   """
-  def sign_in(username, password) do
+  def sign_in(username, password, opts \\ []) do
     set_session_cookie(username, nil)
 
     payload = %{
@@ -970,29 +1069,42 @@ defmodule PanDoRa.API.Client do
       password: password
     }
 
-    make_request("signin", payload, username: username)
+    make_request("signin", payload, Utils.to_options(opts) ++ [username: username])
   end
 
   def sign_in(opts \\ []) do
     case get_auth_credentials(opts) do
       {username, password} when is_binary(username) and is_binary(password) ->
-        sign_in(username, password)
+        sign_in(username, password, opts)
 
-      _ ->
-        error(l("No username/password found"))
+      :no_user_credentials ->
+        if !opts[:looping] do
+          with {:ok, %{__context__: context}} <- sign_up(opts) do
+            sign_in(Enum.into(context, looping: true))
+          end
+        else
+          error(l("No credentions found for the current user"))
+        end
+
+      e ->
+        error(e, l("No username/password found"))
     end
   end
 
   # avoid looping
-  defp maybe_sign_in_and_or_put_auth_cookie(req, _, "signin", _), do: req
+  defp maybe_sign_in_and_or_put_auth_cookie(req, _, "signup", _, _), do: req
+  defp maybe_sign_in_and_or_put_auth_cookie(req, _, "signin", _, _), do: req
 
-  defp maybe_sign_in_and_or_put_auth_cookie(req, username, action, retry_count)
-       when is_binary(username) do
-    case get_session_cookie(username) do
-      nil ->
-        with {:ok, _} <- sign_in(username, get_auth_pw(username)) do
+  defp maybe_sign_in_and_or_put_auth_cookie(req, username, action, opts, retry_count) do
+    case get_session_cookie(username, opts) do
+      cookie when is_binary(cookie) ->
+        Req.Request.put_header(req, "cookie", "sessionid=#{cookie}")
+        |> debug()
+
+      _ ->
+        with {:ok, _} <- sign_in(Utils.current_user(opts) || username) do
           if retry_count < 1 do
-            maybe_sign_in_and_or_put_auth_cookie(req, username, action, retry_count + 1)
+            maybe_sign_in_and_or_put_auth_cookie(req, username, action, opts, retry_count + 1)
           else
             debug("skip auth because failed once")
             req
@@ -1002,19 +1114,14 @@ defmodule PanDoRa.API.Client do
             warn(auth_failed, "Could not authenticate, continue as guest")
             req
         end
-
-      cookie ->
-        Req.Request.put_header(req, "cookie", "sessionid=#{cookie}")
-        |> debug()
     end
   end
 
-  defp maybe_sign_in_and_or_put_auth_cookie(req, _, _, _), do: req
+  defp maybe_sign_in_and_or_put_auth_cookie(req, _, _, _, _), do: req
 
-  defp maybe_save_auth_cookie(headers, username, action) do
+  defp maybe_save_auth_cookie(headers, username, action, opts) do
     if cookie = extract_session_cookie(headers) do
-      set_session_cookie(username, cookie)
-      nil
+      set_session_cookie(username, cookie, opts)
     else
       if action == "signin" do
         error(headers, l("No session cookie received"))
@@ -1034,13 +1141,34 @@ defmodule PanDoRa.API.Client do
     end)
   end
 
-  defp set_session_cookie(username, cookie) do
-    # TEMP: should store some other way?
-    Config.put([__MODULE__, :session_cookie], %{username => cookie}, :bonfire_pandora)
+  defp set_session_cookie(username, cookie, opts \\ []) do
+    user = Utils.current_user(opts)
+
+    cond do
+      is_map(user) ->
+        Settings.put([__MODULE__, :my_session_cookie], cookie, current_user: user)
+
+      is_binary(username) ->
+        Config.put([__MODULE__, :session_cookie], %{username => cookie}, :bonfire_pandora)
+
+      true ->
+        nil
+    end
   end
 
-  def get_session_cookie(username) do
-    Config.get([__MODULE__, :session_cookie, username], nil, :bonfire_pandora)
+  def get_session_cookie(username, opts) do
+    user = Utils.current_user(opts)
+
+    cond do
+      is_map(user) ->
+        Settings.get([__MODULE__, :my_session_cookie], nil, current_user: user)
+
+      is_binary(username) ->
+        Config.get([__MODULE__, :session_cookie, username], nil, :bonfire_pandora)
+
+      true ->
+        nil
+    end
   end
 
   def get_auth_default_user do
@@ -1052,8 +1180,30 @@ defmodule PanDoRa.API.Client do
   end
 
   defp get_auth_credentials(opts \\ []) do
+    current_user = Utils.current_user(opts)
+
     username = get_auth_default_user()
-    {username, get_auth_pw(username)}
+
+    cond do
+      is_binary(username) ->
+        {username, get_auth_pw(username)}
+
+      is_map(current_user) ->
+        with %{username: username, password: password} <-
+               Settings.get([__MODULE__, :credentials], :no_user_credentials,
+                 current_user: current_user
+               ),
+             {:ok, password} <- password |> Base.decode64(),
+             {:ok, password} <- password |> Vault.decrypt() do
+          {username, password}
+        end
+
+      is_binary(opts) ->
+        {opts, get_auth_pw(opts)}
+
+      true ->
+        error(opts, "No credentials found")
+    end
   end
 
   def get_pandora_url do
@@ -1067,7 +1217,7 @@ defmodule PanDoRa.API.Client do
   @doc """
   Basic test function for annotations following API structure
   """
-  def fetch_annotations(movie_id) do
+  def fetch_annotations(movie_id, opts) do
     data = %{
       itemsQuery: %{
         conditions: [
@@ -1092,7 +1242,7 @@ defmodule PanDoRa.API.Client do
       range: [0, 99999]
     }
 
-    case make_request("findAnnotations", data) do
+    case make_request("findAnnotations", data, opts) do
       {:ok, %{"items" => items}} when is_list(items) ->
         debug(items, "Annotations fetched")
         {:ok, items}

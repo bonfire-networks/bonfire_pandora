@@ -5,7 +5,7 @@ defmodule Bonfire.PanDoRa.Web.WidgetPublicListsLive do
   prop user, :any, default: nil
 
   def update(assigns, socket) do
-    lists_result = fetch_public_lists()
+    lists_result = Client.my_lists(current_user: current_user(socket))
 
     socket =
       socket
@@ -29,15 +29,5 @@ defmodule Bonfire.PanDoRa.Web.WidgetPublicListsLive do
     |> assign(:lists, [])
     |> assign(:loading, false)
     |> assign(:error, error)
-  end
-
-  # Fetch public lists for a specific user
-  defp fetch_public_lists() do
-    Client.find_lists(
-      keys: ["id", "description", "poster_frames", "posterFrames", "name", "status", "user"],
-      sort: [%{key: "name", operator: "+"}],
-      type: :public,
-      user: "bernini"
-    )
   end
 end

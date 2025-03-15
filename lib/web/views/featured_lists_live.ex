@@ -8,7 +8,7 @@ defmodule Bonfire.PanDoRa.Web.FeaturedListsLive do
 
   def mount(_params, _session, socket) do
     # Fetch lists immediately in mount
-    lists_result = fetch_my_lists()
+    lists_result = fetch_lists(current_user: current_user(socket))
 
     socket =
       socket
@@ -44,11 +44,13 @@ defmodule Bonfire.PanDoRa.Web.FeaturedListsLive do
   end
 
   # Fetch lists for the current user
-  defp fetch_my_lists() do
+  defp fetch_lists(opts) do
     Client.find_lists(
-      keys: ["id", "description", "poster_frames", "posterFrames", "editable", "name", "status"],
-      sort: [%{key: "name", operator: "+"}],
-      type: :featured
+      [
+        keys: ["id", "description", "poster_frames", "posterFrames", "editable", "name", "status"],
+        sort: [%{key: "name", operator: "+"}],
+        type: :featured
+      ] ++ opts
     )
   end
 

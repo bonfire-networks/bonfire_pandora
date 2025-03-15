@@ -45,15 +45,15 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
     path = Enum.join(path, "/")
 
     # Try to authenticate, handle potential failures
-    case Client.sign_in() do
+    case Client.sign_in(conn) do
       {:ok, _} ->
         # Get the full Pandora URL and make the request
         pandora_url = Client.get_pandora_url()
         full_url = Path.join(pandora_url, path)
 
         # Get authentication credentials
-        username = Client.get_auth_default_user()
-        cookie = Client.get_session_cookie(username)
+        # username = Client.get_auth_default_user()
+        cookie = Client.get_session_cookie(conn)
 
         case fetch_media(full_url, cookie) do
           {:ok, media_data, content_type} when is_binary(media_data) ->
