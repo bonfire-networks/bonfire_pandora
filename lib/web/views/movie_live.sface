@@ -1,4 +1,4 @@
-<div class="flex flex-col w-full gap-4">
+<div id="movie_wrapper" class="flex flex-col w-full gap-4">
   <div phx-update="ignore" id="movie_container">
     <div :hook id="vidstack_movie_player">
       <media-player class="player" tabindex="0">

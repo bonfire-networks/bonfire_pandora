@@ -271,6 +271,7 @@ defmodule PanDoRa.API.Client do
         "editor",
         "actor",
         "productionCompany",
+        "genere",
         "genre",
         "keyword",
         "summary",
@@ -293,7 +294,7 @@ defmodule PanDoRa.API.Client do
 
     case make_request("get", payload) do
       {:ok, %{} = data} ->
-        debug(data, "Movie data retrieved")
+        IO.inspect(data, label: "Movie data retrieved")
         {:ok, data}
 
       error ->
@@ -1093,6 +1094,7 @@ defmodule PanDoRa.API.Client do
 
     case make_request("findAnnotations", data) do
       {:ok, %{"items" => items}} when is_list(items) ->
+        debug(items, "Annotations fetched")
         {:ok, items}
 
       error ->

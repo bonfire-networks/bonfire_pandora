@@ -264,18 +264,71 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     end
   end
 
+  def handle_event("validate", _params, socket) do
+    {:noreply, socket}
+  end
+
+
+  def handle_event("toggle_selezionato", attrs, socket) do
+    debug("Processing selezionato update: #{inspect(attrs)}")
+
+    if socket.assigns.movie do
+      movie_id = socket.assigns.movie["id"]
+
+      # Extract the value from attrs - it can be %{value: "on"} or %{}
+      toggle_value = Map.get(attrs, "value", nil)
+
+      # Determine the selezionato value based on the toggle state
+      selezionato_value =
+        if toggle_value == "on" do
+          "yes"
+        else
+          "no"
+        end
+
+      # Prepare data for the API
+      edit_data = %{
+        id: movie_id,
+        selezionato: [selezionato_value]
+      }
+
+      case Client.edit_movie(edit_data) do
+        {:ok, updated_fields} ->
+          # Update the movie in the socket with the updated fields
+          updated_movie = Map.merge(socket.assigns.movie, updated_fields)
+
+          socket =
+            socket
+            |> assign(:movie, updated_movie)
+            |> assign_flash(:info, l("Selection status updated"))
+
+          {:noreply, socket}
+
+        {:error, reason} ->
+          socket =
+            socket
+            |> assign_flash(:error, l("Failed to update selection status: %{reason}", reason: reason))
+
+          {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
   # Handle the live_select_change event for autocomplete
-  def handle_event("live_select_change", %{"field" => field, "text" => search_text}, socket) do
+  def handle_event("live_select_change", %{"field" => field, "text" => search_text, "id" => live_select_id}, socket) do
     # Extract the field name from the form field identifier
     field_name =
       case field do
-        "movie_form_movie[sezione]" -> "sezione"
+        "multi_select_edit_sezione" -> "sezione"
+        "multi_select_edit_edizione" -> "edizione"
+        # "multi_select_edit_genre" -> "genre"
         _ -> nil
       end
-
     if field_name do
       # Perform a search for sections matching the text
-      case Client.fetch_grouped_metadata([], field: field_name, per_page: 10) do
+      case Client.fetch_grouped_metadata([], field: field_name, per_page: 100) do
         {:ok, metadata} ->
           sections = Map.get(metadata, field_name, [])
           # Filter sections that match the search text
@@ -284,13 +337,15 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
             |> Enum.filter(fn %{"name" => name} ->
               String.contains?(String.downcase(name), String.downcase(search_text))
             end)
-            |> Enum.map(fn %{"name" => name} -> {name, name} end)
+            |> Enum.map(fn %{"name" => name} -> {name, %{id: name,  name: name, value: name}} end)
 
-          # Send the matching options back to the LiveSelect component
-          send_update(Bonfire.UI.Common.LiveSelectIntegrationLive,
-            id: "#{field}_live_select_component",
-            options: matching_sections
-          )
+          debug("Matching sections: #{inspect(matching_sections)}")
+          maybe_send_update(LiveSelect.Component, live_select_id, options: matching_sections)
+          # # Send the matching options back to the LiveSelect component
+          # send_update(Bonfire.UI.Common.LiveSelectIntegrationLive,
+          #   id: "#{field}_live_select_component",
+          #   options: matching_sections
+          # )
 
           {:noreply, socket}
 

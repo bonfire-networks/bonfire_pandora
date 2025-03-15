@@ -14,6 +14,122 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
      |> fetch_available_sections()}
   end
 
+  # Handle the multi_select event for sezione
+  def handle_event("multi_select", %{"multi_select" => %{"edit_sezione" => sezione_json}} = attrs, socket) do
+    debug("Processing section update: #{inspect(attrs)}")
+
+    if socket.assigns.movie do
+      movie_id = socket.assigns.movie["id"]
+
+      # Parse the JSON string to extract the section value
+      sezione_data =
+        case Jason.decode(sezione_json) do
+          {:ok, data} -> data
+          _ -> %{}
+        end
+
+      # Extract the value from the parsed JSON
+      sezione_value = Map.get(sezione_data, "value", "")
+
+      # Process the section field to ensure it's a list
+      section_list =
+        if is_binary(sezione_value) && String.trim(sezione_value) != "" do
+          sezione_value
+        else
+          ""
+        end
+
+      # Prepare data for the API
+      edit_data = %{
+        id: movie_id,
+        sezione: [section_list]
+      }
+
+      case Client.edit_movie(edit_data) do
+        {:ok, updated_fields} ->
+          # Update the movie in the socket with the updated fields
+          updated_movie = Map.merge(socket.assigns.movie, updated_fields)
+
+          socket =
+            socket
+            |> assign(:movie, updated_movie)
+            |> assign_flash(:info, l("Section updated successfully"))
+
+          {:noreply, socket}
+
+        {:error, reason} ->
+          socket =
+            socket
+            |> assign_flash(:error, l("Failed to update section: %{reason}", reason: reason))
+
+          {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Handle the multi_select event for edizione
+  def handle_event("multi_select", %{"multi_select" => %{"edit_edizione" => edizione_json}} = attrs, socket) do
+    debug("Processing edizione update: #{inspect(attrs)}")
+
+    if socket.assigns.movie do
+      movie_id = socket.assigns.movie["id"]
+
+      # Parse the JSON string to extract the edizione value
+      edizione_data =
+        case Jason.decode(edizione_json) do
+          {:ok, data} -> data
+          _ -> %{}
+        end
+
+      # Extract the value from the parsed JSON
+      edizione_value = Map.get(edizione_data, "value", "")
+
+      # Process the edizione field to ensure it's a valid value
+      edizione =
+        if is_binary(edizione_value) && String.trim(edizione_value) != "" do
+          edizione_value
+        else
+          nil
+        end
+
+      # Prepare data for the API
+      edit_data = %{
+        id: movie_id,
+        edizione: [edizione]
+      }
+
+      case Client.edit_movie(edit_data) do
+        {:ok, updated_fields} ->
+          # Update the movie in the socket with the updated fields
+          updated_movie = Map.merge(socket.assigns.movie, updated_fields)
+
+          socket =
+            socket
+            |> assign(:movie, updated_movie)
+            |> assign_flash(:info, l("Edizione updated successfully"))
+
+          {:noreply, socket}
+
+        {:error, reason} ->
+          socket =
+            socket
+            |> assign_flash(:error, l("Failed to update edizione: %{reason}", reason: reason))
+
+          {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Fallback pattern to handle other multi_select events
+  def handle_event("multi_select", attrs, socket) do
+    debug("Unhandled multi_select event: #{inspect(attrs)}")
+    {:noreply, socket}
+  end
+
   def fetch_available_sections(socket) do
     # Define some default sections in case the API call fails
     default_sections = [
