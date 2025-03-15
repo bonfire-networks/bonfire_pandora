@@ -45,7 +45,7 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
         sezione: [section_list]
       }
 
-      case Client.edit_movie(edit_data) do
+      case Client.edit_movie(edit_data, socket) do
         {:ok, updated_fields} ->
           # Update the movie in the socket with the updated fields
           updated_movie = Map.merge(socket.assigns.movie, updated_fields)
@@ -100,7 +100,7 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
         edizione: [edizione]
       }
 
-      case Client.edit_movie(edit_data) do
+      case Client.edit_movie(edit_data, socket) do
         {:ok, updated_fields} ->
           # Update the movie in the socket with the updated fields
           updated_movie = Map.merge(socket.assigns.movie, updated_fields)

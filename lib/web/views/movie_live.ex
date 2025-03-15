@@ -11,12 +11,6 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   def mount(_params, _session, socket) do
     debug("Mounting MovieLive")
 
-    # Client.sign_up(current_user(socket)) |> debug("signed up?")
-
-    # Client.save_credentials(current_user(socket), "social@mayel.space", "mayel_bonfire", "UPbtQfDOEIYu2ni54pCUBTu99oFYxERncZ1v/GlfWag=") |> debug("saaaved")
-
-    Settings.put([PanDoRa.API.Client, :my_session_cookie], nil, socket)
-
     socket =
       socket
       |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
@@ -300,7 +294,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         selezionato: [selezionato_value]
       }
 
-      case Client.edit_movie(edit_data) do
+      case Client.edit_movie(edit_data, socket) do
         {:ok, updated_fields} ->
           # Update the movie in the socket with the updated fields
           updated_movie = Map.merge(socket.assigns.movie, updated_fields)
