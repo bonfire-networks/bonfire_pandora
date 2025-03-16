@@ -15,7 +15,11 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
   end
 
   # Handle the multi_select event for sezione
-  def handle_event("multi_select", %{"multi_select" => %{"edit_sezione" => sezione_json}} = attrs, socket) do
+  def handle_event(
+        "multi_select",
+        %{"multi_select" => %{"edit_sezione" => sezione_json}} = attrs,
+        socket
+      ) do
     debug("Processing section update: #{inspect(attrs)}")
 
     if socket.assigns.movie do
@@ -70,7 +74,11 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
   end
 
   # Handle the multi_select event for edizione
-  def handle_event("multi_select", %{"multi_select" => %{"edit_edizione" => edizione_json}} = attrs, socket) do
+  def handle_event(
+        "multi_select",
+        %{"multi_select" => %{"edit_edizione" => edizione_json}} = attrs,
+        socket
+      ) do
     debug("Processing edizione update: #{inspect(attrs)}")
 
     if socket.assigns.movie do

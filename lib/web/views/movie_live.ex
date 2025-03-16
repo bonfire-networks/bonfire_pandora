@@ -127,6 +127,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     end
   end
 
+  # TODO: deprecate in favour of standard Post deletion
   def handle_event("delete_annotation", %{"note-id" => note_id}, socket) do
     case Client.remove_annotation(note_id, current_user: current_user(socket)) do
       {:ok, _response} ->
@@ -187,47 +188,47 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     {:noreply, socket}
   end
 
-  # Handle submitting the edit
-  def handle_event("update_annotation", %{"note" => note}, socket) do
-    with annotation_id <- socket.assigns.editing_annotation["id"],
-         in_timestamp <- socket.assigns.in_timestamp,
-         out_timestamp <- socket.assigns.out_timestamp,
-         edit_data = %{
-           id: annotation_id,
-           in: in_timestamp,
-           out: out_timestamp,
-           value: note
-         },
-         {:ok, updated_annotation} <-
-           Client.edit_annotation(edit_data, current_user: current_user(socket)) do
-      # Update the public_notes list in the socket
-      updated_notes =
-        Enum.map(socket.assigns.public_notes, fn note ->
-          if note["id"] == annotation_id do
-            updated_annotation
-          else
-            note
-          end
-        end)
+  # # Handle submitting the edit
+  # def handle_event("update_annotation", %{"note" => note}, socket) do
+  #   with annotation_id <- socket.assigns.editing_annotation["id"],
+  #        in_timestamp <- socket.assigns.in_timestamp,
+  #        out_timestamp <- socket.assigns.out_timestamp,
+  #        edit_data = %{
+  #          id: annotation_id,
+  #          in: in_timestamp,
+  #          out: out_timestamp,
+  #          value: note
+  #        },
+  #        {:ok, updated_annotation} <-
+  #          Client.edit_annotation(edit_data, current_user: current_user(socket)) do
+  #     # Update the public_notes list in the socket
+  #     updated_notes =
+  #       Enum.map(socket.assigns.public_notes, fn note ->
+  #         if note["id"] == annotation_id do
+  #           updated_annotation
+  #         else
+  #           note
+  #         end
+  #       end)
 
-      # Reset the editing state
-      socket =
-        socket
-        |> assign(:public_notes, updated_notes)
-        |> assign(:editing_mode, false)
-        |> assign(:editing_annotation, nil)
-        |> assign(:note_content, "")
-        |> assign(:in_timestamp, nil)
-        |> assign(:out_timestamp, nil)
-        |> assign_flash(:info, l("Annotation updated successfully"))
+  #     # Reset the editing state
+  #     socket =
+  #       socket
+  #       |> assign(:public_notes, updated_notes)
+  #       |> assign(:editing_mode, false)
+  #       |> assign(:editing_annotation, nil)
+  #       |> assign(:note_content, "")
+  #       |> assign(:in_timestamp, nil)
+  #       |> assign(:out_timestamp, nil)
+  #       |> assign_flash(:info, l("Annotation updated successfully"))
 
-      {:noreply, socket}
-    else
-      error ->
-        error("Error updating annotation: #{inspect(error)}")
-        {:noreply, assign_flash(socket, :error, l("Could not update annotation"))}
-    end
-  end
+  #     {:noreply, socket}
+  #   else
+  #     error ->
+  #       error("Error updating annotation: #{inspect(error)}")
+  #       {:noreply, assign_flash(socket, :error, l("Could not update annotation"))}
+  #   end
+  # end
 
   # Handle editing a movie
   def handle_event("edit_movie", %{"movie" => movie_data}, socket) do
@@ -270,7 +271,6 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     {:noreply, socket}
   end
 
-
   def handle_event("toggle_selezionato", attrs, socket) do
     debug("Processing selezionato update: #{inspect(attrs)}")
 
@@ -309,7 +309,10 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         {:error, reason} ->
           socket =
             socket
-            |> assign_flash(:error, l("Failed to update selection status: %{reason}", reason: reason))
+            |> assign_flash(
+              :error,
+              l("Failed to update selection status: %{reason}", reason: reason)
+            )
 
           {:noreply, socket}
       end
@@ -319,7 +322,11 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   end
 
   # Handle the live_select_change event for autocomplete
-  def handle_event("live_select_change", %{"field" => field, "text" => search_text, "id" => live_select_id}, socket) do
+  def handle_event(
+        "live_select_change",
+        %{"field" => field, "text" => search_text, "id" => live_select_id},
+        socket
+      ) do
     # Extract the field name from the form field identifier
     field_name =
       case field do
@@ -328,6 +335,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         # "multi_select_edit_genre" -> "genre"
         _ -> nil
       end
+
     if field_name do
       # Perform a search for sections matching the text
       case Client.fetch_grouped_metadata([],
@@ -343,7 +351,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
             |> Enum.filter(fn %{"name" => name} ->
               String.contains?(String.downcase(name), String.downcase(search_text))
             end)
-            |> Enum.map(fn %{"name" => name} -> {name, %{id: name,  name: name, value: name}} end)
+            |> Enum.map(fn %{"name" => name} -> {name, %{id: name, name: name, value: name}} end)
 
           debug("Matching sections: #{inspect(matching_sections)}")
           maybe_send_update(LiveSelect.Component, live_select_id, options: matching_sections)

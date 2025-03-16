@@ -24,7 +24,7 @@
                 </fieldset>
 
                 <fieldset class="fieldset w-full">
-                    <legend class="fieldset-legent">{l("Director")}</legend>
+                  <legend class="fieldset-legent">{l("Director")}</legend>
                   <input
                     type="text"
                     name="movie[director]"
@@ -32,11 +32,11 @@
                     placeholder={l("Enter directors separated by commas")}
                     class="input w-full"
                   />
-                   <p class="fieldset-label">{l("Enter multiple directors separated by commas")}</p>
+                  <p class="fieldset-label">{l("Enter multiple directors separated by commas")}</p>
                 </fieldset>
-                
+
                 <fieldset class="fieldset w-full">
-                    <legend class="fieldset-legent">{l("Genere")}</legend>
+                  <legend class="fieldset-legent">{l("Genere")}</legend>
                   <input
                     type="text"
                     name="movie[genere]"
@@ -44,11 +44,11 @@
                     placeholder={l("Enter genres separated by commas")}
                     class="input w-full"
                   />
-                   <p class="fieldset-label">{l("Enter multiple genres separated by commas")}</p>
+                  <p class="fieldset-label">{l("Enter multiple genres separated by commas")}</p>
                 </fieldset>
-                
+
                 <fieldset class="fieldset w-full">
-                    <legend class="fieldset-legent">{l("Keywords")}</legend>
+                  <legend class="fieldset-legent">{l("Keywords")}</legend>
                   <input
                     type="text"
                     name="movie[keyword]"
@@ -56,7 +56,7 @@
                     placeholder={l("Enter keywords separated by commas")}
                     class="input w-full"
                   />
-                   <p class="fieldset-label">{l("Enter multiple keywords separated by commas")}</p>
+                  <p class="fieldset-label">{l("Enter multiple keywords separated by commas")}</p>
                 </fieldset>
 
                 <!-- <div class="form-control w-full">
@@ -95,7 +95,7 @@
                 </div> -->
 
                 <fieldset class="fieldset w-full">
-                    <legend class="fieldset-legend">{l("Summary")}</legend>
+                  <legend class="fieldset-legend">{l("Summary")}</legend>
                   <textarea name="movie[summary]" class="textarea w-full h-32">{e(@movie, "summary", "")}</textarea>
                 </fieldset>
 
@@ -114,7 +114,7 @@
       </div>
       <div class="mt-4">
         <div class="text-base-content/70">
-          <span class="font-semibold text-base-content">{raw e(@movie, "title", "")}</span>
+          <span class="font-semibold text-base-content">{raw(e(@movie, "title", ""))}</span>
           {#if @movie["director"] && is_list(@movie["director"]) && Enum.count(@movie["director"]) > 0}
             ,
             {#for director <- List.wrap(@movie["director"]) |> Enum.intersperse(", ")}
@@ -139,10 +139,9 @@
           </div>
 
           <ul id="movie_more_info" class="flex flex-col gap-3 w-full mt-3">
-
-              <li class="items-center flex justify-between">
-                <span class="text-sm text-base-content/50 font-medium">{l("Sezione")}</span>
-                <div class="flex items-center gap-1">
+            <li class="items-center flex justify-between">
+              <span class="text-sm text-base-content/50 font-medium">{l("Sezione")}</span>
+              <div class="flex items-center gap-1">
                 <button
                   class="btn btn-xs btn-soft btn-accent"
                   phx-click="filter_by_sezione"
@@ -151,60 +150,60 @@
                   <#Icon iconify="material-symbols:category-rounded" class="w-4 h-4" />
                   {e(@movie, "sezione", "Undefined")}
                 </button>
-                <button 
+                <button
                   class="btn btn-primary btn-square btn-xs btn-soft"
                   phx-click={JS.toggle(to: "#edit_sezione_form")}
                 >
                   <#Icon iconify="ant-design:edit-filled" class="w-4 h-4" />
                 </button>
-                </div>
-              </li>
+              </div>
+            </li>
 
             <form id="edit_sezione_form" class="hidden" :on-change="multi_select">
               <Bonfire.UI.Common.MultiselectLive
-                    implementation={:live_select}
-                    form_input_name={:edit_sezione}
-                    label={l("Select sections")}
-                    preloaded_options={[]}
-                    show_search
-                  />
-              </form>
+                implementation={:live_select}
+                form_input_name={:edit_sezione}
+                label={l("Select sections")}
+                preloaded_options={[]}
+                show_search
+              />
+            </form>
 
             <!-- {#if @movie["edizione"]} -->
-              <li class="items-center flex justify-between">
-                <span class="text-sm text-base-content/50 font-medium">{l("Edizione")}</span>
-                <div class="flex items-center gap-1">
-                  <button
-                    class="btn btn-xs btn-soft btn-accent"
-                    phx-click="filter_by_edizione"
-                    phx-value-id={e(@movie, "edizione", "")}
-                  >
-                    <#Icon solid="calendar" class="w-4 h-4" />
-                    {e(@movie, "edizione", "")}
-                  </button>
-                  <button 
-                    class="btn btn-primary btn-square btn-xs btn-soft"
-                    phx-click={JS.toggle(to: "#edit_edizione_form")}
-                  >
-                    <#Icon iconify="ant-design:edit-filled" class="w-4 h-4" />
-                  </button>
-                </div>
-              </li>
+            <li class="items-center flex justify-between">
+              <span class="text-sm text-base-content/50 font-medium">{l("Edizione")}</span>
+              <div class="flex items-center gap-1">
+                <button
+                  class="btn btn-xs btn-soft btn-accent"
+                  phx-click="filter_by_edizione"
+                  phx-value-id={e(@movie, "edizione", "")}
+                >
+                  <#Icon solid="calendar" class="w-4 h-4" />
+                  {e(@movie, "edizione", "")}
+                </button>
+                <button
+                  class="btn btn-primary btn-square btn-xs btn-soft"
+                  phx-click={JS.toggle(to: "#edit_edizione_form")}
+                >
+                  <#Icon iconify="ant-design:edit-filled" class="w-4 h-4" />
+                </button>
+              </div>
+            </li>
 
             <form id="edit_edizione_form" class="hidden" :on-change="multi_select">
               <Bonfire.UI.Common.MultiselectLive
-                    implementation={:live_select}
-                    form_input_name={:edit_edizione}
-                    label={l("Select edizione")}
-                    preloaded_options={[]}
-                    show_search
-                  />
-              </form>
+                implementation={:live_select}
+                form_input_name={:edit_edizione}
+                label={l("Select edizione")}
+                preloaded_options={[]}
+                show_search
+              />
+            </form>
             <!-- {/if} -->
             <!-- {#if @movie["selezionato"]} -->
-              <li class="items-center flex justify-between">
-                <span class="text-sm text-base-content/50 font-medium">{l("Selezionato")}</span>
-                <div class="flex items-center gap-1">
+            <li class="items-center flex justify-between">
+              <span class="text-sm text-base-content/50 font-medium">{l("Selezionato")}</span>
+              <div class="flex items-center gap-1">
                 {#if List.first(List.wrap(@movie["selezionato"])) == "yes"}
                   <div class="badge badge-sm badge-success flex items-center gap-1">
                     <!-- <#Icon iconify="material-symbols:check-circle" class="w-4 h-4" /> -->
@@ -216,18 +215,18 @@
                     {l("No")}
                   </div>
                 {/if}
-                  <div class="form-control">
-                    <label class="cursor-pointer label flex gap-2 px-0 py-0">
-                      <input 
-                        type="checkbox" 
-                        class={"toggle toggle-success toggle-sm"} 
-                        checked={List.first(List.wrap(@movie["selezionato"])) == "yes"} 
-                        phx-click="toggle_selezionato"
-                      />
-                    </label>
-                  </div>
+                <div class="form-control">
+                  <label class="cursor-pointer label flex gap-2 px-0 py-0">
+                    <input
+                      type="checkbox"
+                      class="toggle toggle-success toggle-sm"
+                      checked={List.first(List.wrap(@movie["selezionato"])) == "yes"}
+                      phx-click="toggle_selezionato"
+                    />
+                  </label>
                 </div>
-              </li>
+              </div>
+            </li>
             <!-- {/if} -->
 
             <!-- {#if @movie["genre"]}
@@ -253,7 +252,7 @@
                 </div>
               </li>
             {/if}
-            
+
             {#if @movie["keyword"]}
               <li class="items-center flex justify-between">
                 <span class="text-sm text-base-content/50 font-medium">{l("Keywords")}</span>

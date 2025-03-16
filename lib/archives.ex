@@ -5,9 +5,12 @@ defmodule Bonfire.PanDoRa.Archives do
   use Bonfire.Common.Utils
   use Bonfire.Common.Repo
 
-  @default_per_page 20
-  @filter_per_page 10
-  @default_keys ~w(title id item_id public_id director sezione edizione featuring duration)
+  @behaviour Bonfire.Common.ContextModule
+  def verb_context_module, do: :annotate
+
+  # @default_per_page 20
+  # @filter_per_page 10
+  # @default_keys ~w(title id item_id public_id director sezione edizione featuring duration)
 
   # def search_items(conditions, opts) do
   #   page = Keyword.get(opts, :page, 0)
@@ -176,6 +179,41 @@ defmodule Bonfire.PanDoRa.Archives do
 
       e ->
         error(e)
+    end
+  end
+
+  # Handle submitting the edit
+  def edit_post_content(post, opts) do
+    post = repo().maybe_preload(post, :extra_info)
+
+    with pandora_id when is_binary(pandora_id) <-
+           e(post, :extra_info, :info, "pandora_id", :no_pandora_ref),
+         text when is_binary(text) <- e(post, :post_content, :html_body, :no_text),
+         edit_data = %{
+           id: pandora_id,
+           value: text
+         },
+         {:ok, updated_annotation} <-
+           Client.edit_annotation(edit_data, current_user: current_user(opts)) do
+      {:ok, updated_annotation}
+    end
+  end
+
+  def delete_activity(post, opts) do
+    post = repo().maybe_preload(post, :extra_info)
+    pandora_id = e(post, :extra_info, :info, "pandora_id", :no_pandora_ref)
+
+    case pandora_id && Client.remove_annotation(pandora_id, current_user: current_user(opts)) do
+      {:ok, response} ->
+        {:ok, response}
+
+      :no_pandora_ref ->
+        :no_pandora_ref
+
+      error ->
+        msg = "Error deleting annotation"
+        error(error, msg)
+        raise msg
     end
   end
 end
