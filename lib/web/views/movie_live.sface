@@ -172,7 +172,7 @@
         showing_within={:annotations}
       />
 
-      <div
+      {!-- <div
         :for={note <- @public_notes}
         id={"note-#{note["id"]}"}
         class="flex items-top gap-3 p-3 border-b border-base-content/10 pb-4"
@@ -253,8 +253,11 @@
           </div>
           <div class="prose">{e(note, "value", "")}</div>
         </div>
-      </div>
+      </div> 
+      
       <!-- <code>{inspect(@public_notes, pretty: true)}</code> -->
+
+      --}
     </div>
   </div>
 </div>
