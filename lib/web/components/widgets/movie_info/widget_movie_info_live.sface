@@ -205,7 +205,7 @@
               <li class="items-center flex justify-between">
                 <span class="text-sm text-base-content/50 font-medium">{l("Selezionato")}</span>
                 <div class="flex items-center gap-1">
-                {#if List.first(@movie["selezionato"]) == "yes"}
+                {#if List.first(List.wrap(@movie["selezionato"])) == "yes"}
                   <div class="badge badge-sm badge-success flex items-center gap-1">
                     <!-- <#Icon iconify="material-symbols:check-circle" class="w-4 h-4" /> -->
                     {l("Yes")}
@@ -221,7 +221,7 @@
                       <input 
                         type="checkbox" 
                         class={"toggle toggle-success toggle-sm"} 
-                        checked={is_list(e(@movie, "selezionato", nil)) && List.first(@movie["selezionato"]) == "yes"} 
+                        checked={List.first(List.wrap(@movie["selezionato"])) == "yes"} 
                         phx-click="toggle_selezionato"
                       />
                     </label>
