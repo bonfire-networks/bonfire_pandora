@@ -248,7 +248,7 @@
         phx-update="stream"
         data-page={@page}
         data-loading={@loading}
-        class="list bg-base-100 rounded-box shadow-md"
+        class="list"
       >
         {#for {id, result} <- @streams.search_results}
           <Bonfire.PanDoRa.Components.MoviePreviewLive
