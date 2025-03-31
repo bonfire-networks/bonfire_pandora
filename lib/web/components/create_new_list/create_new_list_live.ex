@@ -46,7 +46,7 @@ defmodule Bonfire.PanDoRa.Components.CreateNewListLive do
   end
 
   def handle_info({:update_list_icon, media} = msg, socket) do
-    IO.inspect(media, label: "Received list icon update")
+    # IO.inspect(media, label: "Received list icon update")
 
     {:noreply,
      socket
@@ -54,13 +54,13 @@ defmodule Bonfire.PanDoRa.Components.CreateNewListLive do
   end
 
   def handle_info(msg, socket) do
-    IO.inspect(msg, label: "Received message")
+    # IO.inspect(msg, label: "Received message")
     {:noreply, socket}
   end
 
   def set_list_icon(:icon, :pandora_list, %{} = media, assign_field, socket) do
     # Store the uploaded media for use in list creation
-    IO.inspect(media, label: "Setting list icon")
+    # IO.inspect(media, label: "Setting list icon")
 
     # Send message to parent component using standard send
     send(self(), {:update_list_icon, media})

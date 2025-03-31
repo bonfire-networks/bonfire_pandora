@@ -34,7 +34,7 @@ defmodule Bonfire.PanDoRa.Web.MyListsLive do
 
   # Handle failed list fetch
   defp handle_lists_result(socket, {:error, error}) do
-    IO.inspect(error, label: "Error fetching lists")
+    # IO.inspect(error, label: "Error fetching lists")
 
     socket
     |> assign(:lists, [])
@@ -117,7 +117,7 @@ defmodule Bonfire.PanDoRa.Web.MyListsLive do
 
   # WIP: need to move this function to create_new_list component
   def handle_info({:update_list_icon, media} = msg, socket) do
-    IO.inspect(media, label: "Received list icon update")
+    # IO.inspect(media, label: "Received list icon update")
 
     {:noreply,
      socket

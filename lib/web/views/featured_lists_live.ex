@@ -25,7 +25,7 @@ defmodule Bonfire.PanDoRa.Web.FeaturedListsLive do
 
   # Handle successful list fetch
   defp handle_lists_result(socket, {:ok, %{items: lists}}) do
-    IO.inspect(lists, label: "Fetched lists")
+    # IO.inspect(lists, label: "Fetched lists")
 
     socket
     |> assign(:lists, lists)
@@ -35,7 +35,7 @@ defmodule Bonfire.PanDoRa.Web.FeaturedListsLive do
 
   # Handle failed list fetch
   defp handle_lists_result(socket, {:error, error}) do
-    IO.inspect(error, label: "Error fetching lists")
+    # IO.inspect(error, label: "Error fetching lists")
 
     socket
     |> assign(:lists, [])

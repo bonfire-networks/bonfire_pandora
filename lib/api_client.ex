@@ -299,7 +299,7 @@ defmodule PanDoRa.API.Client do
 
     case make_request("get", payload, opts) do
       {:ok, %{} = data} ->
-        IO.inspect(data, label: "Movie data retrieved")
+        # IO.inspect(data, label: "Movie data retrieved")
         {:ok, data}
 
       error ->
