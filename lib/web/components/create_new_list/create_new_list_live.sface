@@ -1,6 +1,6 @@
 <div x-data="{open: false}" class="">
   <div x-on:click="open = !open" class="btn btn-soft btn-secondary w-full">
-    <#Icon iconify="carbon:bookmark-filled" class="w-5 h-5" />
+    <#Icon iconify="lucide:bookmark-filled" class="w-5 h-5" />
     {l("Create a new list")}
   </div>
   <div x-show="open" x-cloak x-collapse>
