@@ -80,7 +80,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   #   # |> debug_loading_states("mount")
 
-  #   if connected?(socket) do
+  #   if socket_connected?(socket) do
   #     send(self(), :load_initial_data)
   #     {:ok, socket, temporary_assigns: [search_results: []]}
   #   else
@@ -110,7 +110,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       # Apply incoming assigns last
       |> assign(assigns)
 
-    # if connected?(socket) do
+    # if socket_connected?(socket) do
     socket =
       if not is_nil(assigns[:term]) and assigns.term != "" do
         # If we have a term, perform a search

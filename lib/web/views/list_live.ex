@@ -28,7 +28,7 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
       |> assign(:error, nil)
       |> assign(:uploaded_files, nil)
 
-    if connected?(socket) do
+    if socket_connected?(socket) do
       send(self(), :load_initial_data)
       {:ok, socket}
     else
