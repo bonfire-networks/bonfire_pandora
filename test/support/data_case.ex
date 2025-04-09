@@ -23,6 +23,8 @@ defmodule Bonfire.PanDoRa.DataCase do
       import Ecto.Changeset
       import Ecto.Query
       # import Bonfire.PanDoRa.DataCase
+
+      @moduletag :backend
     end
   end
 
