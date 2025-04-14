@@ -70,7 +70,7 @@
     <:open_btn>
       <div class="tooltip tooltip-left" data-tip={l("Add to list")}>
         <div class="btn btn-circle btn-sm btn-secondary btn-soft">
-          <#Icon iconify="lucide:bookmark-filled" class="w-4 h-4" />
+          <#Icon iconify="carbon:bookmark-filled" class="w-4 h-4" />
         </div>
       </div>
     </:open_btn>

@@ -10,17 +10,17 @@
             <span class="font-medium text-base-content/80">{l("All videos")}</span></LinkLive></li>
         <li><LinkLive to={~p"/archive/my_lists"}>
             <div class="w-7 h-7 rounded-lg bg-base-content/10 flex items-center place-content-center shadow-lg">
-              <Iconify.iconify icon="lucide:bookmark-filled" class="w-4 h-4 text-base-content/70" />
+              <Iconify.iconify icon="carbon:bookmark-filled" class="w-4 h-4 text-base-content/70" />
             </div>
             <span class="font-medium text-base-content/80">{l("My lists")}</span></LinkLive></li>
         <!-- <li><a>
             <div class="w-7 h-7 rounded-lg bg-base-content/10 flex items-center place-content-center shadow-lg">
-              <Iconify.iconify icon="lucide:bookmark-filled" class="w-4 h-4 text-base-content/70" />
+              <Iconify.iconify icon="carbon:bookmark-filled" class="w-4 h-4 text-base-content/70" />
             </div>
             <span class="font-medium text-base-content/80">{l("Favourite lists")}</span></a></li> -->
         <li><LinkLive to={~p"/archive/featured_lists"}>
             <div class="w-7 h-7 rounded-lg bg-base-content/10 flex items-center place-content-center shadow-lg">
-              <Iconify.iconify icon="lucide:bookmark-filled" class="w-4 h-4 text-base-content/70" />
+              <Iconify.iconify icon="carbon:bookmark-filled" class="w-4 h-4 text-base-content/70" />
             </div>
             <span class="font-medium text-base-content/80">{l("Featured lists")}</span></LinkLive></li>
         <li><a target="_blank" href="https://wiki.archivioperilcinemaindipendenteitaliano.it">
