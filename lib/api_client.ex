@@ -7,8 +7,8 @@ defmodule PanDoRa.API.Client do
   use Bonfire.Common.Localise
   use Bonfire.Common.E
   alias Bonfire.Common.Utils
-  alias Bonfire.Common.Config
-  alias Bonfire.Common.Settings
+  use Bonfire.Common.Config
+  use Bonfire.Common.Settings
   alias Bonfire.Common.Cache
   alias Bonfire.PanDoRa.Vault
   import Bonfire.PanDoRa
