@@ -425,7 +425,7 @@ defmodule PanDoRa.API.Client do
         type: :user,
         # TODO: based on current creds?
         user:
-          Settings.get([__MODULE__, :credentials], %{}, opts)[:username] ||
+          Settings.get([:bonfire_pandora, :credentials], %{}, opts)[:username] ||
             get_auth_default_user()
       ] ++
         opts
@@ -1009,7 +1009,7 @@ defmodule PanDoRa.API.Client do
     case Vault.encrypt(password) do
       {:ok, encrypted_password} ->
         Settings.put(
-          [__MODULE__, :credentials],
+          [:bonfire_pandora, :credentials],
           %{
             email: email,
             username: username,
@@ -1106,7 +1106,7 @@ defmodule PanDoRa.API.Client do
           if retry_count < 1 do
             maybe_sign_in_and_or_put_auth_cookie(req, username, action, opts, retry_count + 1)
           else
-            debug("skip auth because failed once")
+            warn("skip auth because failed once")
             req
           end
         else
@@ -1146,10 +1146,10 @@ defmodule PanDoRa.API.Client do
 
     cond do
       is_map(user) ->
-        Settings.put([__MODULE__, :my_session_cookie], cookie, current_user: user)
+        Settings.put([:bonfire_pandora, :my_session_cookie], cookie, current_user: user)
 
       is_binary(username) ->
-        Config.put([__MODULE__, :session_cookie], %{username => cookie}, :bonfire_pandora)
+        Config.put([:bonfire_pandora, :session_cookie], %{username => cookie}, :bonfire_pandora)
 
       true ->
         nil
@@ -1161,10 +1161,10 @@ defmodule PanDoRa.API.Client do
 
     cond do
       is_map(user) ->
-        Settings.get([__MODULE__, :my_session_cookie], nil, current_user: user)
+        Settings.get([:bonfire_pandora, :my_session_cookie], nil, current_user: user)
 
       is_binary(username) ->
-        Config.get([__MODULE__, :session_cookie, username], nil, :bonfire_pandora)
+        Config.get([:bonfire_pandora, :session_cookie, username], nil, :bonfire_pandora)
 
       true ->
         nil
@@ -1172,11 +1172,11 @@ defmodule PanDoRa.API.Client do
   end
 
   def get_auth_default_user do
-    Config.get([__MODULE__, :username], nil, :bonfire_pandora)
+    Config.get([:bonfire_pandora, :username], nil, :bonfire_pandora)
   end
 
   defp get_auth_pw(username) do
-    Config.get([__MODULE__, :password], nil, :bonfire_pandora)
+    Config.get([:bonfire_pandora, :password], nil, :bonfire_pandora)
   end
 
   defp get_auth_credentials(opts \\ []) do
@@ -1190,7 +1190,7 @@ defmodule PanDoRa.API.Client do
 
       is_map(current_user) ->
         with %{username: username, password: password} <-
-               Settings.get([__MODULE__, :credentials], :no_user_credentials,
+               Settings.get([:bonfire_pandora, :credentials], :no_user_credentials,
                  current_user: current_user
                ),
              {:ok, password} <- password |> Base.decode64(),
@@ -1207,7 +1207,7 @@ defmodule PanDoRa.API.Client do
   end
 
   def get_pandora_url do
-    Bonfire.Common.Config.get([__MODULE__, :pandora_url], "https://bff.matango.tv")
+    Bonfire.Common.Config.get!([:bonfire_pandora, :pandora_url])
   end
 
   defp get_api_url do

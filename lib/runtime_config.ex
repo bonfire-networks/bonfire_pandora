@@ -13,9 +13,9 @@ defmodule Bonfire.PanDoRa.RuntimeConfig do
     # config :bonfire_pandora,
     #   modularity: :disabled
 
-    config :bonfire_pandora, PanDoRa.API.Client,
+    config :bonfire_pandora,
       username: System.get_env("PANDORA_USER"),
       password: System.get_env("PANDORA_PW"),
-      api_url: "https://bff.matango.tv"
+      pandora_url: System.get_env("PANDORA_URL")
   end
 end
