@@ -142,7 +142,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            keys: @default_keys,
            total: true,
            current_user: current_user(socket)
-         ) do
+         )
+         |> debug("fiiid") do
       {:ok, %{items: items} = data} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
 
@@ -659,7 +660,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            keys: @default_keys,
            total: true,
            current_user: current_user(socket)
-         ) do
+         )
+         |> debug("initiall") do
       {:ok, %{items: items} = data} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
 
@@ -686,8 +688,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         end)
         |> track_loading(:initial_load, false)
 
-      error ->
-        debug("Error in initial data fetch: #{inspect(error)}")
+      other ->
+        error(other, "Error in initial data fetch")
 
         socket
         |> track_loading(:initial_load, false)

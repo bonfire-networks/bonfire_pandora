@@ -50,7 +50,7 @@ defmodule PanDoRa.API.Client do
 
     debug("Making request with payload: #{inspect(items_payload)}")
 
-    case make_request("find", items_payload, opts) do
+    case make_request("find", items_payload, opts) |> debug("made_find_request") do
       {:ok, %{"items" => items}} when is_list(items) ->
         requested_count = List.last(range) - List.first(range) + 1
         has_more = length(items) > requested_count
@@ -425,7 +425,7 @@ defmodule PanDoRa.API.Client do
         type: :user,
         # TODO: based on current creds?
         user:
-          Settings.get([:bonfire_pandora, :credentials], %{}, opts)[:username] ||
+          Settings.get([:bonfire_pandora, __MODULE__, :credentials], %{}, opts)[:username] ||
             get_auth_default_user()
       ] ++
         opts
@@ -888,6 +888,8 @@ defmodule PanDoRa.API.Client do
       )
       |> maybe_sign_in_and_or_put_auth_cookie(username, endpoint, opts, retry_count)
 
+    # |> debug("reqqq")
+
     case Req.post(req,
            form: %{
              action: endpoint,
@@ -909,7 +911,7 @@ defmodule PanDoRa.API.Client do
           _ ->
             save_cookie || error(l("No data received from API"))
         end
-        |> debug("API Response")
+        |> debug("API Response from #{endpoint}")
 
       {:ok, %Req.Response{status: 401}} ->
         error(l("Authentication failed"))
@@ -1009,7 +1011,7 @@ defmodule PanDoRa.API.Client do
     case Vault.encrypt(password) do
       {:ok, encrypted_password} ->
         Settings.put(
-          [:bonfire_pandora, :credentials],
+          [:bonfire_pandora, __MODULE__, :credentials],
           %{
             email: email,
             username: username,
@@ -1042,7 +1044,7 @@ defmodule PanDoRa.API.Client do
            sign_up(user, email, username, pw),
          username = "#{username}_bonfire",
          {:error, e} <- sign_up(user, email, username, pw) do
-      error(e)
+      error(e, "Could not sign up on Pandora")
     end
   end
 
@@ -1081,13 +1083,16 @@ defmodule PanDoRa.API.Client do
         if !opts[:looping] do
           with {:ok, %{__context__: context}} <- sign_up(opts) do
             sign_in(Enum.into(context, looping: true))
+          else
+            e ->
+              error(e, l("Could not sign up on Pandora"))
           end
         else
-          error(l("No credentions found for the current user"))
+          error(l("No Pandora credentials found for the current user"))
         end
 
       e ->
-        error(e, l("No username/password found"))
+        error(e, l("No Pandora username/password found"))
     end
   end
 
@@ -1124,7 +1129,7 @@ defmodule PanDoRa.API.Client do
       set_session_cookie(username, cookie, opts)
     else
       if action == "signin" do
-        error(headers, l("No session cookie received"))
+        error(headers, l("No Pandora session cookie received"))
       end
     end
   end
@@ -1146,10 +1151,16 @@ defmodule PanDoRa.API.Client do
 
     cond do
       is_map(user) ->
-        Settings.put([:bonfire_pandora, :my_session_cookie], cookie, current_user: user)
+        Settings.put([:bonfire_pandora, __MODULE__, :my_session_cookie], cookie,
+          current_user: user
+        )
 
       is_binary(username) ->
-        Config.put([:bonfire_pandora, :session_cookie], %{username => cookie}, :bonfire_pandora)
+        Config.put(
+          [:bonfire_pandora, __MODULE__, :session_cookie],
+          %{username => cookie},
+          :bonfire_pandora
+        )
 
       true ->
         nil
@@ -1161,10 +1172,14 @@ defmodule PanDoRa.API.Client do
 
     cond do
       is_map(user) ->
-        Settings.get([:bonfire_pandora, :my_session_cookie], nil, current_user: user)
+        Settings.get([:bonfire_pandora, __MODULE__, :my_session_cookie], nil, current_user: user)
 
       is_binary(username) ->
-        Config.get([:bonfire_pandora, :session_cookie, username], nil, :bonfire_pandora)
+        Config.get(
+          [:bonfire_pandora, __MODULE__, :session_cookie, username],
+          nil,
+          :bonfire_pandora
+        )
 
       true ->
         nil
@@ -1172,11 +1187,11 @@ defmodule PanDoRa.API.Client do
   end
 
   def get_auth_default_user do
-    Config.get([:bonfire_pandora, :username], nil, :bonfire_pandora)
+    Config.get([:bonfire_pandora, __MODULE__, :username], nil, :bonfire_pandora)
   end
 
   defp get_auth_pw(username) do
-    Config.get([:bonfire_pandora, :password], nil, :bonfire_pandora)
+    Config.get([:bonfire_pandora, __MODULE__, :password], nil, :bonfire_pandora)
   end
 
   defp get_auth_credentials(opts \\ []) do
@@ -1190,7 +1205,7 @@ defmodule PanDoRa.API.Client do
 
       is_map(current_user) ->
         with %{username: username, password: password} <-
-               Settings.get([:bonfire_pandora, :credentials], :no_user_credentials,
+               Settings.get([:bonfire_pandora, __MODULE__, :credentials], :no_user_credentials,
                  current_user: current_user
                ),
              {:ok, password} <- password |> Base.decode64(),
@@ -1202,7 +1217,7 @@ defmodule PanDoRa.API.Client do
         {opts, get_auth_pw(opts)}
 
       true ->
-        error(opts, "No credentials found")
+        error(opts, "No Pandora credentials found")
     end
   end
 

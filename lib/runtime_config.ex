@@ -14,8 +14,10 @@ defmodule Bonfire.PanDoRa.RuntimeConfig do
     #   modularity: :disabled
 
     config :bonfire_pandora,
-      username: System.get_env("PANDORA_USER"),
-      password: System.get_env("PANDORA_PW"),
       pandora_url: System.get_env("PANDORA_URL")
+
+    config :bonfire_pandora, PanDoRa.API.Client,
+      username: System.get_env("PANDORA_USER"),
+      password: System.get_env("PANDORA_PW")
   end
 end
