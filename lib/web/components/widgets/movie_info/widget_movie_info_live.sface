@@ -152,7 +152,7 @@
                 </button>
                 <button
                   class="btn btn-primary btn-square btn-xs btn-soft"
-                  phx-click={JS.toggle(to: "#edit_sezione_form")}
+                  onclick={js_toggle(to: "#edit_sezione_form")}
                 >
                   <#Icon iconify="ant-design:edit-filled" class="w-4 h-4" />
                 </button>
@@ -183,7 +183,7 @@
                 </button>
                 <button
                   class="btn btn-primary btn-square btn-xs btn-soft"
-                  phx-click={JS.toggle(to: "#edit_edizione_form")}
+                  onclick={js_toggle(to: "#edit_edizione_form")}
                 >
                   <#Icon iconify="ant-design:edit-filled" class="w-4 h-4" />
                 </button>
@@ -317,7 +317,7 @@
 
           <button
             :if={is_long_summary?(@movie)}
-            phx-click={JS.toggle(to: "#movie_more_info")}
+            onclick={js_toggle(to: "#movie_more_info")}
             class="mt-4 btn btn-sm btn-secondary btn-soft"
           >
             {l("Read more")}
