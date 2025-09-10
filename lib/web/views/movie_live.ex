@@ -41,7 +41,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> assign(:movie, movie)
         |> assign(
           :media,
-          ok_unwrap(Archives.movie_get_media(movie["id"]) |> debug("movie_get_media"))
+          from_ok(Archives.movie_get_media(movie["id"]) |> debug("movie_get_media"))
         )
         |> assign(:in_timestamp, nil)
         |> assign(:out_timestamp, nil)

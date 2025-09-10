@@ -903,7 +903,7 @@ defmodule PanDoRa.API.Client do
 
         case maybe_return_data(body) do
           {:ok, data} ->
-            {:ok, Map.merge(data, Utils.ok_unwrap(save_cookie) || %{})}
+            {:ok, Map.merge(data, from_ok(save_cookie) || %{})}
 
           {:error, e} ->
             {:error, e}
