@@ -93,7 +93,7 @@ defmodule PanDoRa.API.Client do
         tasks =
           @metadata_keys
           |> Enum.map(fn field ->
-            Task.async(fn ->
+            apply_task(:async, fn ->
               fetch_field_metadata(field, conditions, nil, opts)
             end)
           end)
@@ -129,7 +129,7 @@ defmodule PanDoRa.API.Client do
     tasks =
       @metadata_keys
       |> Enum.map(fn field ->
-        Task.async(fn ->
+        apply_task(:async, fn ->
           fetch_field_metadata(field, conditions, limit, opts)
         end)
       end)
@@ -172,7 +172,7 @@ defmodule PanDoRa.API.Client do
     tasks =
       fields
       |> Enum.map(fn field ->
-        Task.async(fn ->
+        apply_task(:async, fn ->
           # Build query for each field
           payload = %{
             query: %{
