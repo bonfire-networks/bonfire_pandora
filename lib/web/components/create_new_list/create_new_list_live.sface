@@ -40,7 +40,7 @@
             </div>
           </fieldset>
 
-          <!-- <div class="mb-4">
+          {!-- <div class="mb-4">
             <label class="label">
               <span class="label-text">{l "Name"}</span>
             </label>
@@ -49,9 +49,8 @@
               name="list[name]"
               class="w-full input input-bordered"
             />
-          </div> -->
-
-          <!-- <div class="mb-4">
+          </div> 
+           <div class="mb-4">
             <label class="label">
               <span class="label-text">{l "Description"}</span>
             </label>
@@ -59,7 +58,7 @@
               name="list[description]"
               class="w-full textarea textarea-bordered"
             />
-          </div> -->
+          </div> --}
 
           <button class="btn btn-primary btn-soft w-full mt-3" type="submit">{l("Create")}</button>
         </div>

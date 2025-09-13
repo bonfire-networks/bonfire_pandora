@@ -22,7 +22,7 @@
     </div>
     <div>
       <div>{e(list, "name", "")}</div>
-      <!-- <div class="text-xs uppercase font-semibold opacity-60">Remaining Reason</div> -->
+      {!-- <div class="text-xs uppercase font-semibold opacity-60">Remaining Reason</div> --}
     </div>
 
     {#if Map.get(@movie_in_lists, e(list, "id", ""))}

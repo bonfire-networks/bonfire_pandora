@@ -59,7 +59,7 @@
                   <p class="fieldset-label">{l("Enter multiple keywords separated by commas")}</p>
                 </fieldset>
 
-                <!-- <div class="form-control w-full">
+                {!-- <div class="form-control w-full">
                   <label class="label">
                     <span class="label-text">{l("Year")}</span>
                   </label>
@@ -69,9 +69,8 @@
                     value={e(@movie, "year", "")}
                     class="input input-bordered w-full"
                   />
-                </div> -->
-
-                <!-- <div class="form-control w-full">
+                </div> 
+                 <div class="form-control w-full">
               <label class="label">
                 <span class="label-text">{l("Duration (seconds)")}</span>
               </label>
@@ -81,9 +80,8 @@
                 value={e(@movie, "duration", "")} 
                 class="input input-bordered w-full"
               />
-            </div> -->
-
-                <!-- <div class="form-control w-full">
+            </div> 
+             <div class="form-control w-full">
                   <label class="label">
                     <span class="label-text">{l("Section")}</span>
                   </label>
@@ -92,7 +90,7 @@
                   <label class="label">
                     <span class="label-text-alt">{l("Select existing sections or type to create new ones")}</span>
                   </label>
-                </div> -->
+                </div> --}
 
                 <fieldset class="fieldset w-full">
                   <legend class="fieldset-legend">{l("Summary")}</legend>
@@ -313,7 +311,7 @@
           </ul>
         </div>
 
-        <!-- <div class="flex justify-end">
+        {!-- <div class="flex justify-end">
 
           <button
             :if={is_long_summary?(@movie)}
@@ -322,7 +320,7 @@
           >
             {l("Read more")}
           </button>
-        </div> -->
+        </div> --}
       </div>
     </div>
   </Bonfire.UI.Common.WidgetBlockLive>
