@@ -18,6 +18,11 @@ defmodule PanDoRa.API.Client do
   @metadata_keys ~w(director sezione edizione featuring)
   @metadata_fields ~w(director sezione edizione featuring)
 
+  # Helpers (from Bonfire.Common.Utils when in app; fallback when compiled as dep)
+  defp apply_task(:async, fun), do: Task.async(fun)
+  defp from_ok({:ok, v}), do: v
+  defp from_ok(_), do: nil
+
   @doc """
   Basic find function that matches the API's find endpoint functionality with pagination support
 
