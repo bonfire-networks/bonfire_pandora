@@ -18,11 +18,6 @@ defmodule PanDoRa.API.Client do
   @metadata_keys ~w(director sezione edizione featuring)
   @metadata_fields ~w(director sezione edizione featuring)
 
-  # Helpers (Bonfire.Common.Utils provides these in app; fallback when compiled as dep)
-  def apply_task(:async, fun), do: Task.async(fun)
-  def from_ok({:ok, v}), do: v
-  def from_ok(_), do: nil
-
   @doc """
   Basic find function that matches the API's find endpoint functionality with pagination support
 
@@ -98,7 +93,7 @@ defmodule PanDoRa.API.Client do
         tasks =
           @metadata_keys
           |> Enum.map(fn field ->
-            apply_task(:async, fn ->
+            Task.async(fn ->
               fetch_field_metadata(field, conditions, nil, opts)
             end)
           end)
@@ -134,7 +129,7 @@ defmodule PanDoRa.API.Client do
     tasks =
       @metadata_keys
       |> Enum.map(fn field ->
-        apply_task(:async, fn ->
+        Task.async(fn ->
           fetch_field_metadata(field, conditions, limit, opts)
         end)
       end)
@@ -177,7 +172,7 @@ defmodule PanDoRa.API.Client do
     tasks =
       fields
       |> Enum.map(fn field ->
-        apply_task(:async, fn ->
+        Task.async(fn ->
           # Build query for each field
           payload = %{
             query: %{
@@ -757,6 +752,19 @@ defmodule PanDoRa.API.Client do
     end
   end
 
+  # Formatta errori API Pandora (map) in messaggio leggibile per log e UI
+  defp format_pandora_error(map) when is_map(map) do
+    map
+    |> Enum.map(fn {k, v} -> "#{k}: #{v}" end)
+    |> Enum.join(", ")
+    |> case do
+      "" -> l("API data not recognised")
+      msg -> "Pandora: " <> msg
+    end
+  end
+
+  defp format_pandora_error(_), do: l("API data not recognised")
+
   # Helper to conditionally add conditions based on options
   defp maybe_add_condition(conditions, opts, key, field) do
     case Keyword.get(opts, key) do
@@ -908,7 +916,8 @@ defmodule PanDoRa.API.Client do
 
         case maybe_return_data(body) do
           {:ok, data} ->
-            {:ok, Map.merge(data, from_ok(save_cookie) || %{})}
+            extra = case save_cookie do {:ok, v} -> v; _ -> %{} end
+            {:ok, Map.merge(data, extra)}
 
           {:error, e} ->
             {:error, e}
@@ -949,7 +958,8 @@ defmodule PanDoRa.API.Client do
   end
 
   defp maybe_return_data(%{"data" => %{"errors" => errors} = data}) do
-    error(errors)
+    Logger.info("[PanDoRa API] error response: #{inspect(errors)}")
+    error(errors, format_pandora_error(errors))
   end
 
   defp maybe_return_data(%{"data" => data, "status" => %{"code" => 200}}) do
@@ -979,7 +989,9 @@ defmodule PanDoRa.API.Client do
   end
 
   defp maybe_return_data(body) do
-    error(body, l("API data not recognised"))
+    Logger.info("[PanDoRa API] unrecognised response: #{inspect(body)}")
+    msg = if is_map(body), do: format_pandora_error(body), else: l("API data not recognised")
+    error(body, msg)
   end
 
   defp calculate_range(opts) do
@@ -1049,7 +1061,8 @@ defmodule PanDoRa.API.Client do
            sign_up(user, email, username, pw),
          username = "#{username}_bonfire",
          {:error, e} <- sign_up(user, email, username, pw) do
-      error(e, "Could not sign up on Pandora")
+      Logger.info("[PanDoRa API] sign_up error: #{inspect(e)}")
+      error(e, format_pandora_error(e))
     end
   end
 
