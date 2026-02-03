@@ -12,9 +12,10 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
     default_nav: [__MODULE__]
   )
 
+  # Route is under /archive/ (see Bonfire.PanDoRa.Web.Routes). Solo href per evitare
+  # path/2 sul route name (Router.Reverse.path/2 FunctionClauseError se il nome non esiste nel router).
   declare_nav_link("Search archive",
-    page: "home",
-    href: "/pandora",
+    href: "/archive",
     icon: "carbon:document"
   )
 
