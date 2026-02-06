@@ -18,7 +18,6 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
       )
       |> stream(:list_items, [])
       |> assign(:list, %{})
-      |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
       |> assign(:back, true)
       |> assign(:list_id, list_id)
       |> assign(:page, 0)

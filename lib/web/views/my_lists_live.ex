@@ -12,7 +12,6 @@ defmodule Bonfire.PanDoRa.Web.MyListsLive do
 
     socket =
       socket
-      |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
       |> assign(:back, true)
       |> assign(:page_title, "My lists")
       |> assign(:uploaded_files, nil)

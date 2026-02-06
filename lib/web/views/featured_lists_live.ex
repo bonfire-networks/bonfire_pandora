@@ -12,7 +12,6 @@ defmodule Bonfire.PanDoRa.Web.FeaturedListsLive do
 
     socket =
       socket
-      |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
       |> assign(:back, true)
       |> assign(:page_title, "Featured lists")
       # |> assign(:page_header_aside, [

@@ -13,7 +13,6 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
     socket =
       socket
-      |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
       |> assign(:back, true)
       |> assign(:deleting_annotation_id, nil)
       |> assign(:note_content, "")

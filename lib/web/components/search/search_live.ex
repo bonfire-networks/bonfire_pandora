@@ -74,7 +74,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   #     |> assign(@initial_assigns)
   #     |> assign(:page_title, "Search in your archive")
   #     |> assign(:without_secondary_widgets, true)
-  #     |> assign(:nav_items, Bonfire.Common.ExtensionModule.default_nav())
+  #     
   #     |> assign(:loading_states, MapSet.new())
   #     |> track_loading(:initial_load, true)
 
