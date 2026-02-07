@@ -916,7 +916,12 @@ defmodule PanDoRa.API.Client do
 
         case maybe_return_data(body) do
           {:ok, data} ->
-            extra = case save_cookie do {:ok, v} -> v; _ -> %{} end
+            extra =
+              case save_cookie do
+                {:ok, v} -> v
+                _ -> %{}
+              end
+
             {:ok, Map.merge(data, extra)}
 
           {:error, e} ->
