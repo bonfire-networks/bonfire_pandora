@@ -1050,6 +1050,30 @@ defmodule PanDoRa.API.Client do
     end
   end
 
+  @doc """
+  Syncs the current Bonfire user to Pandora: creates Pandora account with the same
+  email/username and the given password, then stores encrypted credentials in user settings.
+  Use this when the user explicitly provides a password (e.g. "Connect to Pandora" in Settings).
+  """
+  def sync_new_user_to_pandora(user, password)
+      when is_binary(password) and password != "" do
+    username = e(user, :character, :username, nil)
+    account =
+      repo().maybe_preload(e(user, :account, nil) || e(user, :accounted, :account, nil), :email)
+    email = e(account, :email, :email_address, nil)
+
+    if is_binary(username) and is_binary(email) do
+      sign_up(user, email, username, password)
+    else
+      error(
+        user,
+        l("Need a profile username and account email to connect to Pandora")
+      )
+    end
+  end
+
+  def sync_new_user_to_pandora(_user, _), do: error(:bad_password, l("Password is required"))
+
   def sign_up(opts \\ []) do
     user = Utils.current_user_required!(opts)
     # |> debug("tuuu")

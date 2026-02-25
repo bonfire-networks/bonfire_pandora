@@ -1,0 +1,29 @@
+<div class="connect-pandora-widget">
+  <Bonfire.UI.Common.OpenModalLive
+    id="connect_pandora_modal"
+    title_text={l("Connect to Pandora")}
+    no_actions
+    open_btn_wrapper_class="btn btn-soft btn-primary"
+  >
+    <p class="text-base-content/80 mb-3">{l("Create or link your Pandora account using your profile email and username. Enter a password to use for Pandora (stored encrypted).")}</p>
+    <form action="/archive/connect" method="post" class="space-y-3">
+      <input :if={@csrf_token} type="hidden" name="_csrf_token" value={@csrf_token}>
+      <fieldset class="fieldset">
+        <legend class="fieldset-legend">{l("Pandora password")}</legend>
+        <input
+          type="password"
+          name="password"
+          autocomplete="current-password"
+          class="input input-bordered w-full"
+          placeholder={l("Password")}
+          required
+        />
+      </fieldset>
+      <button type="submit" class="btn btn-primary w-full">{l("Connect")}</button>
+    </form>
+    <:open_btn>
+      <#Icon iconify="mingcute:microscope-fill" class="w-5 h-5" />
+      {l("Connect to Pandora")}
+    </:open_btn>
+  </Bonfire.UI.Common.OpenModalLive>
+</div>

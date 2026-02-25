@@ -31,6 +31,7 @@ defmodule Bonfire.PanDoRa.Web.Routes do
         pipe_through(:browser)
         pipe_through(:user_required)
 
+        post("/connect", ConnectPandoraController, :create)
         live("/movies/:id", MovieLive)
         live("/my_lists/", MyListsLive)
         live("/featured_lists/", FeaturedListsLive)
