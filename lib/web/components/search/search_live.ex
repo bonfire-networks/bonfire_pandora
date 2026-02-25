@@ -120,7 +120,48 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         fetch_initial_data(socket)
       end
 
+    socket = assign_filter_by_field_assigns(socket)
     {:ok, socket}
+  end
+
+  # Build @filters, @available_by_field, etc. for the template (avoids <% %> inside {#for} for Surface 0.12).
+  # Normalize available lists to atom keys so template can use %{name: name, items: count} <- available.
+  defp assign_filter_by_field_assigns(socket) do
+    filters = Enum.map(@filter_types, &%{id: &1})
+
+    available_by_field =
+      Map.new(@filter_types, fn type ->
+        list = Map.get(socket.assigns, :"available_#{type}", []) || []
+        normalized =
+          Enum.map(list, fn
+            %{"name" => n, "items" => c} -> %{name: n, items: c}
+            %{name: n, items: c} -> %{name: n, items: c}
+            other -> %{name: inspect(other), items: 0}
+          end)
+        {type, normalized}
+      end)
+
+    selected_by_field =
+      Map.new(@filter_types, fn type ->
+        {type, Map.get(socket.assigns, :"selected_#{type}", []) || []}
+      end)
+
+    page_by_field =
+      Map.new(@filter_types, fn type ->
+        {type, Map.get(socket.assigns, :"#{type}_page", 0)}
+      end)
+
+    loading_by_field =
+      Map.new(@filter_types, fn type ->
+        {type, Map.get(socket.assigns, :"#{type}_loading", false)}
+      end)
+
+    socket
+    |> assign(:filters, filters)
+    |> assign(:available_by_field, available_by_field)
+    |> assign(:selected_by_field, selected_by_field)
+    |> assign(:page_by_field, page_by_field)
+    |> assign(:loading_by_field, loading_by_field)
   end
 
   # Add this helper function for the initial search
