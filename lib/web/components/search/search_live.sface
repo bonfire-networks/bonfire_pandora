@@ -41,8 +41,7 @@
               style="overscroll-behavior: contain;"
             >
               {#for item <- available}
-                <% name = Map.get(item, ~s(name)) %>
-                <% count = Map.get(item, ~s(items)) %>
+                <% name = Map.get(item, ~s(name)); count = Map.get(item, ~s(items)) %>
                 <li class="w-full" id={"#{id}-#{name}"}>
                   <a
                     phx-click={"filter_by_#{id}"}
