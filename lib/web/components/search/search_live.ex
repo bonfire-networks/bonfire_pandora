@@ -124,21 +124,31 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     {:ok, socket}
   end
 
-  # Build @filters, @available_by_field, etc. for the template (avoids <% %> inside {#for} for Surface 0.12).
-  # Normalize available lists to atom keys so template can use %{name: name, items: count} <- available.
+  # Build data for template so we use only {#for} and { } (no <% %>). Bonfire: logic in component, template for presentation.
+  # Surface 0.12 treats <% %> inside {#for} as opening a block; avoid it by precomputing filter_sections and active_filter_badges.
   defp assign_filter_by_field_assigns(socket) do
-    filters = Enum.map(@filter_types, &%{id: &1})
-
-    available_by_field =
-      Map.new(@filter_types, fn type ->
+    filter_sections =
+      Enum.map(@filter_types, fn type ->
         list = Map.get(socket.assigns, :"available_#{type}", []) || []
-        normalized =
+        available =
           Enum.map(list, fn
             %{"name" => n, "items" => c} -> %{name: n, items: c}
             %{name: n, items: c} -> %{name: n, items: c}
             other -> %{name: inspect(other), items: 0}
           end)
-        {type, normalized}
+        %{
+          id: type,
+          available: available,
+          selected: Map.get(socket.assigns, :"selected_#{type}", []) || [],
+          page: Map.get(socket.assigns, :"#{type}_page", 0),
+          loading: Map.get(socket.assigns, :"#{type}_loading", false)
+        }
+      end)
+
+    active_filter_badges =
+      Enum.map(@filter_types, fn type ->
+        values = Map.get(socket.assigns, :"selected_#{type}", []) || []
+        %{id: type, values: values}
       end)
 
     selected_by_field =
@@ -146,22 +156,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         {type, Map.get(socket.assigns, :"selected_#{type}", []) || []}
       end)
 
-    page_by_field =
-      Map.new(@filter_types, fn type ->
-        {type, Map.get(socket.assigns, :"#{type}_page", 0)}
-      end)
-
-    loading_by_field =
-      Map.new(@filter_types, fn type ->
-        {type, Map.get(socket.assigns, :"#{type}_loading", false)}
-      end)
-
     socket
-    |> assign(:filters, filters)
-    |> assign(:available_by_field, available_by_field)
+    |> assign(:filter_sections, filter_sections)
+    |> assign(:active_filter_badges, active_filter_badges)
     |> assign(:selected_by_field, selected_by_field)
-    |> assign(:page_by_field, page_by_field)
-    |> assign(:loading_by_field, loading_by_field)
   end
 
   # Add this helper function for the initial search

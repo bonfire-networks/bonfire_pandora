@@ -18,47 +18,42 @@
       </div>
     </form>
     <div class="flex mt-3 justify-between gap-3 flex-col md:flex-row">
-      {#for filter <- @filters}
-        <% id = Map.get(filter, ~s(id)) || Map.get(filter, :id) %>
-        <% available = Map.get(@available_by_field || %{}, id, []) %>
-        <% selected = Map.get(@selected_by_field || %{}, id, []) %>
-        <% page = Map.get(@page_by_field || %{}, id, 0) %>
-        <% loading = Map.get(@loading_by_field || %{}, id, false) %>
+      {#for section <- @filter_sections}
         <nav class="flex-1 bg-base-200 flex flex-col rounded-box min-w-0">
           <div class="flex justify-between items-center p-3 pb-2 px-4">
-            <h2 class="text-sm font-medium text-base-content/50">{l(String.capitalize(id))}</h2>
+            <h2 class="text-sm font-medium text-base-content/50">{l(String.capitalize(section.id))}</h2>
           </div>
           <div
             :hook
-            id={"#{id}-container"}
-            data-page={page}
+            id={"#{section.id}-container"}
+            data-page={section.page}
             data-type="filter"
             phx-update="append"
           >
             <ul
               class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
-              id={"#{id}-list"}
+              id={"#{section.id}-list"}
               style="overscroll-behavior: contain;"
             >
-              {#for %{name: name, items: count} <- available}
-                <li class="w-full" id={"#{id}-#{name}"}>
+              {#for %{name: name, items: count} <- section.available}
+                <li class="w-full" id={"#{section.id}-#{name}"}>
                   <a
-                    phx-click={"filter_by_#{id}"}
+                    phx-click={"filter_by_#{section.id}"}
                     phx-target={@myself}
                     phx-value-id={name}
-                    class={"flex gap-3 px-2 text-base-content", ~s(active bg-primary/10): name in selected}
+                    class={"flex gap-3 px-2 text-base-content", ~s(active bg-primary/10): name in section.selected}
                     disabled={@loading}
                   >
                     <span class="flex-1">{name}</span>
                     <span class="text-sm opacity-50">({count})</span>
-                    {#if name in selected}
+                    {#if name in section.selected}
                       <span class="text-primary">✓</span>
                     {/if}
                   </a>
                 </li>
               {/for}
             </ul>
-            {#if loading}
+            {#if section.loading}
               <div class="flex justify-center p-2">
                 <div class="loading loading-spinner loading-sm" />
               </div>
@@ -80,12 +75,10 @@
           </div>
         {/if}
 
-        {#for filter <- @filters}
-          <% id = Map.get(filter, ~s(id)) || Map.get(filter, :id) %>
-          <% sel = Map.get(@selected_by_field || %{}, id, []) %>
-          {#for value <- sel}
+        {#for badge <- @active_filter_badges}
+          {#for value <- badge.values}
             <div class="badge badge-accent badge-soft">
-              <span>{String.capitalize(id)}: {value}</span>
+              <span>{String.capitalize(badge.id)}: {value}</span>
             </div>
           {/for}
         {/for}
