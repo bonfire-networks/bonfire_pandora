@@ -19,7 +19,7 @@
     </form>
     <div class="flex mt-3 justify-between gap-3 flex-col md:flex-row">
       {#for filter <- @filters}
-        <% id = filter["id"] || filter[:id] %>
+        <% id = Map.get(filter, ~s(id)) || Map.get(filter, :id) %>
         <% available = Map.get(@available_by_field || %{}, id, []) %>
         <% selected = Map.get(@selected_by_field || %{}, id, []) %>
         <% page = Map.get(@page_by_field || %{}, id, 0) %>
@@ -40,13 +40,15 @@
               id={"#{id}-list"}
               style="overscroll-behavior: contain;"
             >
-              {#for %{"name" => name, "items" => count} <- available}
+              {#for item <- available}
+                <% name = Map.get(item, ~s(name)) %>
+                <% count = Map.get(item, ~s(items)) %>
                 <li class="w-full" id={"#{id}-#{name}"}>
                   <a
                     phx-click={"filter_by_#{id}"}
                     phx-target={@myself}
                     phx-value-id={name}
-                    class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": name in selected}
+                    class={"flex gap-3 px-2 text-base-content", ~s(active bg-primary/10): name in selected}
                     disabled={@loading}
                   >
                     <span class="flex-1">{name}</span>
@@ -76,12 +78,12 @@
       <div class="flex flex-1 flex-wrap gap-2">
         {#if @term}
           <div class="badge badge-accent badge-soft">
-            <span>Search: {String.slice(@term, 0, 30)}{if String.length(@term) > 30, do: "..."}</span>
+            <span>Search: {String.slice(@term, 0, 30)}{if String.length(@term) > 30, do: ~s(...)}</span>
           </div>
         {/if}
 
         {#for filter <- @filters}
-          <% id = filter["id"] || filter[:id] %>
+          <% id = Map.get(filter, ~s(id)) || Map.get(filter, :id) %>
           <% sel = Map.get(@selected_by_field || %{}, id, []) %>
           {#for value <- sel}
             <div class="badge badge-accent badge-soft">
