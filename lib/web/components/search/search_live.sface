@@ -17,210 +17,77 @@
         </button>
       </div>
     </form>
-    <div class="flex mt-3 justify-between gap-3">
-      <nav class="flex-1 bg-base-200 flex flex-col rounded-box">
-        <div class="flex justify-between items-center p-3 pb-2 px-4">
-          <h2 class="text-sm font-medium text-base-content/50">{l("Directors")}</h2>
-        </div>
-        <div
-          :hook
-          id="director-container"
-          data-page={@director_page}
-          data-type="filter"
-          phx-update="append"
-        >
-          <ul
-            class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
-            id="directors-list"
-            style="overscroll-behavior: contain;"
+    <div class="flex mt-3 justify-between gap-3 flex-col md:flex-row">
+      {#for filter <- @filters}
+        <% id = filter["id"] || filter[:id] %>
+        <% available = Map.get(@available_by_field || %{}, id, []) %>
+        <% selected = Map.get(@selected_by_field || %{}, id, []) %>
+        <% page = Map.get(@page_by_field || %{}, id, 0) %>
+        <% loading = Map.get(@loading_by_field || %{}, id, false) %>
+        <nav class="flex-1 bg-base-200 flex flex-col rounded-box min-w-0">
+          <div class="flex justify-between items-center p-3 pb-2 px-4">
+            <h2 class="text-sm font-medium text-base-content/50">{l(String.capitalize(id))}</h2>
+          </div>
+          <div
+            :hook
+            id={"#{id}-container"}
+            data-page={page}
+            data-type="filter"
+            phx-update="append"
           >
-            {#for %{"name" => director, "items" => count} <- @available_director}
-              <li class="w-full" id={"director-#{director}"}>
-                <a
-                  phx-click="filter_by_director"
-                  phx-target={@myself}
-                  phx-value-id={director}
-                  class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": director in @selected_director}
-                  disabled={@loading}
-                >
-                  <span class="flex-1">{director}</span>
-                  <span class="text-sm opacity-50">({count})</span>
-                  {#if director in @selected_director}
-                    <span class="text-primary">✓</span>
-                  {/if}
-                </a>
-              </li>
-            {/for}
-          </ul>
-          {#if @director_loading}
-            <div class="flex justify-center p-2">
-              <div class="loading loading-spinner loading-sm" />
-            </div>
-          {/if}
-        </div>
-      </nav>
-      <nav class="flex-1 bg-base-200 flex flex-col rounded-box">
-        <div class="flex justify-between items-center p-3 pb-2 px-4">
-          <h2 class="text-sm font-medium text-base-content/50">{l("Sezione")}</h2>
-        </div>
-        <div
-          :hook
-          id="sezione-container"
-          data-page={@sezione_page}
-          phx-update="append"
-          data-type="filter"
-        >
-          <ul
-            class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
-            id="sezione-list"
-            style="overscroll-behavior: contain;"
-          >
-            {#for %{"name" => sezione, "items" => count} <- @available_sezione}
-              <li class="w-full" id={"sezione-#{sezione}"}>
-                <a
-                  phx-click="filter_by_sezione"
-                  phx-value-id={sezione}
-                  phx-target={@myself}
-                  class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": sezione in @selected_sezione}
-                  disabled={@loading}
-                >
-                  <span class="flex-1">{sezione}</span>
-                  <span class="text-sm opacity-50">({count})</span>
-                  {#if sezione in @selected_sezione}
-                    <span class="text-primary">✓</span>
-                  {/if}
-                </a>
-              </li>
-            {/for}
-          </ul>
-          {#if @sezione_loading}
-            <div class="flex justify-center p-2">
-              <div class="loading loading-spinner loading-sm" />
-            </div>
-          {/if}
-        </div>
-      </nav>
-
-      <nav class="flex-1 bg-base-200 flex flex-col rounded-box">
-        <div class="flex justify-between items-center p-3 pb-2 px-4">
-          <h2 class="text-sm font-medium text-base-content/50">{l("Edizione")}</h2>
-        </div>
-        <div
-          :hook
-          id="edizione-container"
-          data-page={@edizione_page}
-          phx-update="append"
-          data-type="filter"
-        >
-          <ul
-            class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
-            id="edizione-list"
-            style="overscroll-behavior: contain;"
-          >
-            {#for %{"name" => edizione, "items" => count} <- @available_edizione}
-              <li class="w-full" id={"edizione-#{edizione}"}>
-                <a
-                  phx-click="filter_by_edizione"
-                  phx-value-id={edizione}
-                  phx-target={@myself}
-                  class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": edizione in @selected_edizione}
-                  disabled={@loading}
-                >
-                  <span class="flex-1">{edizione}</span>
-                  <span class="text-sm opacity-50">({count})</span>
-                  {#if edizione in @selected_edizione}
-                    <span class="text-primary">✓</span>
-                  {/if}
-                </a>
-              </li>
-            {/for}
-          </ul>
-          {#if @edizione_loading}
-            <div class="flex justify-center p-2">
-              <div class="loading loading-spinner loading-sm" />
-            </div>
-          {/if}
-        </div>
-      </nav>
-
-      <nav class="flex-1 bg-base-200 flex flex-col rounded-box">
-        <div class="flex justify-between items-center p-3 pb-2 px-4">
-          <h2 class="text-sm font-medium text-base-content/50">{l("Featuring")}</h2>
-        </div>
-        <div
-          :hook
-          id="featuring-container"
-          data-page={@featuring_page}
-          phx-update="append"
-          data-type="filter"
-        >
-          <ul
-            class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
-            id="featuring-list"
-            style="overscroll-behavior: contain;"
-          >
-            {#for %{"name" => featuring, "items" => count} <- @available_featuring}
-              <li class="w-full" id={"featuring-#{featuring}"}>
-                <a
-                  phx-click="filter_by_featuring"
-                  phx-value-id={featuring}
-                  phx-target={@myself}
-                  class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": featuring in @selected_featuring}
-                  disabled={@loading}
-                >
-                  <span class="flex-1">{featuring}</span>
-                  <span class="text-sm opacity-50">({count})</span>
-                  {#if featuring in @selected_featuring}
-                    <span class="text-primary">✓</span>
-                  {/if}
-                </a>
-              </li>
-            {/for}
-          </ul>
-        </div>
-      </nav>
+            <ul
+              class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
+              id={"#{id}-list"}
+              style="overscroll-behavior: contain;"
+            >
+              {#for %{"name" => name, "items" => count} <- available}
+                <li class="w-full" id={"#{id}-#{name}"}>
+                  <a
+                    phx-click={"filter_by_#{id}"}
+                    phx-target={@myself}
+                    phx-value-id={name}
+                    class={"flex gap-3 px-2 text-base-content", "active bg-primary/10": name in selected}
+                    disabled={@loading}
+                  >
+                    <span class="flex-1">{name}</span>
+                    <span class="text-sm opacity-50">({count})</span>
+                    {#if name in selected}
+                      <span class="text-primary">✓</span>
+                    {/if}
+                  </a>
+                </li>
+              {/for}
+            </ul>
+            {#if loading}
+              <div class="flex justify-center p-2">
+                <div class="loading loading-spinner loading-sm" />
+              </div>
+            {/if}
+          </div>
+        </nav>
+      {/for}
     </div>
 
     <!-- Active filters and search term display -->
     <div
-      :if={not is_nil(@term) or length(@selected_director) > 0 or length(@selected_sezione) > 0 or
-        length(@selected_edizione) > 0 or length(@selected_featuring) > 0}
+      :if={not is_nil(@term) or Enum.any?(Map.values(@selected_by_field || %{}), &(length(&1) > 0))}
       class="p-3 bg-base-200 rounded-lg flex justify-between items-center"
     >
       <div class="flex flex-1 flex-wrap gap-2">
-        <!-- Search term chip -->
         {#if @term}
           <div class="badge badge-accent badge-soft">
             <span>Search: {String.slice(@term, 0, 30)}{if String.length(@term) > 30, do: "..."}</span>
           </div>
         {/if}
 
-        <!-- Director filters -->
-        {#for director <- @selected_director}
-          <div class="badge badge-accent badge-soft">
-            <span>Director: {director}</span>
-          </div>
-        {/for}
-
-        <!-- Sezione filters -->
-        {#for sezione <- @selected_sezione}
-          <div class="badge badge-accent badge-soft">
-            <span>Section: {sezione}</span>
-          </div>
-        {/for}
-
-        <!-- Edizione filters -->
-        {#for edizione <- @selected_edizione}
-          <div class="badge badge-accent badge-soft">
-            <span>Edition: {edizione}</span>
-          </div>
-        {/for}
-
-        <!-- Featuring filters -->
-        {#for featuring <- @selected_featuring}
-          <div class="badge badge-accent badge-soft">
-            <span>Featuring: {featuring}</span>
-          </div>
+        {#for filter <- @filters}
+          <% id = filter["id"] || filter[:id] %>
+          <% sel = Map.get(@selected_by_field || %{}, id, []) %>
+          {#for value <- sel}
+            <div class="badge badge-accent badge-soft">
+              <span>{String.capitalize(id)}: {value}</span>
+            </div>
+          {/for}
         {/for}
       </div>
       <button
