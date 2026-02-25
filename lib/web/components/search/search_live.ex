@@ -138,6 +138,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
           end)
         %{
           id: type,
+          label: Gettext.gettext(Bonfire.Common.Localise.Gettext, String.capitalize(type)),
           available: available,
           selected: Map.get(socket.assigns, :"selected_#{type}", []) || [],
           page: Map.get(socket.assigns, :"#{type}_page", 0),
@@ -148,7 +149,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     active_filter_badges =
       Enum.map(@filter_types, fn type ->
         values = Map.get(socket.assigns, :"selected_#{type}", []) || []
-        %{id: type, values: values}
+        label = Gettext.gettext(Bonfire.Common.Localise.Gettext, String.capitalize(type))
+        %{id: type, label: label, values: values}
       end)
 
     selected_by_field =

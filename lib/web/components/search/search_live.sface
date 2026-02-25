@@ -21,7 +21,7 @@
       {#for section <- @filter_sections}
         <nav class="flex-1 bg-base-200 flex flex-col rounded-box min-w-0">
           <div class="flex justify-between items-center p-3 pb-2 px-4">
-            <h2 class="text-sm font-medium text-base-content/50">{l(String.capitalize(section.id))}</h2>
+            <h2 class="text-sm font-medium text-base-content/50">{section.label}</h2>
           </div>
           <div
             :hook
@@ -78,7 +78,7 @@
         {#for badge <- @active_filter_badges}
           {#for value <- badge.values}
             <div class="badge badge-accent badge-soft">
-              <span>{String.capitalize(badge.id)}: {value}</span>
+              <span>{badge.label}: {value}</span>
             </div>
           {/for}
         {/for}

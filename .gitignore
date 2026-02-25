@@ -42,6 +42,9 @@ npm-debug.log
 # App and user data
 /data/
 
+# Cursor IDE
+.cursor/
+
 # user-local overrides for mess
 deps.path
 /libs/
