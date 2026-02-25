@@ -41,7 +41,7 @@
                     phx-click={"filter_by_#{section.id}"}
                     phx-target={@myself}
                     phx-value-id={name}
-                    class={"flex gap-3 px-2 text-base-content", ~s(active bg-primary/10): name in section.selected}
+                    class={"flex gap-3 px-2 text-base-content" <> if(name in section.selected, do: ~s( active bg-primary/10), else: "")}
                     disabled={@loading}
                   >
                     <span class="flex-1">{name}</span>
