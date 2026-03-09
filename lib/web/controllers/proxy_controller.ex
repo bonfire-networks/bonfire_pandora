@@ -17,6 +17,8 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
   @image_cache_ttl 1_000 * 60 * 10
   @video_cache_ttl 1_000 * 60 * 10
   @stream_timeout 60_000
+  @stream_start_timeout 2_000
+  @stream_chunk_timeout 15_000
 
   def proxy_image(conn, %{"path" => path}) when is_list(path) do
     if Enum.empty?(path) do
@@ -158,15 +160,24 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
            [sync: false, stream: :self, body_format: :binary]
          ) do
       {:ok, request_id} ->
-        stream_httpc_start(conn, request_id, path_string, range_header, cache_key, started_at)
+        stream_httpc_start(
+          conn,
+          request_id,
+          url,
+          path_string,
+          auth_headers,
+          range_header,
+          cache_key,
+          started_at
+        )
 
       {:error, reason} ->
         warn(reason, "[PanDoRa] proxy_streaming start error")
-        conn |> put_status(502) |> text("Proxy error")
+        proxy_range_buffered(conn, url, path_string, auth_headers, range_header, cache_key, started_at)
     end
   end
 
-  defp stream_httpc_start(conn, request_id, path_string, range_header, cache_key, started_at) do
+  defp stream_httpc_start(conn, request_id, url, path_string, auth_headers, range_header, cache_key, started_at) do
     receive do
       {:http, {^request_id, stream_start, {status_line, resp_headers}}} ->
         status = extract_status_code(status_line, fallback_status(range_header))
@@ -199,11 +210,16 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
 
       {:http, {^request_id, {:error, reason}}} ->
         warn(reason, "[PanDoRa] proxy_streaming upstream error")
-        conn |> put_status(502) |> text("Proxy error")
+        proxy_range_buffered(conn, url, path_string, auth_headers, range_header, cache_key, started_at)
+
+      other ->
+        debug(other, "[PanDoRa] proxy_streaming unexpected start message")
+        stream_httpc_start(conn, request_id, url, path_string, auth_headers, range_header, cache_key, started_at)
     after
-      @stream_timeout ->
-        warn(%{path: path_string, requested_range: range_header}, "[PanDoRa] proxy_streaming start timeout")
-        conn |> put_status(504) |> text("Proxy timeout")
+      @stream_start_timeout ->
+        warn(%{path: path_string, requested_range: range_header}, "[PanDoRa] proxy_streaming start timeout, falling back")
+        :httpc.cancel_request(request_id)
+        proxy_range_buffered(conn, url, path_string, auth_headers, range_header, cache_key, started_at)
     end
   end
 
@@ -265,10 +281,56 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
       {:http, {^request_id, {:error, reason}}} ->
         warn(reason, "[PanDoRa] proxy_streaming chunk error")
         conn
+
+      other ->
+        debug(other, "[PanDoRa] proxy_streaming unexpected chunk message")
+        pump_httpc_chunks(conn, request_id, cache_key, status, resp_headers, acc)
     after
-      @stream_timeout ->
+      @stream_chunk_timeout ->
         warn("[PanDoRa] proxy_streaming chunk timeout")
         conn
+    end
+  end
+
+  defp proxy_range_buffered(conn, url, path_string, auth_headers, range_header, cache_key, started_at) do
+    req_headers = auth_headers ++ [{"range", range_header}]
+
+    case Req.get(url, headers: req_headers, decode_body: false, receive_timeout: 60_000) do
+      {:ok, %Req.Response{status: status, body: body, headers: resp_headers}}
+      when status in [200, 206] and is_binary(body) ->
+        ct = guess_content_type(path_string, "video/mp4")
+
+        if cache_key do
+          Bonfire.Common.Cache.put(cache_key, {status, body, resp_headers}, ttl: @video_cache_ttl)
+        end
+
+        debug(%{
+          path: path_string,
+          requested_range: range_header,
+          upstream_status: status,
+          content_type: ct,
+          elapsed_ms: System.monotonic_time(:millisecond) - started_at,
+          cache: "miss-buffered-fallback"
+        }, "[PanDoRa] proxy_range success")
+
+        conn
+        |> put_resp_content_type(ct)
+        |> forward_headers(resp_headers, ~w(content-range accept-ranges content-length))
+        |> serve_buffered_raw(status, body)
+
+      {:ok, %Req.Response{status: st}} ->
+        warn(%{
+          path: path_string,
+          requested_range: range_header,
+          upstream_status: st,
+          elapsed_ms: System.monotonic_time(:millisecond) - started_at
+        }, "[PanDoRa] proxy_range upstream status")
+
+        conn |> put_status(st) |> text("Pandora returned #{st}")
+
+      {:error, reason} ->
+        warn(reason, "[PanDoRa] proxy_range error")
+        conn |> put_status(502) |> text("Proxy error")
     end
   end
 
