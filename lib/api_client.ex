@@ -1298,23 +1298,35 @@ defmodule PanDoRa.API.Client do
   The site object contains `itemKeys` (with filter/type info), `sortKeys`, etc.
   """
   def get_site_config(opts \\ []) do
-    Cache.get_or_store(
-      "pandora_site_config_#{get_pandora_url()}",
-      fn ->
-        case make_request("init", %{}, opts) do
-          {:ok, %{"site" => site}} when is_map(site) ->
+    cache_key = "pandora_site_config_#{get_pandora_url()}"
+
+    case Cache.get(cache_key) do
+      nil ->
+        result =
+          case make_request("init", %{}, opts) do
+            {:ok, %{"site" => site}} when is_map(site) ->
+              {:ok, site}
+
+            {:ok, other} ->
+              warn(other, "[PanDoRa] init returned unexpected structure")
+              {:error, :unexpected_response}
+
+            {:error, _} = err ->
+              err
+          end
+
+        case result do
+          {:ok, site} ->
+            Cache.put(cache_key, site, ttl: @cache_ttl)
             {:ok, site}
 
-          {:ok, other} ->
-            warn(other, "[PanDoRa] init returned unexpected structure")
-            {:error, :unexpected_response}
-
-          {:error, _} = err ->
+          err ->
             err
         end
-      end,
-      @cache_ttl
-    )
+
+      site ->
+        {:ok, site}
+    end
   end
 
   @doc """
