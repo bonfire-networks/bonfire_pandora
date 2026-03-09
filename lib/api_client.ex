@@ -1316,11 +1316,14 @@ defmodule PanDoRa.API.Client do
       nil ->
         result =
           try do
-            case Req.post(get_api_url(),
-                   form: %{action: "init", data: "{}"},
-                   receive_timeout: 5_000,
-                   connect_options: [timeout: 3_000]
-                 ) do
+            req =
+              Req.new(
+                url: get_api_url(),
+                connect_options: [timeout: 3_000],
+                receive_timeout: 5_000
+              )
+
+            case Req.post(req, form: %{action: "init", data: "{}"}) do
               {:ok, %{status: 200, body: body}} ->
                 decoded =
                   if is_binary(body), do: Jason.decode(body), else: {:ok, body}
@@ -1339,7 +1342,7 @@ defmodule PanDoRa.API.Client do
                 end
 
               {:ok, %{status: status}} ->
-                warn(status, "[PanDoRa] init: HTTP error")
+                warn(status, "[PanDoRa] init: HTTP error #{status}")
                 {:error, {:http_error, status}}
 
               {:error, reason} ->
@@ -1348,7 +1351,7 @@ defmodule PanDoRa.API.Client do
             end
           rescue
             e ->
-              warn(e, "[PanDoRa] init: exception")
+              warn(e, "[PanDoRa] init: exception in get_site_config")
               {:error, :exception}
           end
 
@@ -1371,7 +1374,10 @@ defmodule PanDoRa.API.Client do
   Falls back to `@metadata_keys` if the site config is not available.
   """
   def get_filter_keys(opts \\ []) do
-    case get_site_config(opts) do
+    site_result = get_site_config(opts)
+    debug(site_result, "[PanDoRa] get_filter_keys: get_site_config returned")
+
+    case site_result do
       {:ok, %{"itemKeys" => item_keys}} when is_list(item_keys) ->
         keys =
           item_keys
@@ -1381,9 +1387,11 @@ defmodule PanDoRa.API.Client do
           end)
           |> Enum.map(fn %{"id" => id} -> id end)
 
+        debug(keys, "[PanDoRa] get_filter_keys: filterable keys")
         if keys == [], do: @metadata_keys, else: keys
 
-      _ ->
+      other ->
+        warn(other, "[PanDoRa] get_filter_keys: falling back to @metadata_keys, got")
         @metadata_keys
     end
   end
