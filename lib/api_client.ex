@@ -967,6 +967,14 @@ defmodule PanDoRa.API.Client do
     error(errors, format_pandora_error(errors))
   end
 
+  # Pandora may return validation errors in data without "errors" key (e.g. %{"data" => %{"email" => "E-mail address already exists"}})
+  defp maybe_return_data(%{"data" => data})
+       when is_map(data) and not Map.has_key?(data, "user") and
+              (Map.has_key?(data, "email") or Map.has_key?(data, "username")) do
+    Logger.info("[PanDoRa API] error response (data): #{inspect(data)}")
+    error(data, format_pandora_error(data))
+  end
+
   defp maybe_return_data(%{"data" => data, "status" => %{"code" => 200}}) do
     {:ok, data}
   end
@@ -1076,7 +1084,6 @@ defmodule PanDoRa.API.Client do
 
   def sign_up(opts \\ []) do
     user = Utils.current_user_required!(opts)
-    # |> debug("tuuu")
     username = e(user, :character, :username, nil)
 
     account =
@@ -1092,6 +1099,22 @@ defmodule PanDoRa.API.Client do
          {:error, e} <- sign_up(user, email, username, pw) do
       Logger.info("[PanDoRa API] sign_up error: #{inspect(e)}")
       error(e, format_pandora_error(e))
+    else
+      # Email already exists on Pandora: try sign_in with saved credentials (from "Connect to Pandora")
+      {:error, %{"email" => _} = err} ->
+        case sign_in(opts) do
+          {:ok, data} -> {:ok, data}
+          _ ->
+            error(
+              err,
+              l(
+                "This email is already registered on Pandora. Use 'Connect to Pandora' in Settings to sign in with your password."
+              )
+            )
+        end
+
+      other ->
+        other
     end
   end
 
