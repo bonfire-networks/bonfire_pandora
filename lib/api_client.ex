@@ -1029,7 +1029,7 @@ defmodule PanDoRa.API.Client do
       password: password
     }
 
-    with {:ok, %{"user" => %{} = pandora_user}} =
+    with {:ok, %{"user" => %{} = pandora_user}} <-
            make_request("signup", payload, current_user: user, username: username) do
       if user,
         do: save_user_credentials(user, email, username, password),
