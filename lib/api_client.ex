@@ -85,31 +85,28 @@ defmodule PanDoRa.API.Client do
   Fetches metadata efficiently using parallel requests and caching
   """
   def fetch_all_metadata(conditions \\ [], opts) do
-    cache_key = "pandora_metadata_#{:erlang.phash2(conditions)}"
+    filter_keys = get_filter_keys(opts)
+    cache_key = "pandora_metadata_#{get_pandora_url()}_#{:erlang.phash2(conditions)}"
 
     case Cache.get(cache_key) do
       nil ->
-        # Fetch metadata for each field in parallel
         tasks =
-          @metadata_keys
+          filter_keys
           |> Enum.map(fn field ->
             Task.async(fn ->
               fetch_field_metadata(field, conditions, nil, opts)
             end)
           end)
 
-        # Wait for all tasks with timeout
         results = Task.await_many(tasks, 30_000)
 
-        # Combine results
         metadata =
           results
-          |> Enum.zip(@metadata_keys)
+          |> Enum.zip(filter_keys)
           |> Enum.reduce(%{}, fn {result, key}, acc ->
             Map.put(acc, "#{key}s", result)
           end)
 
-        # Cache the results
         Cache.put(cache_key, metadata, ttl: @cache_ttl)
         {:ok, metadata}
 
@@ -123,11 +120,11 @@ defmodule PanDoRa.API.Client do
   """
   @decorate time()
   def fetch_metadata(conditions, opts \\ []) do
-    # High limit to get comprehensive data
     limit = Keyword.get(opts, :limit, 20)
+    filter_keys = get_filter_keys(opts)
 
     tasks =
-      @metadata_keys
+      filter_keys
       |> Enum.map(fn field ->
         Task.async(fn ->
           fetch_field_metadata(field, conditions, limit, opts)
@@ -138,7 +135,7 @@ defmodule PanDoRa.API.Client do
 
     metadata =
       results
-      |> Enum.zip(@metadata_keys)
+      |> Enum.zip(filter_keys)
       |> Enum.reduce(%{}, fn {result, key}, acc ->
         processed_results = process_metadata_field(result, key)
         Map.put(acc, "#{key}s", processed_results)
@@ -1292,6 +1289,67 @@ defmodule PanDoRa.API.Client do
 
       true ->
         error(opts, "No Pandora credentials found")
+    end
+  end
+
+  @doc """
+  Calls the Pandora `init` action and returns the `site` object.
+  The result is cached for `@cache_ttl`.
+  The site object contains `itemKeys` (with filter/type info), `sortKeys`, etc.
+  """
+  def get_site_config(opts \\ []) do
+    Cache.get_or_store(
+      "pandora_site_config_#{get_pandora_url()}",
+      fn ->
+        case make_request("init", %{}, opts) do
+          {:ok, %{"site" => site}} when is_map(site) ->
+            {:ok, site}
+
+          {:ok, other} ->
+            warn(other, "[PanDoRa] init returned unexpected structure")
+            {:error, :unexpected_response}
+
+          {:error, _} = err ->
+            err
+        end
+      end,
+      @cache_ttl
+    )
+  end
+
+  @doc """
+  Returns the list of item key ids that are marked as filterable on this Pandora instance.
+  Falls back to `@metadata_keys` if the site config is not available.
+  """
+  def get_filter_keys(opts \\ []) do
+    case get_site_config(opts) do
+      {:ok, %{"itemKeys" => item_keys}} when is_list(item_keys) ->
+        keys =
+          item_keys
+          |> Enum.filter(fn
+            %{"filter" => true} -> true
+            _ -> false
+          end)
+          |> Enum.map(fn %{"id" => id} -> id end)
+
+        if keys == [], do: @metadata_keys, else: keys
+
+      _ ->
+        @metadata_keys
+    end
+  end
+
+  @doc """
+  Returns ALL item key ids for this Pandora instance (not just filterable ones).
+  Falls back to a default list if the site config is not available.
+  """
+  def get_item_keys(opts \\ []) do
+    case get_site_config(opts) do
+      {:ok, %{"itemKeys" => item_keys}} when is_list(item_keys) ->
+        Enum.map(item_keys, fn %{"id" => id} -> id end)
+
+      _ ->
+        ["title", "id", "director", "year", "duration", "summary"] ++ @metadata_keys
     end
   end
 
