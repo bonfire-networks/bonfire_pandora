@@ -155,7 +155,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
            :get,
            {String.to_charlist(url), headers},
            [timeout: @stream_timeout],
-           [sync: false, stream: self(), body_format: :binary]
+           [sync: false, stream: :self, body_format: :binary]
          ) do
       {:ok, request_id} ->
         stream_httpc_start(conn, request_id, path_string, range_header, cache_key, started_at)
