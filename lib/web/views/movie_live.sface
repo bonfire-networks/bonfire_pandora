@@ -1,17 +1,16 @@
 <div id="movie_wrapper" class="flex flex-col w-full gap-4">
   <div phx-update="ignore" id="movie_container">
-    <div :hook id="vidstack_movie_player">
-      <media-player class="player" tabindex="0">
-        <media-provider>
-          <video
-          src={Client.video_proxy_url(to_string(@movie["id"] || ""), Client.best_video_filename(@movie))}
-          preload="auto"
-        >
-          </video>
-        </media-provider>
+    <div :hook id="vidstack_movie_player" data-role="movie-player-shell">
+      <video
+        class="player w-full"
+        src={Client.video_proxy_url(to_string(@movie["id"] || ""), Client.best_video_filename(@movie))}
+        preload="metadata"
+        playsinline
+        controls
+      >
+      </video>
 
-        <media-controls style="pointer-events: auto;">
-          <div class="controls-container" style="pointer-events: auto;">
+      <div class="controls-container mt-2" style="pointer-events: auto;">
             <!-- Play/Pause button with dynamic icon -->
             <button
               class="control-button btn btn-sm btn-circle btn-soft btn-ghost play-button"
@@ -100,9 +99,7 @@
             >
               <#Icon iconify="heroicons-outline:arrows-expand" class="w-4 h-4" />
             </button>
-          </div>
-        </media-controls>
-      </media-player>
+      </div>
     </div>
   </div>
 
