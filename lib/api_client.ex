@@ -1535,7 +1535,7 @@ defmodule PanDoRa.API.Client do
   @doc """
   Returns the Bonfire-internal proxy URL for a Pandora video stream.
   Supports HTTP Range requests so the player can seek.
-  Example: video_proxy_url("FZV", "480p.webm") → "/archive/video/FZV/480p.webm"
+  Example: video_proxy_url("FZV", "480p.mp4") -> "/archive/video/FZV/480p.mp4"
   """
   def video_proxy_url(item_id, filename) when is_binary(item_id) and is_binary(filename) do
     "/archive/video/#{item_id}/#{filename}"
@@ -1543,20 +1543,20 @@ defmodule PanDoRa.API.Client do
 
   @doc """
   Returns the best video filename for a given movie, based on the `stream` field.
-  Falls back to 480p.webm if stream info is not available.
+  Falls back to 480p.mp4 if stream info is not available.
   """
   def best_video_filename(movie) when is_map(movie) do
     resolution = movie["stream"]
-    format = "webm"
+    format = "mp4"
 
     if is_integer(resolution) and resolution > 0 do
       "#{resolution}p.#{format}"
     else
-      "480p.webm"
+      "480p.mp4"
     end
   end
 
-  def best_video_filename(_), do: "480p.webm"
+  def best_video_filename(_), do: "480p.mp4"
 
   @doc """
   Basic test function for annotations following API structure
