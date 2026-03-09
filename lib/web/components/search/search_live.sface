@@ -118,6 +118,11 @@
           />
         {/for}
       </ul>
+      {#if not @loading and (@current_count || 0) == 0}
+        <div class="p-10 text-center text-base-content/50">
+          {l("No items found. Make sure you are connected to Pandora.")}
+        </div>
+      {/if}
       <div id="search-results-sentinel" phx-update="ignore">
         <Bonfire.PanDoRa.Components.LoadingSentinelLive
           loading={@loading}

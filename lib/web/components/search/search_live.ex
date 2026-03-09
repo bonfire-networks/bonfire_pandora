@@ -19,6 +19,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     term: nil,
     loading: false,
     has_more_items: true,
+    current_count: 0,
     per_page: @default_per_page,
     # Dynamic filter state (keyed by field name, populated from Pandora init API)
     filter_types: [],
