@@ -108,17 +108,27 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
       auth_headers ->
         url = pandora_url(path_string)
 
+        range_header =
+          case get_req_header(conn, "range") do
+            [range] -> range
+            _ -> "bytes=0-1048575"
+          end
+
         req_headers =
           auth_headers ++
-            case get_req_header(conn, "range") do
-              [range] -> [{"range", range}]
-              _ -> []
-            end
+            [{"range", range_header}]
 
         case Req.get(url, headers: req_headers, decode_body: false, receive_timeout: 60_000) do
           {:ok, %Req.Response{status: status, body: body, headers: resp_headers}}
           when status in [200, 206] and is_binary(body) ->
             ct = guess_content_type(path_string, "video/mp4")
+
+            debug(%{
+              path: path_string,
+              requested_range: range_header,
+              upstream_status: status,
+              content_type: ct
+            }, "[PanDoRa] proxy_range success")
 
             conn
             |> put_resp_content_type(ct)
@@ -126,6 +136,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
             |> serve_buffered_raw(status, body)
 
           {:ok, %Req.Response{status: st}} ->
+            warn(%{path: path_string, requested_range: range_header, upstream_status: st}, "[PanDoRa] proxy_range upstream status")
             conn |> put_status(st) |> text("Pandora returned #{st}")
 
           {:error, reason} ->
