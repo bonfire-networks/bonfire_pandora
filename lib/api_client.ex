@@ -1305,22 +1305,51 @@ defmodule PanDoRa.API.Client do
   The result is cached for `@cache_ttl`.
   The site object contains `itemKeys` (with filter/type info), `sortKeys`, etc.
   """
-  def get_site_config(opts \\ []) do
+  @doc """
+  Fetches the Pandora site config via the public `init` endpoint.
+  Uses a direct HTTP call (no auth required) and caches the result for `@cache_ttl`.
+  """
+  def get_site_config(_opts \\ []) do
     cache_key = "pandora_site_config_#{get_pandora_url()}"
 
     case Cache.get(cache_key) do
       nil ->
         result =
-          case make_request("init", %{}, opts) do
-            {:ok, %{"site" => site}} when is_map(site) ->
-              {:ok, site}
+          try do
+            case Req.post(get_api_url(),
+                   form: %{action: "init", data: "{}"},
+                   receive_timeout: 5_000,
+                   connect_options: [timeout: 3_000]
+                 ) do
+              {:ok, %{status: 200, body: body}} ->
+                decoded =
+                  if is_binary(body), do: Jason.decode(body), else: {:ok, body}
 
-            {:ok, other} ->
-              warn(other, "[PanDoRa] init returned unexpected structure")
-              {:error, :unexpected_response}
+                case decoded do
+                  {:ok, %{"data" => %{"site" => site}}} when is_map(site) ->
+                    {:ok, site}
 
-            {:error, _} = err ->
-              err
+                  {:ok, other} ->
+                    warn(other, "[PanDoRa] init: unexpected response structure")
+                    {:error, :unexpected_response}
+
+                  {:error, reason} ->
+                    warn(reason, "[PanDoRa] init: JSON decode error")
+                    {:error, :json_error}
+                end
+
+              {:ok, %{status: status}} ->
+                warn(status, "[PanDoRa] init: HTTP error")
+                {:error, {:http_error, status}}
+
+              {:error, reason} ->
+                warn(reason, "[PanDoRa] init: request failed")
+                {:error, reason}
+            end
+          rescue
+            e ->
+              warn(e, "[PanDoRa] init: exception")
+              {:error, :exception}
           end
 
         case result do
