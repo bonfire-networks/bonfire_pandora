@@ -8,11 +8,12 @@ defmodule Bonfire.PanDoRa.Utils do
   def to_attr(v), do: to_string(v)
 
   @doc """
-  Fields that are handled explicitly in templates; the rest are rendered as generic metadata.
+  Structural/technical fields handled explicitly in templates.
+  Instance-specific keys (sezione, edizione, genre, etc.) are intentionally excluded
+  so they appear dynamically via extra_metadata/1.
   """
   @known_fields ~w(id title item_id public_id stable_id order duration director image
-                   year summary hue saturation lightness volume cutsperminute rights stream
-                   selezionato genere keyword sezione edizione featuring)
+                   year summary hue saturation lightness volume cutsperminute rights stream)
 
   def known_fields, do: @known_fields
 

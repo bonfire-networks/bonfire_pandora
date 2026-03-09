@@ -15,8 +15,10 @@ defmodule PanDoRa.API.Client do
 
   # Cache TTL of 1 hour
   @cache_ttl :timer.hours(1)
-  @metadata_keys ~w(director sezione edizione featuring)
-  @metadata_fields ~w(director sezione edizione featuring)
+  # Minimal fallback used only when the Pandora init API is unreachable.
+  # Do NOT add instance-specific field names here.
+  @metadata_keys ~w(director)
+  @metadata_fields ~w(director)
 
   @doc """
   Basic find function that matches the API's find endpoint functionality with pagination support
@@ -163,7 +165,13 @@ defmodule PanDoRa.API.Client do
       "fetching grouped metadata for field #{field} with page #{page} and per_page #{per_page}"
     )
 
-    fields = if field, do: [field], else: @metadata_fields
+    # Prefer explicit `fields:` opt, then single `field:`, then fallback to get_filter_keys
+    fields =
+      cond do
+        field -> [field]
+        Keyword.has_key?(opts, :fields) -> Keyword.get(opts, :fields)
+        true -> get_filter_keys(opts)
+      end
 
     # Make a single request per field but in parallel
     tasks =
@@ -220,7 +228,7 @@ defmodule PanDoRa.API.Client do
   @doc """
   Fetches grouped values for a single metadata field.
   """
-  def fetch_grouped_field(field, conditions, opts) when field in @metadata_fields do
+  def fetch_grouped_field(field, conditions, opts) when is_binary(field) do
     # Build the query payload according to API docs
     payload = %{
       query: %{

@@ -431,6 +431,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     filter_types = socket.assigns[:filter_types] || @filter_types_fallback
 
     case Client.fetch_grouped_metadata(conditions,
+           fields: filter_types,
            per_page: @filter_per_page,
            current_user: current_user(socket)
          ) do
@@ -462,7 +463,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   defp update_available_filters(socket, conditions, preserved_field \\ nil) do
     filter_types = socket.assigns[:filter_types] || @filter_types_fallback
 
-    case Client.fetch_grouped_metadata(conditions, current_user: current_user(socket)) do
+    case Client.fetch_grouped_metadata(conditions,
+           fields: filter_types,
+           current_user: current_user(socket)
+         ) do
       {:ok, filtered_metadata} ->
         current_available = socket.assigns[:available_filters] || %{}
 
@@ -475,7 +479,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
         full_metadata =
           if should_fetch_full_for do
-            case Client.fetch_grouped_metadata([], current_user: current_user(socket)) do
+            case Client.fetch_grouped_metadata([],
+                   fields: filter_types,
+                   current_user: current_user(socket)
+                 ) do
               {:ok, m} -> m
               _ -> %{}
             end
