@@ -27,7 +27,6 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
      |> assign(:force_live, true)
      |> assign(:page_title, "Search in your archive")
      |> assign(:without_secondary_widgets, true)
-     |> assign(:nav_items, [%{module: __MODULE__, exclude_from_nav: false}])
      |> assign(:term, nil)}
   end
 
