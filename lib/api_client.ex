@@ -1180,23 +1180,38 @@ defmodule PanDoRa.API.Client do
   defp maybe_sign_in_and_or_put_auth_cookie(req, _, "signin", _, _), do: req
 
   defp maybe_sign_in_and_or_put_auth_cookie(req, username, action, opts, retry_count) do
-    case get_session_cookie(username, opts) do
-      cookie when is_binary(cookie) ->
-        Req.Request.put_header(req, "cookie", "sessionid=#{cookie}")
+    # Prefer Bearer token (pandora_token_oidc plugin) — does not expire
+    case get_bearer_token(opts) do
+      bearer when is_binary(bearer) and bearer != "" ->
+        Req.Request.put_header(req, "authorization", "Bearer #{bearer}")
         |> debug()
 
       _ ->
-        with {:ok, _} <- sign_in(Utils.current_user(opts) || username) do
-          if retry_count < 1 do
-            maybe_sign_in_and_or_put_auth_cookie(req, username, action, opts, retry_count + 1)
-          else
-            warn("skip auth because failed once")
-            req
-          end
-        else
-          auth_failed ->
-            warn(auth_failed, "Could not authenticate, continue as guest")
-            req
+        # Fall back to session cookie
+        case get_session_cookie(username, opts) do
+          cookie when is_binary(cookie) ->
+            Req.Request.put_header(req, "cookie", "sessionid=#{cookie}")
+            |> debug()
+
+          _ ->
+            with {:ok, _} <- sign_in(Utils.current_user(opts) || username) do
+              if retry_count < 1 do
+                maybe_sign_in_and_or_put_auth_cookie(
+                  req,
+                  username,
+                  action,
+                  opts,
+                  retry_count + 1
+                )
+              else
+                warn("skip auth because failed once")
+                req
+              end
+            else
+              auth_failed ->
+                warn(auth_failed, "Could not authenticate, continue as guest")
+                req
+            end
         end
     end
   end
@@ -1206,6 +1221,23 @@ defmodule PanDoRa.API.Client do
   defp maybe_save_auth_cookie(headers, username, action, opts) do
     if cookie = extract_session_cookie(headers) do
       set_session_cookie(username, cookie, opts)
+
+      # After sign-in, try to create a Bearer token (requires pandora_token_oidc plugin).
+      # Bearer tokens don't expire like Django sessions, so subsequent requests won't break.
+      if action == "signin" do
+        Task.start(fn ->
+          case create_bearer_token(cookie, opts) do
+            {:ok, _token} ->
+              debug("[PanDoRa] Bearer token created after sign-in")
+
+            {:error, :plugin_not_installed} ->
+              debug("[PanDoRa] pandora_token_oidc not installed, using session cookie only")
+
+            {:error, reason} ->
+              warn(reason, "[PanDoRa] Could not create Bearer token after sign-in")
+          end
+        end)
+      end
     else
       if action == "signin" do
         error(headers, l("No Pandora session cookie received"))
@@ -1262,6 +1294,78 @@ defmodule PanDoRa.API.Client do
 
       true ->
         nil
+    end
+  end
+
+  # ── Bearer token (pandora_token_oidc plugin) ───────────────────────────────
+
+  @doc """
+  Returns the stored Pandora Bearer token for the current user (or nil).
+  Requires the pandora_token_oidc plugin to be installed on the Pandora server.
+  """
+  def get_bearer_token(opts) do
+    user = Utils.current_user(opts)
+
+    if is_map(user) do
+      Settings.get([:bonfire_pandora, __MODULE__, :my_bearer_token], nil, current_user: user)
+    end
+  end
+
+  defp set_bearer_token(token, opts) do
+    user = Utils.current_user(opts)
+
+    if is_map(user) do
+      Settings.put([:bonfire_pandora, __MODULE__, :my_bearer_token], token, current_user: user)
+    end
+  end
+
+  @doc """
+  Creates a Bearer token on the Pandora server using the current session cookie.
+  Calls POST /api/tokens (provided by pandora_token_oidc plugin) with header X-Create-Token: 1.
+  Returns {:ok, token_value} or {:error, reason}.
+  """
+  def create_bearer_token(cookie, opts \\ []) when is_binary(cookie) do
+    base = String.trim_trailing(get_pandora_url() || "", "/")
+    url = "#{base}/api/tokens"
+
+    case Req.post(url,
+           headers: [
+             {"cookie", "sessionid=#{cookie}"},
+             {"x-create-token", "1"},
+             {"content-type", "application/json"}
+           ],
+           body: "",
+           decode_body: false,
+           receive_timeout: 10_000
+         ) do
+      {:ok, %Req.Response{status: 200, body: body}} when is_binary(body) ->
+        case Jason.decode(body) do
+          {:ok, %{"data" => %{"value" => value}, "status" => %{"code" => 200}}}
+          when is_binary(value) ->
+            set_bearer_token(value, opts)
+            debug("[PanDoRa] Bearer token created and stored")
+            {:ok, value}
+
+          {:ok, decoded} ->
+            warn(decoded, "[PanDoRa] create_bearer_token: unexpected response")
+            {:error, :unexpected_response}
+
+          {:error, reason} ->
+            warn(reason, "[PanDoRa] create_bearer_token: JSON decode error")
+            {:error, :json_error}
+        end
+
+      {:ok, %Req.Response{status: 404}} ->
+        debug("[PanDoRa] /api/tokens endpoint not found — pandora_token_oidc plugin not installed")
+        {:error, :plugin_not_installed}
+
+      {:ok, %Req.Response{status: status}} ->
+        warn("[PanDoRa] create_bearer_token: HTTP #{status}")
+        {:error, status}
+
+      {:error, reason} ->
+        warn(reason, "[PanDoRa] create_bearer_token: request error")
+        {:error, reason}
     end
   end
 

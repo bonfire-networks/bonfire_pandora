@@ -50,37 +50,50 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
     "#{base}/#{path}"
   end
 
-  # Returns the stored Pandora session cookie for the current user.
-  defp get_cookie(conn) do
+  # Returns the auth header for the current user:
+  # prefers Bearer token (pandora_token_oidc, never expires) over session cookie.
+  defp get_auth_headers(conn) do
     user = conn.assigns[:current_user]
-    Client.get_session_cookie(nil, current_user: user)
+    opts = [current_user: user]
+
+    case Client.get_bearer_token(opts) do
+      bearer when is_binary(bearer) and bearer != "" ->
+        [{"authorization", "Bearer #{bearer}"}]
+
+      _ ->
+        case Client.get_session_cookie(nil, opts) do
+          cookie when is_binary(cookie) -> [{"cookie", "sessionid=#{cookie}"}]
+          _ -> nil
+        end
+    end
   end
 
   # Fetches a resource, optionally caches it, and sends it to the client.
   defp proxy_buffered(conn, path_string, default_ct, cache_key) do
-    with cookie when is_binary(cookie) <- get_cookie(conn) do
-      url = pandora_url(path_string)
-      req_headers = [{"cookie", "sessionid=#{cookie}"}]
+    case get_auth_headers(conn) do
+      nil ->
+        conn |> put_status(403) |> text("Not connected to Pandora")
 
-      case Req.get(url, headers: req_headers, decode_body: false) do
-        {:ok, %Req.Response{status: 200, body: body}} when is_binary(body) ->
-          ct = guess_content_type(path_string, default_ct)
+      req_headers ->
+        url = pandora_url(path_string)
 
-          if cache_key do
-            Bonfire.Common.Cache.put(cache_key, {body, ct}, ttl: @image_cache_ttl)
-          end
+        case Req.get(url, headers: req_headers, decode_body: false) do
+          {:ok, %Req.Response{status: 200, body: body}} when is_binary(body) ->
+            ct = guess_content_type(path_string, default_ct)
 
-          serve_buffered(conn, 200, body, ct, default_ct)
+            if cache_key do
+              Bonfire.Common.Cache.put(cache_key, {body, ct}, ttl: @image_cache_ttl)
+            end
 
-        {:ok, %Req.Response{status: status}} ->
-          conn |> put_status(status) |> text("Pandora returned #{status}")
+            serve_buffered(conn, 200, body, ct, default_ct)
 
-        {:error, reason} ->
-          warn(reason, "[PanDoRa] proxy_buffered error")
-          conn |> put_status(502) |> text("Proxy error")
-      end
-    else
-      _ -> conn |> put_status(403) |> text("Not connected to Pandora")
+          {:ok, %Req.Response{status: status}} ->
+            conn |> put_status(status) |> text("Pandora returned #{status}")
+
+          {:error, reason} ->
+            warn(reason, "[PanDoRa] proxy_buffered error")
+            conn |> put_status(502) |> text("Proxy error")
+        end
     end
   end
 
@@ -88,35 +101,37 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
   # seeking; each Range is a small chunk so buffering the partial response
   # is acceptable.
   defp proxy_range(conn, path_string) do
-    with cookie when is_binary(cookie) <- get_cookie(conn) do
-      url = pandora_url(path_string)
+    case get_auth_headers(conn) do
+      nil ->
+        conn |> put_status(403) |> text("Not connected to Pandora")
 
-      req_headers =
-        [{"cookie", "sessionid=#{cookie}"}] ++
-          case get_req_header(conn, "range") do
-            [range] -> [{"range", range}]
-            _ -> []
-          end
+      auth_headers ->
+        url = pandora_url(path_string)
 
-      case Req.get(url, headers: req_headers, decode_body: false, receive_timeout: 60_000) do
-        {:ok, %Req.Response{status: status, body: body, headers: resp_headers}}
-        when status in [200, 206] and is_binary(body) ->
-          ct = guess_content_type(path_string, "video/mp4")
+        req_headers =
+          auth_headers ++
+            case get_req_header(conn, "range") do
+              [range] -> [{"range", range}]
+              _ -> []
+            end
 
-          conn
-          |> put_resp_content_type(ct)
-          |> forward_headers(resp_headers, ~w(content-range accept-ranges content-length))
-          |> serve_buffered_raw(status, body)
+        case Req.get(url, headers: req_headers, decode_body: false, receive_timeout: 60_000) do
+          {:ok, %Req.Response{status: status, body: body, headers: resp_headers}}
+          when status in [200, 206] and is_binary(body) ->
+            ct = guess_content_type(path_string, "video/mp4")
 
-        {:ok, %Req.Response{status: st}} ->
-          conn |> put_status(st) |> text("Pandora returned #{st}")
+            conn
+            |> put_resp_content_type(ct)
+            |> forward_headers(resp_headers, ~w(content-range accept-ranges content-length))
+            |> serve_buffered_raw(status, body)
 
-        {:error, reason} ->
-          warn(reason, "[PanDoRa] proxy_range error")
-          conn |> put_status(502) |> text("Proxy error")
-      end
-    else
-      _ -> conn |> put_status(403) |> text("Not connected to Pandora")
+          {:ok, %Req.Response{status: st}} ->
+            conn |> put_status(st) |> text("Pandora returned #{st}")
+
+          {:error, reason} ->
+            warn(reason, "[PanDoRa] proxy_range error")
+            conn |> put_status(502) |> text("Proxy error")
+        end
     end
   end
 
