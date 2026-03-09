@@ -445,6 +445,16 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     {:noreply, socket}
   end
 
+  # Generic filter handler for dynamic fields not in @filter_types (e.g. from extra_metadata)
+  def handle_event("filter_by_field", %{"field" => field, "id" => value}, socket)
+      when is_binary(field) and is_binary(value) do
+    socket =
+      socket
+      |> toggle_filter(field, value)
+
+    {:noreply, socket}
+  end
+
   # Add handlers for infinite scroll
   def handle_event("load_more_" <> filter_type, _params, socket)
       when filter_type in @filter_types do
