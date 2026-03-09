@@ -3,7 +3,8 @@ defmodule Bonfire.PanDoRa.Components.MoviePreviewLive do
   alias PanDoRa.API.Client
   alias Bonfire.PanDoRa.Utils
   prop movie_id, :string, required: true
-  prop event_target, :string, required: true
+  # nil when used inside a LiveView (events routed to LV); pass @myself when inside a LiveComponent
+  prop event_target, :any, default: nil
   prop movie, :map, required: true
   # New prop to support the optimized image approach
   prop image_src, :string, default: nil
