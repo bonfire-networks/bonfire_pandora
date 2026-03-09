@@ -90,7 +90,7 @@ defmodule PanDoRa.API.Client do
     filter_keys = get_filter_keys(opts)
     cache_key = "pandora_metadata_#{get_pandora_url()}_#{:erlang.phash2(conditions)}"
 
-    case Cache.get(cache_key) do
+    case Cache.get!(cache_key) do
       nil ->
         tasks =
           filter_keys
@@ -1312,7 +1312,7 @@ defmodule PanDoRa.API.Client do
   def get_site_config(_opts \\ []) do
     cache_key = "pandora_site_config_#{get_pandora_url()}"
 
-    case Cache.get(cache_key) do
+    case Cache.get!(cache_key) do
       nil ->
         result =
           try do
