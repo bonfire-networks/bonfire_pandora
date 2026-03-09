@@ -1222,24 +1222,25 @@ defmodule PanDoRa.API.Client do
     if cookie = extract_session_cookie(headers) do
       set_session_cookie(username, cookie, opts)
 
-      # After sign-in, try to create a Bearer token (requires pandora_token_oidc plugin).
-      # Bearer tokens don't expire like Django sessions, so subsequent requests won't break.
-      if action == "signin" do
+      # After auth, try to create a Bearer token (requires pandora_token_oidc plugin).
+      # This is needed both for `signin` and for the first `signup` done by
+      # "Connect to Pandora", otherwise Bonfire keeps using a short-lived session cookie.
+      if action in ["signin", "signup"] do
         Task.start(fn ->
           case create_bearer_token(cookie, opts) do
             {:ok, _token} ->
-              debug("[PanDoRa] Bearer token created after sign-in")
+              debug("[PanDoRa] Bearer token created after #{action}")
 
             {:error, :plugin_not_installed} ->
               debug("[PanDoRa] pandora_token_oidc not installed, using session cookie only")
 
             {:error, reason} ->
-              warn(reason, "[PanDoRa] Could not create Bearer token after sign-in")
+              warn(reason, "[PanDoRa] Could not create Bearer token after #{action}")
           end
         end)
       end
     else
-      if action == "signin" do
+      if action in ["signin", "signup"] do
         error(headers, l("No Pandora session cookie received"))
       end
     end
