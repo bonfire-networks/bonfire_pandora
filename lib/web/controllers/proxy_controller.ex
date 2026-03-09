@@ -1,149 +1,163 @@
 defmodule Bonfire.PanDoRa.Web.ProxyController do
+  @moduledoc """
+  Proxies media requests (images, videos) to Pandora with the user's session cookie.
+
+  Since Pandora requires authentication even for thumbnails and video streams,
+  and the browser doesn't carry the Pandora session cookie (authentication is
+  server-side), all media is fetched server-side and forwarded to the client.
+
+  Video proxying supports HTTP Range requests so the player can seek correctly.
+  Each Range request is small (a few MB), so buffering is acceptable.
+  """
   use Bonfire.UI.Common.Web, :controller
+  use Untangle
   alias PanDoRa.API.Client
 
-  # Add caching to reduce API calls
-  # 10 minutes in milliseconds as expected by Cachex
-  @image_cache_ttl [expire: 1_000 * 60 * 10]
+  # 10 minutes
+  @image_cache_ttl 1_000 * 60 * 10
 
   def proxy_image(conn, %{"path" => path}) when is_list(path) do
-    # Check if we have a valid path before proceeding
     if Enum.empty?(path) do
-      conn
-      |> put_status(400)
-      |> text("Invalid path")
+      conn |> put_status(400) |> text("Invalid path")
     else
-      # Implement file caching for images, as they're the most frequent resources
       path_string = Enum.join(path, "/")
       cache_key = "pandora_image_#{path_string}"
 
-      case Bonfire.Common.Cache.get(cache_key) do
-        # Return cached image if available
+      case Bonfire.Common.Cache.get!(cache_key) do
         {media_data, content_type} when is_binary(media_data) ->
-          serve_media(conn, media_data, content_type, "image/jpeg")
+          serve_buffered(conn, 200, media_data, content_type, "image/jpeg")
 
-        # Otherwise fetch and cache
         _ ->
-          proxy_media(conn, path, "image/jpeg", true, cache_key)
+          proxy_buffered(conn, path_string, "image/jpeg", cache_key)
       end
     end
   end
 
   def proxy_video(conn, %{"path" => path}) when is_list(path) do
-    # Check if we have a valid path before proceeding
     if Enum.empty?(path) do
-      conn
-      |> put_status(400)
-      |> text("Invalid path")
+      conn |> put_status(400) |> text("Invalid path")
     else
-      proxy_media(conn, path, "video/mp4", false, nil)
+      path_string = Enum.join(path, "/")
+      proxy_range(conn, path_string)
     end
   end
 
-  defp proxy_media(conn, path, default_content_type, should_cache, cache_key) do
-    # Join path parts to form the complete path
-    path = Enum.join(path, "/")
+  # ── internals ────────────────────────────────────────────────────────────────
 
-    # Try to authenticate, handle potential failures
-    case Client.sign_in(conn) do
-      {:ok, _} ->
-        # Get the full Pandora URL and make the request
-        pandora_url = Client.get_pandora_url()
-        full_url = Path.join(pandora_url, path)
-
-        # Get authentication credentials
-        # username = Client.get_auth_default_user()
-        cookie = Client.get_session_cookie(conn)
-
-        case fetch_media(full_url, cookie) do
-          {:ok, media_data, content_type} when is_binary(media_data) ->
-            # Cache the result if requested
-            if should_cache && cache_key do
-              Bonfire.Common.Cache.put(cache_key, {media_data, content_type}, @image_cache_ttl)
-            end
-
-            serve_media(conn, media_data, content_type, default_content_type)
-
-          {:error, status} ->
-            conn |> put_status(status) |> text("Failed to fetch media")
-
-          _ ->
-            conn |> put_status(500) |> text("Unexpected media fetch error")
-        end
-
-      {:error, _reason} ->
-        conn |> put_status(401) |> text("Authentication failed")
-
-      _other ->
-        conn |> put_status(500) |> text("Unexpected error during authentication")
-    end
+  # Builds the full Pandora URL for a given path segment.
+  defp pandora_url(path) do
+    base = String.trim_trailing(Client.get_pandora_url() || "", "/")
+    "#{base}/#{path}"
   end
 
-  # Extract the media fetching logic for reuse
-  defp fetch_media(url, cookie) do
-    case Req.get(url,
-           headers: [
-             {"cookie", "sessionid=#{cookie}"}
-           ]
-         ) do
-      {:ok, %Req.Response{status: 200, body: media_data, headers: headers}} ->
-        content_type =
-          Enum.find_value(headers, "application/octet-stream", fn
-            {key, value} when is_binary(key) ->
-              if String.downcase(key) == "content-type", do: value
+  # Returns the stored Pandora session cookie for the current user.
+  defp get_cookie(conn) do
+    user = conn.assigns[:current_user]
+    Client.get_session_cookie(nil, current_user: user)
+  end
 
-            _ ->
-              nil
-          end)
+  # Fetches a resource, optionally caches it, and sends it to the client.
+  defp proxy_buffered(conn, path_string, default_ct, cache_key) do
+    with cookie when is_binary(cookie) <- get_cookie(conn) do
+      url = pandora_url(path_string)
+      req_headers = [{"cookie", "sessionid=#{cookie}"}]
 
-        # Ensure content_type is a string
-        content_type =
-          cond do
-            is_list(content_type) -> List.first(content_type)
-            is_binary(content_type) -> content_type
-            true -> "application/octet-stream"
+      case Req.get(url, headers: req_headers, decode_body: false) do
+        {:ok, %Req.Response{status: 200, body: body}} when is_binary(body) ->
+          ct = guess_content_type(path_string, default_ct)
+
+          if cache_key do
+            Bonfire.Common.Cache.put(cache_key, {body, ct}, ttl: @image_cache_ttl)
           end
 
-        {:ok, media_data, content_type}
+          serve_buffered(conn, 200, body, ct, default_ct)
 
-      {:ok, %Req.Response{status: status}} ->
-        {:error, status}
+        {:ok, %Req.Response{status: status}} ->
+          conn |> put_status(status) |> text("Pandora returned #{status}")
 
-      _error ->
-        {:error, 500}
+        {:error, reason} ->
+          warn(reason, "[PanDoRa] proxy_buffered error")
+          conn |> put_status(502) |> text("Proxy error")
+      end
+    else
+      _ -> conn |> put_status(403) |> text("Not connected to Pandora")
     end
   end
 
-  # Serve the media with proper content type
-  defp serve_media(conn, media_data, content_type, default_content_type) do
-    if not is_binary(media_data) do
-      # Handle invalid media data
-      conn
-      |> put_status(500)
-      |> text("Invalid media data")
+  # Proxies with Range support. Browser video players send Range requests for
+  # seeking; each Range is a small chunk so buffering the partial response
+  # is acceptable.
+  defp proxy_range(conn, path_string) do
+    with cookie when is_binary(cookie) <- get_cookie(conn) do
+      url = pandora_url(path_string)
+
+      req_headers =
+        [{"cookie", "sessionid=#{cookie}"}] ++
+          case get_req_header(conn, "range") do
+            [range] -> [{"range", range}]
+            _ -> []
+          end
+
+      case Req.get(url, headers: req_headers, decode_body: false, receive_timeout: 60_000) do
+        {:ok, %Req.Response{status: status, body: body, headers: resp_headers}}
+        when status in [200, 206] and is_binary(body) ->
+          ct = guess_content_type(path_string, "video/mp4")
+
+          conn
+          |> put_resp_content_type(ct)
+          |> forward_headers(resp_headers, ~w(content-range accept-ranges content-length))
+          |> serve_buffered_raw(status, body)
+
+        {:ok, %Req.Response{status: st}} ->
+          conn |> put_status(st) |> text("Pandora returned #{st}")
+
+        {:error, reason} ->
+          warn(reason, "[PanDoRa] proxy_range error")
+          conn |> put_status(502) |> text("Proxy error")
+      end
     else
-      # Make sure we have a valid content type
-      content_type = if is_binary(content_type), do: content_type, else: default_content_type
+      _ -> conn |> put_status(403) |> text("Not connected to Pandora")
+    end
+  end
 
-      # Split content type into main type and subtype
-      {type, subtype} =
-        case String.split(content_type || "", "/", parts: 2) do
-          [t, s] when t != "" and s != "" ->
-            {t, s}
+  defp serve_buffered(conn, status, data, content_type, default_ct) do
+    ct = if is_binary(content_type) and content_type != "", do: content_type, else: default_ct
 
-          _ ->
-            # Fallback to default content type
-            case String.split(default_content_type, "/", parts: 2) do
-              [t, s] when t != "" and s != "" -> {t, s}
-              # Last resort fallback
-              _ -> {"application", "octet-stream"}
-            end
-        end
+    {type, subtype} =
+      case String.split(ct, "/", parts: 2) do
+        [t, s] -> {t, s}
+        _ -> {"application", "octet-stream"}
+      end
 
-      # Set response content type and send
-      conn
-      |> put_resp_content_type(type, subtype)
-      |> send_resp(200, media_data)
+    conn
+    |> put_resp_content_type(type, subtype)
+    |> send_resp(status, data)
+  end
+
+  defp serve_buffered_raw(conn, status, data) do
+    send_resp(conn, status, data)
+  end
+
+  defp forward_headers(conn, resp_headers, allowed) do
+    allowed_set = MapSet.new(Enum.map(allowed, &String.downcase/1))
+
+    Enum.reduce(resp_headers, conn, fn {k, v}, acc ->
+      if MapSet.member?(allowed_set, String.downcase(k)) do
+        put_resp_header(acc, String.downcase(k), to_string(List.wrap(v) |> List.first()))
+      else
+        acc
+      end
+    end)
+  end
+
+  defp guess_content_type(path, default) do
+    cond do
+      String.ends_with?(path, ".webm") -> "video/webm"
+      String.ends_with?(path, ".mp4") -> "video/mp4"
+      String.ends_with?(path, ".jpg") or String.ends_with?(path, ".jpeg") -> "image/jpeg"
+      String.ends_with?(path, ".png") -> "image/png"
+      String.ends_with?(path, ".gif") -> "image/gif"
+      true -> default
     end
   end
 end

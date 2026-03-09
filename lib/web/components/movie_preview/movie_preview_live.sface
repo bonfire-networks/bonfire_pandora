@@ -5,7 +5,7 @@
     {#else}
       <img
         class="size-24 rounded-box"
-        src={"#{to_string(Client.get_pandora_url() || "")}/#{to_attr(e(@movie, "id", ""))}/icon128.jpg"}
+        src={Client.media_proxy_url(to_attr(e(@movie, "id", "")), "icon128.jpg")}
         data-movie-id={to_attr(e(@movie, "id", ""))}
       />
     {/if}

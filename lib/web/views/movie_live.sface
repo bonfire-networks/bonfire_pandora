@@ -3,7 +3,10 @@
     <div :hook id="vidstack_movie_player">
       <media-player class="player" tabindex="0">
         <media-provider>
-          <video src={"#{Client.get_pandora_url()}/#{@movie["id"]}/480p1.mp4?"} preload="auto">
+          <video
+          src={Client.video_proxy_url(to_string(@movie["id"] || ""), Client.best_video_filename(@movie))}
+          preload="auto"
+        >
           </video>
         </media-provider>
 
