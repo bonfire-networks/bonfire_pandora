@@ -962,17 +962,9 @@ defmodule PanDoRa.API.Client do
     end
   end
 
-  defp maybe_return_data(%{"data" => %{"errors" => errors} = data}) do
+  defp maybe_return_data(%{"data" => %{"errors" => errors}}) do
     Logger.info("[PanDoRa API] error response: #{inspect(errors)}")
     error(errors, format_pandora_error(errors))
-  end
-
-  # Pandora may return validation errors in data without "errors" key (e.g. %{"data" => %{"email" => "E-mail address already exists"}})
-  defp maybe_return_data(%{"data" => data})
-       when is_map(data) and not Map.has_key?(data, "user") and
-              (Map.has_key?(data, "email") or Map.has_key?(data, "username")) do
-    Logger.info("[PanDoRa API] error response (data): #{inspect(data)}")
-    error(data, format_pandora_error(data))
   end
 
   defp maybe_return_data(%{"data" => data, "status" => %{"code" => 200}}) do
@@ -991,6 +983,18 @@ defmodule PanDoRa.API.Client do
 
   defp maybe_return_data(%{"data" => data, "status" => %{"code" => status}}) do
     error(data, l("API request failed with code %{status}", status: status))
+  end
+
+  # Pandora may return validation errors in data without "errors" or "status" key
+  # (e.g. %{"data" => %{"email" => "E-mail address already exists"}})
+  defp maybe_return_data(%{"data" => data}) when is_map(data) do
+    if not Map.has_key?(data, "user") and
+         (Map.has_key?(data, "email") or Map.has_key?(data, "username")) do
+      Logger.info("[PanDoRa API] error response (data): #{inspect(data)}")
+      error(data, format_pandora_error(data))
+    else
+      {:ok, data}
+    end
   end
 
   defp maybe_return_data(%{} = data) do
