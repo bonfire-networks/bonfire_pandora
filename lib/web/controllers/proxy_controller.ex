@@ -17,6 +17,8 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
   # 10 minutes
   @image_cache_ttl 1_000 * 60 * 10
   @video_cache_ttl 1_000 * 60 * 10
+  @browser_image_max_age 600
+  @browser_video_max_age 60
 
   def proxy_image(conn, %{"path" => path}) when is_list(path) do
     if Enum.empty?(path) do
@@ -27,7 +29,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
 
       case Bonfire.Common.Cache.get!(cache_key) do
         {media_data, content_type} when is_binary(media_data) ->
-          serve_buffered(conn, 200, media_data, content_type, "image/jpeg")
+          serve_buffered(conn, 200, media_data, content_type, "image/jpeg", @browser_image_max_age)
 
         _ ->
           proxy_buffered(conn, path_string, "image/jpeg", cache_key)
@@ -73,7 +75,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
               Bonfire.Common.Cache.put(cache_key, {body, ct}, ttl: @image_cache_ttl)
             end
 
-            serve_buffered(conn, 200, body, ct, default_ct)
+            serve_buffered(conn, 200, body, ct, default_ct, @browser_image_max_age)
 
           {:ok, %Req.Response{status: status}} ->
             conn |> put_status(status) |> text("Pandora returned #{status}")
@@ -124,22 +126,23 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
             |> serve_buffered_raw(status, body)
 
           _ ->
-            proxy_range_buffered(conn, url, path_string, auth_headers, range_header, cache_key, started_at)
+            proxy_range_streaming(conn, url, path_string, auth_headers, range_header, cache_key, started_at)
         end
     end
   end
 
-  defp proxy_range_buffered(conn, url, path_string, auth_headers, range_header, cache_key, started_at) do
+  defp proxy_range_streaming(conn, url, path_string, auth_headers, range_header, cache_key, started_at) do
     req_headers = auth_headers ++ [{"range", range_header}]
 
-    case Req.get(url, headers: req_headers, decode_body: false, receive_timeout: 60_000) do
+    case Req.get(url,
+           headers: req_headers,
+           decode_body: false,
+           receive_timeout: 60_000,
+           into: :self
+         ) do
       {:ok, %Req.Response{status: status, body: body, headers: resp_headers}}
-      when status in [200, 206] and is_binary(body) ->
+      when status in [200, 206] ->
         ct = guess_content_type(path_string, "video/mp4")
-
-        if cache_key do
-          Bonfire.Common.Cache.put(cache_key, {status, body, resp_headers}, ttl: @video_cache_ttl)
-        end
 
         debug(%{
           path: path_string,
@@ -147,13 +150,15 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
           upstream_status: status,
           content_type: ct,
           elapsed_ms: System.monotonic_time(:millisecond) - started_at,
-          cache: "miss"
+          cache: if(cache_key, do: "miss-streamable", else: "miss-no-cache")
         }, "[PanDoRa] proxy_range success")
 
         conn
         |> put_resp_content_type(ct)
-        |> forward_headers(resp_headers, ~w(content-range accept-ranges content-length))
-        |> serve_buffered_raw(status, body)
+        |> put_cache_headers(@browser_video_max_age)
+        |> forward_headers(resp_headers, ~w(content-range accept-ranges))
+        |> ensure_accept_ranges()
+        |> stream_async_body(status, body, path_string)
 
       {:ok, %Req.Response{status: st}} ->
         warn(%{
@@ -186,7 +191,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
     end
   end
 
-  defp serve_buffered(conn, status, data, content_type, default_ct) do
+  defp serve_buffered(conn, status, data, content_type, default_ct, browser_max_age \\ nil) do
     ct = if is_binary(content_type) and content_type != "", do: content_type, else: default_ct
 
     {type, subtype} =
@@ -196,12 +201,41 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
       end
 
     conn
+    |> put_cache_headers(browser_max_age)
     |> put_resp_content_type(type, subtype)
     |> send_resp(status, data)
   end
 
   defp serve_buffered_raw(conn, status, data) do
     send_resp(conn, status, data)
+  end
+
+  defp stream_async_body(conn, status, body, path_string) do
+    conn = send_chunked(conn, status)
+
+    Enum.reduce_while(body, conn, fn chunk_data, acc ->
+      case chunk(acc, chunk_data) do
+        {:ok, conn} ->
+          {:cont, conn}
+
+        {:error, reason} ->
+          warn(%{path: path_string, reason: reason}, "[PanDoRa] proxy_range chunk error")
+          {:halt, acc}
+      end
+    end)
+  end
+
+  defp put_cache_headers(conn, nil), do: conn
+
+  defp put_cache_headers(conn, max_age) when is_integer(max_age) and max_age >= 0 do
+    put_resp_header(conn, "cache-control", "private, max-age=#{max_age}")
+  end
+
+  defp ensure_accept_ranges(conn) do
+    case get_resp_header(conn, "accept-ranges") do
+      [] -> put_resp_header(conn, "accept-ranges", "bytes")
+      _ -> conn
+    end
   end
 
   defp forward_headers(conn, resp_headers, allowed) do
