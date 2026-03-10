@@ -44,6 +44,13 @@ defmodule Bonfire.PanDoRa.Auth do
     end
   end
 
+  def session_cookie(_unknown, opts) when is_list(opts) do
+    case Utils.current_user(opts) do
+      user when is_map(user) -> session_cookie(user, opts)
+      _ -> nil
+    end
+  end
+
   def session_cookie(opts, []) when is_list(opts) do
     case Utils.current_user(opts) do
       user when is_map(user) -> session_cookie(user, opts)
@@ -75,6 +82,13 @@ defmodule Bonfire.PanDoRa.Auth do
           %{username => cookie},
           :bonfire_pandora
         )
+    end
+  end
+
+  def put_session_cookie(_unknown, cookie, opts) when is_list(opts) do
+    case Utils.current_user(opts) do
+      user when is_map(user) -> put_session_cookie(user, cookie, opts)
+      _ -> nil
     end
   end
 
