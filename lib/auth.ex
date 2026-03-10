@@ -11,6 +11,7 @@ defmodule Bonfire.PanDoRa.Auth do
   alias Bonfire.Common.Config
   alias Bonfire.Common.Utils
   alias PanDoRa.API.Client
+  alias Bonfire.PanDoRa.Vault
   use Bonfire.Common.Settings
   use Bonfire.Common.Repo
 
@@ -114,6 +115,87 @@ defmodule Bonfire.PanDoRa.Auth do
   end
 
   @doc """
+  Returns stored Pandora credentials for the current auth context.
+  """
+  def credentials(user_or_opts \\ [], opts \\ [])
+
+  def credentials(user, opts) when is_map(user) do
+    user = repo().maybe_preload(user, :settings)
+
+    with %{username: username, password: password} <-
+           Settings.get([:bonfire_pandora, Client, :credentials], :no_user_credentials,
+             current_user: user
+           ),
+         {:ok, password} <- Base.decode64(password),
+         {:ok, password} <- Vault.decrypt(password) do
+      {username, password}
+    end
+  end
+
+  def credentials(username, _opts) when is_binary(username) do
+    {username, config_password(username)}
+  end
+
+  def credentials(opts, []) when is_list(opts) do
+    opts = Utils.to_options(opts)
+    current_user = Utils.current_user(opts)
+    username = opts[:username] || default_username()
+
+    cond do
+      is_binary(username) ->
+        {username, config_password(username)}
+
+      is_map(current_user) ->
+        credentials(current_user, opts)
+
+      true ->
+        {:error, :no_credentials}
+    end
+  end
+
+  def credentials(_, _), do: {:error, :no_credentials}
+
+  @doc """
+  Ensures there is a valid Pandora session cookie for the current auth context.
+  """
+  def ensure_session(user_or_opts \\ [], opts \\ [])
+
+  def ensure_session(user, opts) when is_map(user) do
+    ensure_session(Keyword.put(Utils.to_options(opts), :current_user, user))
+  end
+
+  def ensure_session(username, opts) when is_binary(username) do
+    ensure_session(Keyword.put(Utils.to_options(opts), :username, username))
+  end
+
+  def ensure_session(opts, []) when is_list(opts) do
+    opts = Utils.to_options(opts)
+
+    case session_cookie(opts) do
+      cookie when is_binary(cookie) and cookie != "" ->
+        {:ok, cookie}
+
+      _ ->
+        case credentials(opts) do
+          {username, password} when is_binary(username) and is_binary(password) ->
+            clear_session(username, opts)
+
+            with {:ok, _} <- Client.sign_in(username, password, opts),
+                 cookie when is_binary(cookie) and cookie != "" <- session_cookie(opts) do
+              {:ok, cookie}
+            else
+              _ -> {:error, :missing_cookie}
+            end
+
+          other ->
+            other
+        end
+    end
+  end
+
+  def ensure_session(_, _), do: {:error, :no_credentials}
+
+  @doc """
   Returns a lightweight auth state for the current Bonfire/Pandora integration.
   """
   def auth_state(user_or_opts, opts \\ [])
@@ -152,6 +234,41 @@ defmodule Bonfire.PanDoRa.Auth do
   def extract_session_cookie(_), do: nil
 
   @doc """
+  Adds Pandora auth headers to an outgoing Req request when needed.
+  """
+  def attach_request_auth(req, _username, action, _opts) when action in ["signup", "signin"], do: req
+
+  def attach_request_auth(req, username, action, opts) when is_binary(action) do
+    auth_opts =
+      opts
+      |> Utils.to_options()
+      |> Keyword.put_new(:username, username)
+
+    case ensure_session(auth_opts) do
+      {:ok, cookie} when is_binary(cookie) and cookie != "" ->
+        Req.Request.put_header(req, "cookie", "sessionid=#{cookie}")
+
+      _ ->
+        req
+    end
+  end
+
+  @doc """
+  Persists a Pandora session cookie from response headers when a signin succeeds.
+  """
+  def persist_session_cookie(headers, username, action, opts) do
+    if action == "signin" do
+      if cookie = extract_session_cookie(headers) do
+        put_session_cookie(username, cookie, opts)
+      else
+        nil
+      end
+    else
+      nil
+    end
+  end
+
+  @doc """
   Returns auth headers for Pandora requests.
 
   Current active mechanism:
@@ -175,4 +292,12 @@ defmodule Bonfire.PanDoRa.Auth do
   end
 
   def auth_headers(_, _), do: nil
+
+  def default_username do
+    Config.get([:bonfire_pandora, Client, :username], nil, :bonfire_pandora)
+  end
+
+  defp config_password(_username) do
+    Config.get([:bonfire_pandora, Client, :password], nil, :bonfire_pandora)
+  end
 end

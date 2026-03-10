@@ -891,7 +891,7 @@ defmodule PanDoRa.API.Client do
       Utils.to_options(opts)
       |> debug("opts")
 
-    username = opts[:username] || get_auth_default_user()
+    username = opts[:username] || Auth.default_username()
 
     req =
       Req.new(
@@ -905,7 +905,7 @@ defmodule PanDoRa.API.Client do
         # Try twice more on failure
         max_retries: 2
       )
-      |> maybe_sign_in_and_or_put_auth_cookie(username, endpoint, opts, retry_count)
+      |> Auth.attach_request_auth(username, endpoint, opts)
 
     # |> debug("reqqq")
 
@@ -918,7 +918,7 @@ defmodule PanDoRa.API.Client do
       {:ok, %Req.Response{status: 200, headers: headers, body: body}} ->
         # debug(body, "API Response (raw)")
 
-        save_cookie = maybe_save_auth_cookie(headers, username, endpoint, opts)
+        save_cookie = Auth.persist_session_cookie(headers, username, endpoint, opts)
 
         case maybe_return_data(body) do
           {:ok, data} ->
@@ -1171,11 +1171,11 @@ defmodule PanDoRa.API.Client do
   end
 
   def sign_in(opts \\ []) do
-    case get_auth_credentials(opts) do
+    case Auth.credentials(opts) do
       {username, password} when is_binary(username) and is_binary(password) ->
         sign_in(username, password, opts)
 
-      :no_user_credentials ->
+      {:error, :no_credentials} ->
         if !opts[:looping] do
           with {:ok, %{__context__: context}} <- sign_up(opts) do
             sign_in(Enum.into(context, looping: true))
@@ -1192,89 +1192,12 @@ defmodule PanDoRa.API.Client do
     end
   end
 
-  # avoid looping
-  defp maybe_sign_in_and_or_put_auth_cookie(req, _, "signup", _, _), do: req
-  defp maybe_sign_in_and_or_put_auth_cookie(req, _, "signin", _, _), do: req
-
-  defp maybe_sign_in_and_or_put_auth_cookie(req, username, action, opts, retry_count) do
-    case Auth.session_cookie(username, opts) do
-      cookie when is_binary(cookie) ->
-        Req.Request.put_header(req, "cookie", "sessionid=#{cookie}")
-        |> debug()
-
-      _ ->
-        with {:ok, _} <- sign_in(Utils.current_user(opts) || username) do
-          if retry_count < 1 do
-            maybe_sign_in_and_or_put_auth_cookie(
-              req,
-              username,
-              action,
-              opts,
-              retry_count + 1
-            )
-          else
-            warn("skip auth because failed once")
-            req
-          end
-        else
-          auth_failed ->
-            warn(auth_failed, "Could not authenticate, continue as guest")
-            req
-        end
-    end
-  end
-
-  defp maybe_sign_in_and_or_put_auth_cookie(req, _, _, _, _), do: req
-
-  defp maybe_save_auth_cookie(headers, username, action, opts) do
-    if action == "signin" do
-      if cookie = Auth.extract_session_cookie(headers) do
-        Auth.put_session_cookie(username, cookie, opts)
-      else
-        error(headers, l("No Pandora session cookie received"))
-      end
-    else
-      nil
-    end
-  end
-
   def get_session_cookie(username, opts) do
     Auth.session_cookie(username, opts)
   end
 
   def get_auth_default_user do
-    Config.get([:bonfire_pandora, __MODULE__, :username], nil, :bonfire_pandora)
-  end
-
-  defp get_auth_pw(username) do
-    Config.get([:bonfire_pandora, __MODULE__, :password], nil, :bonfire_pandora)
-  end
-
-  defp get_auth_credentials(opts \\ []) do
-    current_user = Utils.current_user(opts)
-
-    username = get_auth_default_user()
-
-    cond do
-      is_binary(username) ->
-        {username, get_auth_pw(username)}
-
-      is_map(current_user) ->
-        with %{username: username, password: password} <-
-               Settings.get([:bonfire_pandora, __MODULE__, :credentials], :no_user_credentials,
-                 current_user: current_user
-               ),
-             {:ok, password} <- password |> Base.decode64(),
-             {:ok, password} <- password |> Vault.decrypt() do
-          {username, password}
-        end
-
-      is_binary(opts) ->
-        {opts, get_auth_pw(opts)}
-
-      true ->
-        error(opts, "No Pandora credentials found")
-    end
+    Auth.default_username()
   end
 
   @doc """
