@@ -7,6 +7,7 @@ defmodule PanDoRa.API.Client do
   use Bonfire.Common.Localise
   use Bonfire.Common.E
   alias Bonfire.Common.Utils
+  alias Bonfire.PanDoRa.Auth
   use Bonfire.Common.Config
   use Bonfire.Common.Settings
   alias Bonfire.Common.Cache
@@ -1143,7 +1144,7 @@ defmodule PanDoRa.API.Client do
       {:error, %{username: "Unknown Username"}}
   """
   def sign_in(username, password, opts \\ []) do
-    set_session_cookie(username, nil)
+    Auth.clear_session(username, opts)
 
     payload = %{
       username: username,
@@ -1180,7 +1181,7 @@ defmodule PanDoRa.API.Client do
   defp maybe_sign_in_and_or_put_auth_cookie(req, _, "signin", _, _), do: req
 
   defp maybe_sign_in_and_or_put_auth_cookie(req, username, action, opts, retry_count) do
-    case get_session_cookie(username, opts) do
+    case Auth.session_cookie(username, opts) do
       cookie when is_binary(cookie) ->
         Req.Request.put_header(req, "cookie", "sessionid=#{cookie}")
         |> debug()
@@ -1210,8 +1211,8 @@ defmodule PanDoRa.API.Client do
   defp maybe_sign_in_and_or_put_auth_cookie(req, _, _, _, _), do: req
 
   defp maybe_save_auth_cookie(headers, username, action, opts) do
-    if cookie = extract_session_cookie(headers) do
-      set_session_cookie(username, cookie, opts)
+    if cookie = Auth.extract_session_cookie(headers) do
+      Auth.put_session_cookie(username, cookie, opts)
     else
       if action in ["signin", "signup"] do
         error(headers, l("No Pandora session cookie received"))
@@ -1219,56 +1220,8 @@ defmodule PanDoRa.API.Client do
     end
   end
 
-  defp extract_session_cookie(headers) do
-    headers
-    |> Enum.filter(fn {key, _} -> String.downcase(key) == "set-cookie" end)
-    |> Enum.flat_map(fn {_, values} -> List.wrap(values) end)
-    |> Enum.find_value(fn cookie_string ->
-      case Regex.run(~r/sessionid=([^;]+)/, cookie_string) do
-        [_, session_id] -> session_id
-        _ -> nil
-      end
-    end)
-  end
-
-  defp set_session_cookie(username, cookie, opts \\ []) do
-    user = Utils.current_user(opts)
-
-    cond do
-      is_map(user) ->
-        Settings.put([:bonfire_pandora, __MODULE__, :my_session_cookie], cookie,
-          current_user: user
-        )
-
-      is_binary(username) ->
-        Config.put(
-          [:bonfire_pandora, __MODULE__, :session_cookie],
-          %{username => cookie},
-          :bonfire_pandora
-        )
-
-      true ->
-        nil
-    end
-  end
-
   def get_session_cookie(username, opts) do
-    user = Utils.current_user(opts)
-
-    cond do
-      is_map(user) ->
-        Settings.get([:bonfire_pandora, __MODULE__, :my_session_cookie], nil, current_user: user)
-
-      is_binary(username) ->
-        Config.get(
-          [:bonfire_pandora, __MODULE__, :session_cookie, username],
-          nil,
-          :bonfire_pandora
-        )
-
-      true ->
-        nil
-    end
+    Auth.session_cookie(username, opts)
   end
 
   def get_auth_default_user do
