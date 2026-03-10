@@ -21,6 +21,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
   @video_cache_ttl 1_000 * 60 * 10
   @browser_image_max_age 600
   @browser_video_max_age 60
+  @initial_video_range_end 262_143
 
   def proxy_image(conn, %{"path" => path}) when is_list(path) do
     if Enum.empty?(path) do
@@ -96,16 +97,23 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
 
       req_headers ->
         url = pandora_url(path_string)
+        req_headers =
+          case get_req_header(conn, "range") do
+            [range] -> req_headers ++ [{"range", range}]
+            _ -> req_headers ++ [{"range", "bytes=0-#{@initial_video_range_end}"}]
+          end
 
         case Req.get(url, headers: req_headers, decode_body: false, receive_timeout: 60_000) do
-          {:ok, %Req.Response{status: 200, body: body, headers: resp_headers}} when is_binary(body) ->
+          {:ok, %Req.Response{status: status, body: body, headers: resp_headers}}
+          when status in [200, 206] and is_binary(body) ->
             ct = upstream_content_type(resp_headers, guess_content_type(path_string, "video/mp4"))
 
             conn
             |> put_cache_headers(@browser_video_max_age)
             |> put_resp_content_type(ct)
-            |> forward_headers(resp_headers, ~w(content-length))
-            |> send_resp(200, body)
+            |> forward_headers(resp_headers, ~w(content-length content-range accept-ranges))
+            |> ensure_accept_ranges()
+            |> send_resp(status, body)
 
           {:ok, %Req.Response{status: status}} ->
             conn |> put_status(status) |> text("Pandora returned #{status}")
@@ -136,6 +144,13 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
 
   defp put_cache_headers(conn, max_age) when is_integer(max_age) and max_age >= 0 do
     put_resp_header(conn, "cache-control", "private, max-age=#{max_age}")
+  end
+
+  defp ensure_accept_ranges(conn) do
+    case get_resp_header(conn, "accept-ranges") do
+      [] -> put_resp_header(conn, "accept-ranges", "bytes")
+      _ -> conn
+    end
   end
 
   defp forward_headers(conn, resp_headers, allowed) do
