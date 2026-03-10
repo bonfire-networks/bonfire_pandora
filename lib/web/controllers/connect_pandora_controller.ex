@@ -5,7 +5,7 @@ defmodule Bonfire.PanDoRa.Web.ConnectPandoraController do
   """
   use Bonfire.UI.Common.Web, :controller
   use Bonfire.Common.Localise
-  alias PanDoRa.API.Client
+  alias Bonfire.PanDoRa.Auth
 
   def create(conn, params) do
     user = current_user(conn) || conn.assigns[:current_user]
@@ -23,7 +23,7 @@ defmodule Bonfire.PanDoRa.Web.ConnectPandoraController do
         |> redirect(to: redirect_back_after(conn))
 
       true ->
-        case Client.sync_new_user_to_pandora(user, password) do
+        case Auth.bootstrap_from_signup(user, password) do
           {:ok, _} ->
             conn
             |> put_flash(:info, l("Connected to Pandora. Your credentials are stored securely."))

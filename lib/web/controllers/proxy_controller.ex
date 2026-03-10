@@ -11,6 +11,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
   """
   use Bonfire.UI.Common.Web, :controller
   use Untangle
+  alias Bonfire.PanDoRa.Auth
   alias PanDoRa.API.Client
 
   # 10 minutes
@@ -51,22 +52,8 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
     "#{base}/#{path}"
   end
 
-  # Returns the auth header for the current user:
-  # prefers Bearer token (pandora_token_oidc, never expires) over session cookie.
   defp get_auth_headers(conn) do
-    user = conn.assigns[:current_user]
-    opts = [current_user: user]
-
-    case Client.get_bearer_token(opts) do
-      bearer when is_binary(bearer) and bearer != "" ->
-        [{"authorization", "Bearer #{bearer}"}]
-
-      _ ->
-        case Client.get_session_cookie(nil, opts) do
-          cookie when is_binary(cookie) -> [{"cookie", "sessionid=#{cookie}"}]
-          _ -> nil
-        end
-    end
+    Auth.auth_headers(conn.assigns[:current_user])
   end
 
   # Fetches a resource, optionally caches it, and sends it to the client.
