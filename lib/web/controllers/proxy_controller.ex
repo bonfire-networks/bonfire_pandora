@@ -6,9 +6,10 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
   and the browser doesn't carry the Pandora session cookie (authentication is
   server-side), all media is fetched server-side and forwarded to the client.
 
-  Video proxying supports HTTP Range requests so the player can seek correctly.
-  Video responses are streamed to the browser to avoid buffering the full range
-  in the Phoenix process before playback starts.
+  Video proxying currently favours a simple, known-good path for the first
+  Bonfire/Pandora integration release: fetch upstream with auth and relay it
+  directly. This keeps the controller aligned with the auth boundary while we
+  stabilise playback.
   """
   use Bonfire.UI.Common.Web, :controller
   use Untangle
@@ -20,10 +21,6 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
   @video_cache_ttl 1_000 * 60 * 10
   @browser_image_max_age 600
   @browser_video_max_age 60
-  # Keep the first implicit fetch small so metadata/startup stay responsive.
-  @initial_video_range_end 262_143
-  # Cap open-ended or oversized ranges so seeking doesn't request huge spans.
-  @max_video_range_size 1_048_576
 
   def proxy_image(conn, %{"path" => path}) when is_list(path) do
     if Enum.empty?(path) do
@@ -47,7 +44,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
       conn |> put_status(400) |> text("Invalid path")
     else
       path_string = Enum.join(path, "/")
-      proxy_range(conn, path_string)
+      proxy_video_buffered(conn, path_string)
     end
   end
 
@@ -92,109 +89,31 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
     end
   end
 
-  # Proxies with Range support. Browser video players send Range requests for
-  # seeking. When a browser doesn't send one on the first request, we force a
-  # small initial range so startup stays responsive.
-  defp proxy_range(conn, path_string) do
+  defp proxy_video_buffered(conn, path_string) do
     case get_auth_headers(conn) do
       nil ->
         conn |> put_status(403) |> text("Not connected to Pandora")
 
-      auth_headers ->
+      req_headers ->
         url = pandora_url(path_string)
-        started_at = System.monotonic_time(:millisecond)
 
-        range_header =
-          case get_req_header(conn, "range") do
-            [range] -> range
-            _ -> "bytes=0-#{@initial_video_range_end}"
-          end
-          |> normalize_range_header()
-
-        cache_key = video_cache_key(path_string, range_header)
-
-        case cache_key && Bonfire.Common.Cache.get!(cache_key) do
-          {status, body, resp_headers} when status in [200, 206] and is_binary(body) ->
-            ct = guess_content_type(path_string, "video/mp4")
-
-            debug(%{
-              path: path_string,
-              requested_range: range_header,
-              upstream_status: status,
-              content_type: ct,
-              elapsed_ms: System.monotonic_time(:millisecond) - started_at,
-              cache: "hit"
-            }, "[PanDoRa] proxy_range success")
+        case Req.get(url, headers: req_headers, decode_body: false, receive_timeout: 60_000) do
+          {:ok, %Req.Response{status: 200, body: body, headers: resp_headers}} when is_binary(body) ->
+            ct = upstream_content_type(resp_headers, guess_content_type(path_string, "video/mp4"))
 
             conn
+            |> put_cache_headers(@browser_video_max_age)
             |> put_resp_content_type(ct)
-            |> forward_headers(resp_headers, ~w(content-range accept-ranges content-length))
-            |> serve_buffered_raw(status, body)
+            |> forward_headers(resp_headers, ~w(content-length))
+            |> send_resp(200, body)
 
-          _ ->
-            proxy_range_streaming(conn, url, path_string, auth_headers, range_header, cache_key, started_at)
+          {:ok, %Req.Response{status: status}} ->
+            conn |> put_status(status) |> text("Pandora returned #{status}")
+
+          {:error, reason} ->
+            warn(reason, "[PanDoRa] proxy_video_buffered error")
+            conn |> put_status(502) |> text("Proxy error")
         end
-    end
-  end
-
-  defp proxy_range_streaming(conn, url, path_string, auth_headers, range_header, cache_key, started_at) do
-    req_headers = auth_headers ++ [{"range", range_header}]
-
-    case Req.get(url,
-           headers: req_headers,
-           decode_body: false,
-           receive_timeout: 60_000,
-           into: :self
-         ) do
-      {:ok, %Req.Response{status: status, body: body, headers: resp_headers}}
-      when status in [200, 206] ->
-        ct = guess_content_type(path_string, "video/mp4")
-
-        debug(%{
-          path: path_string,
-          requested_range: range_header,
-          upstream_status: status,
-          content_type: ct,
-          elapsed_ms: System.monotonic_time(:millisecond) - started_at,
-          cache: if(cache_key, do: "miss-streamable", else: "miss-no-cache")
-        }, "[PanDoRa] proxy_range success")
-
-        conn
-        |> put_resp_content_type(ct)
-        |> put_cache_headers(@browser_video_max_age)
-        |> disable_proxy_buffering()
-        |> forward_headers(resp_headers, ~w(content-range accept-ranges))
-        |> ensure_accept_ranges()
-        |> stream_async_body(status, body, path_string, cache_key, resp_headers)
-
-      {:ok, %Req.Response{status: st}} ->
-        warn(%{
-          path: path_string,
-          requested_range: range_header,
-          upstream_status: st,
-          elapsed_ms: System.monotonic_time(:millisecond) - started_at
-        }, "[PanDoRa] proxy_range upstream status")
-
-        conn |> put_status(st) |> text("Pandora returned #{st}")
-
-      {:error, reason} ->
-        warn(reason, "[PanDoRa] proxy_range error")
-        conn |> put_status(502) |> text("Proxy error")
-    end
-  end
-
-  defp video_cache_key(path_string, range_header) do
-    case Regex.run(~r/^bytes=(\d+)-(\d+)$/, range_header) do
-      [_, start_s, stop_s] ->
-        start_i = String.to_integer(start_s)
-        stop_i = String.to_integer(stop_s)
-
-        if stop_i >= start_i and stop_i - start_i + 1 <= @max_video_range_size do
-          "pandora_video_#{path_string}_#{start_i}_#{stop_i}"
-        end
-
-      _ ->
-        nil
     end
   end
 
@@ -213,56 +132,10 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
     |> send_resp(status, data)
   end
 
-  defp serve_buffered_raw(conn, status, data) do
-    send_resp(conn, status, data)
-  end
-
-  defp stream_async_body(conn, status, body, path_string, cache_key, resp_headers) do
-    conn = send_chunked(conn, status)
-
-    {conn, chunk_acc, cacheable?} =
-      Enum.reduce_while(body, {conn, [], true}, fn chunk_data, {acc, cached_chunks, cacheable?} ->
-        case chunk(acc, chunk_data) do
-          {:ok, conn} ->
-            cached_chunks =
-              if cache_key && cacheable? do
-                [chunk_data | cached_chunks]
-              else
-                cached_chunks
-              end
-
-            {:cont, {conn, cached_chunks, cacheable?}}
-
-          {:error, reason} ->
-            warn(%{path: path_string, reason: reason}, "[PanDoRa] proxy_range chunk error")
-            {:halt, {acc, cached_chunks, false}}
-        end
-      end)
-
-    if cache_key && cacheable? do
-      body = chunk_acc |> Enum.reverse() |> IO.iodata_to_binary()
-
-      Bonfire.Common.Cache.put(cache_key, {status, body, resp_headers}, ttl: @video_cache_ttl)
-    end
-
-    conn
-  end
-
   defp put_cache_headers(conn, nil), do: conn
 
   defp put_cache_headers(conn, max_age) when is_integer(max_age) and max_age >= 0 do
     put_resp_header(conn, "cache-control", "private, max-age=#{max_age}")
-  end
-
-  defp disable_proxy_buffering(conn) do
-    put_resp_header(conn, "x-accel-buffering", "no")
-  end
-
-  defp ensure_accept_ranges(conn) do
-    case get_resp_header(conn, "accept-ranges") do
-      [] -> put_resp_header(conn, "accept-ranges", "bytes")
-      _ -> conn
-    end
   end
 
   defp forward_headers(conn, resp_headers, allowed) do
@@ -277,30 +150,20 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
     end)
   end
 
-  defp normalize_range_header(range_header) when is_binary(range_header) do
-    case Regex.run(~r/^bytes=(\d+)-(\d*)$/, range_header) do
-      [_, start_s, ""] ->
-        start_i = String.to_integer(start_s)
-        stop_i = start_i + @max_video_range_size - 1
-        "bytes=#{start_i}-#{stop_i}"
-
-      [_, start_s, stop_s] ->
-        start_i = String.to_integer(start_s)
-        stop_i = String.to_integer(stop_s)
-        max_stop = start_i + @max_video_range_size - 1
-
-        if stop_i > max_stop do
-          "bytes=#{start_i}-#{max_stop}"
-        else
-          range_header
+  defp upstream_content_type(resp_headers, default) do
+    Enum.find_value(resp_headers, default, fn
+      {key, value} when is_binary(key) ->
+        if String.downcase(key) == "content-type" do
+          case List.wrap(value) do
+            [first | _] when is_binary(first) and first != "" -> first
+            _ -> default
+          end
         end
 
       _ ->
-        range_header
-    end
+        nil
+    end)
   end
-
-  defp normalize_range_header(other), do: other
 
   defp guess_content_type(path, default) do
     cond do
