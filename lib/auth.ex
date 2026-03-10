@@ -9,9 +9,9 @@ defmodule Bonfire.PanDoRa.Auth do
   """
 
   alias Bonfire.Common.Config
-  alias Bonfire.Common.Settings
   alias Bonfire.Common.Utils
   alias PanDoRa.API.Client
+  use Bonfire.Common.Settings
 
   @doc """
   Bootstraps the shadow Pandora user during Bonfire signup.
