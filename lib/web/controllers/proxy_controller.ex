@@ -22,6 +22,8 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
   @browser_video_max_age 60
   # Keep the first implicit fetch small so metadata/startup stay responsive.
   @initial_video_range_end 262_143
+  # Cap open-ended or oversized ranges so seeking doesn't request huge spans.
+  @max_video_range_size 1_048_576
 
   def proxy_image(conn, %{"path" => path}) when is_list(path) do
     if Enum.empty?(path) do
@@ -107,6 +109,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
             [range] -> range
             _ -> "bytes=0-#{@initial_video_range_end}"
           end
+          |> normalize_range_header()
 
         cache_key = video_cache_key(path_string, range_header)
 
@@ -159,6 +162,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
         conn
         |> put_resp_content_type(ct)
         |> put_cache_headers(@browser_video_max_age)
+        |> disable_proxy_buffering()
         |> forward_headers(resp_headers, ~w(content-range accept-ranges))
         |> ensure_accept_ranges()
         |> stream_async_body(status, body, path_string, cache_key, resp_headers)
@@ -185,7 +189,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
         start_i = String.to_integer(start_s)
         stop_i = String.to_integer(stop_s)
 
-        if start_i == 0 and stop_i - start_i <= 8_388_608 do
+        if stop_i >= start_i and stop_i - start_i + 1 <= @max_video_range_size do
           "pandora_video_#{path_string}_#{start_i}_#{stop_i}"
         end
 
@@ -250,6 +254,10 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
     put_resp_header(conn, "cache-control", "private, max-age=#{max_age}")
   end
 
+  defp disable_proxy_buffering(conn) do
+    put_resp_header(conn, "x-accel-buffering", "no")
+  end
+
   defp ensure_accept_ranges(conn) do
     case get_resp_header(conn, "accept-ranges") do
       [] -> put_resp_header(conn, "accept-ranges", "bytes")
@@ -268,6 +276,31 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
       end
     end)
   end
+
+  defp normalize_range_header(range_header) when is_binary(range_header) do
+    case Regex.run(~r/^bytes=(\d+)-(\d*)$/, range_header) do
+      [_, start_s, ""] ->
+        start_i = String.to_integer(start_s)
+        stop_i = start_i + @max_video_range_size - 1
+        "bytes=#{start_i}-#{stop_i}"
+
+      [_, start_s, stop_s] ->
+        start_i = String.to_integer(start_s)
+        stop_i = String.to_integer(stop_s)
+        max_stop = start_i + @max_video_range_size - 1
+
+        if stop_i > max_stop do
+          "bytes=#{start_i}-#{max_stop}"
+        else
+          range_header
+        end
+
+      _ ->
+        range_header
+    end
+  end
+
+  defp normalize_range_header(other), do: other
 
   defp guess_content_type(path, default) do
     cond do
