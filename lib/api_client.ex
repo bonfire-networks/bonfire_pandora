@@ -1081,7 +1081,23 @@ defmodule PanDoRa.API.Client do
     email = e(account, :email, :email_address, nil)
 
     if is_binary(username) and is_binary(email) do
-      sign_up(user, email, username, password)
+      case sign_up(user, email, username, password) do
+        {:ok, _} ->
+          sign_in(username, password, current_user: user)
+
+        {:error, %{"email" => _}} ->
+          with {:ok, _} <- save_user_credentials(user, email, username, password) do
+            sign_in(username, password, current_user: user)
+          end
+
+        {:error, %{"username" => _}} ->
+          with {:ok, _} <- save_user_credentials(user, email, username, password) do
+            sign_in(username, password, current_user: user)
+          end
+
+        other ->
+          other
+      end
     else
       error(
         user,
@@ -1211,7 +1227,7 @@ defmodule PanDoRa.API.Client do
   defp maybe_sign_in_and_or_put_auth_cookie(req, _, _, _, _), do: req
 
   defp maybe_save_auth_cookie(headers, username, action, opts) do
-    if action in ["signin", "signup"] do
+    if action == "signin" do
       if cookie = Auth.extract_session_cookie(headers) do
         Auth.put_session_cookie(username, cookie, opts)
       else
