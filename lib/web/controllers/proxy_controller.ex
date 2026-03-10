@@ -7,7 +7,8 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
   server-side), all media is fetched server-side and forwarded to the client.
 
   Video proxying supports HTTP Range requests so the player can seek correctly.
-  Each Range request is small (a few MB), so buffering is acceptable.
+  Video responses are streamed to the browser to avoid buffering the full range
+  in the Phoenix process before playback starts.
   """
   use Bonfire.UI.Common.Web, :controller
   use Untangle
@@ -19,6 +20,8 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
   @video_cache_ttl 1_000 * 60 * 10
   @browser_image_max_age 600
   @browser_video_max_age 60
+  # Keep the first implicit fetch small so metadata/startup stay responsive.
+  @initial_video_range_end 262_143
 
   def proxy_image(conn, %{"path" => path}) when is_list(path) do
     if Enum.empty?(path) do
@@ -88,8 +91,8 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
   end
 
   # Proxies with Range support. Browser video players send Range requests for
-  # seeking. We use a single buffered request (Req) per range; the first
-  # request (bytes=0-1MB) is cached so repeat loads are fast.
+  # seeking. When a browser doesn't send one on the first request, we force a
+  # small initial range so startup stays responsive.
   defp proxy_range(conn, path_string) do
     case get_auth_headers(conn) do
       nil ->
@@ -102,7 +105,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
         range_header =
           case get_req_header(conn, "range") do
             [range] -> range
-            _ -> "bytes=0-1048575"
+            _ -> "bytes=0-#{@initial_video_range_end}"
           end
 
         cache_key = video_cache_key(path_string, range_header)
@@ -158,7 +161,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
         |> put_cache_headers(@browser_video_max_age)
         |> forward_headers(resp_headers, ~w(content-range accept-ranges))
         |> ensure_accept_ranges()
-        |> stream_async_body(status, body, path_string)
+        |> stream_async_body(status, body, path_string, cache_key, resp_headers)
 
       {:ok, %Req.Response{status: st}} ->
         warn(%{
@@ -210,19 +213,35 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
     send_resp(conn, status, data)
   end
 
-  defp stream_async_body(conn, status, body, path_string) do
+  defp stream_async_body(conn, status, body, path_string, cache_key, resp_headers) do
     conn = send_chunked(conn, status)
 
-    Enum.reduce_while(body, conn, fn chunk_data, acc ->
-      case chunk(acc, chunk_data) do
-        {:ok, conn} ->
-          {:cont, conn}
+    {conn, chunk_acc, cacheable?} =
+      Enum.reduce_while(body, {conn, [], true}, fn chunk_data, {acc, cached_chunks, cacheable?} ->
+        case chunk(acc, chunk_data) do
+          {:ok, conn} ->
+            cached_chunks =
+              if cache_key && cacheable? do
+                [chunk_data | cached_chunks]
+              else
+                cached_chunks
+              end
 
-        {:error, reason} ->
-          warn(%{path: path_string, reason: reason}, "[PanDoRa] proxy_range chunk error")
-          {:halt, acc}
-      end
-    end)
+            {:cont, {conn, cached_chunks, cacheable?}}
+
+          {:error, reason} ->
+            warn(%{path: path_string, reason: reason}, "[PanDoRa] proxy_range chunk error")
+            {:halt, {acc, cached_chunks, false}}
+        end
+      end)
+
+    if cache_key && cacheable? do
+      body = chunk_acc |> Enum.reverse() |> IO.iodata_to_binary()
+
+      Bonfire.Common.Cache.put(cache_key, {status, body, resp_headers}, ttl: @video_cache_ttl)
+    end
+
+    conn
   end
 
   defp put_cache_headers(conn, nil), do: conn
