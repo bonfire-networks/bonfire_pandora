@@ -1,59 +1,102 @@
 <div class="w-full max-w-full flex flex-col feed w-full max-w-full lg:rounded-xl lg:shadow bg-base-100">
-  <div class="flex flex-col lg:flex-row gap-4 w-full p-3">
-    <!-- Main column: search + badges + results -->
-    <div class="flex-1 min-w-0 flex flex-col gap-3">
-      <div class="flex flex-col gap-2 border-b border-base-content/10 pb-3">
-        <form change="validate" phx-submit="search" phx-target={@myself} action="?" autocomplete="off">
-          <div class="flex gap-2">
-            <div class="flex-grow relative min-w-0">
-              <input
-                type="search"
-                name="term"
-                value={@term}
-                placeholder={l("Enter search term")}
-                class="input w-full input-sm"
-                disabled={@loading}
-              />
-            </div>
-            <button type="submit" class="btn btn-soft btn-secondary btn-sm flex-shrink-0" disabled={@loading}>
-              {if @loading, do: l("Searching..."), else: l("Search")}
-            </button>
+  <div class="flex rounded-t-xl border-b border-base-content/10 flex-col gap-2 p-3">
+    <form change="validate" phx-submit="search" phx-target={@myself} action="?" autocomplete="off">
+      <div class="flex gap-4">
+        <div class="flex-grow relative">
+          <input
+            type="search"
+            name="term"
+            value={@term}
+            placeholder={l("Enter search term")}
+            class="input w-full"
+            disabled={@loading}
+          />
+        </div>
+        <button type="submit" class="btn btn-soft btn-secondary" disabled={@loading}>
+          {if @loading, do: l("Searching..."), else: l("Search")}
+        </button>
+      </div>
+    </form>
+    <div class="flex mt-3 justify-between gap-3 flex-col md:flex-row">
+      {#for section <- @filter_sections}
+        <nav class="flex-1 bg-base-200 flex flex-col rounded-box min-w-0">
+          <div class="flex justify-between items-center p-3 pb-2 px-4">
+            <h2 class="text-sm font-medium text-base-content/50">{section.label}</h2>
           </div>
-        </form>
-
-        <!-- Active filters and search term (compact) -->
-        <div
-          :if={not is_nil(@term) or Enum.any?(Map.values(@selected_by_field || %{}), &(length(&1) > 0))}
-          class="flex flex-wrap items-center justify-between gap-2"
-        >
-          <div class="flex flex-1 flex-wrap gap-1.5 min-w-0">
-            {#if @term}
-              <div class="badge badge-accent badge-soft badge-sm">
-                <span>Search: {String.slice(@term, 0, 20)}{if String.length(@term) > 20, do: ~s(...)}</span>
+          <div
+            :hook
+            id={"#{section.id}-container"}
+            data-page={section.page}
+            data-type="filter"
+            phx-update="append"
+          >
+            <ul
+              class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
+              id={"#{section.id}-list"}
+              style="overscroll-behavior: contain;"
+            >
+              {#for %{name: name, items: count} <- section.available}
+                <li class="w-full" id={"#{section.id}-#{name}"}>
+                  <a
+                    phx-click={"filter_by_#{section.id}"}
+                    phx-target={@myself}
+                    phx-value-id={name}
+                    class={"flex gap-3 px-2 text-base-content" <> if(name in section.selected, do: ~s( active bg-primary/10), else: "")}
+                    disabled={@loading}
+                  >
+                    <span class="flex-1">{name}</span>
+                    <span class="text-sm opacity-50">({count})</span>
+                    {#if name in section.selected}
+                      <span class="text-primary">✓</span>
+                    {/if}
+                  </a>
+                </li>
+              {/for}
+            </ul>
+            {#if section.loading}
+              <div class="flex justify-center p-2">
+                <div class="loading loading-spinner loading-sm" />
               </div>
             {/if}
-            {#for badge <- @active_filter_badges}
-              {#for value <- badge.values}
-                <div class="badge badge-accent badge-soft badge-sm">
-                  <span>{badge.label}: {value}</span>
-                </div>
-              {/for}
-            {/for}
           </div>
-          <button
-            type="button"
-            phx-click="clear_filters"
-            phx-target={@myself}
-            class="btn btn-ghost btn-soft btn-sm gap-1"
-            disabled={@loading}
-          >
-            <#Icon iconify="carbon:filter-remove" class="w-3.5 h-3.5" />
-            {l("Clear filters")}
-          </button>
-        </div>
-      </div>
+        </nav>
+      {/for}
+    </div>
 
-      <div class="overflow-x-auto relative flex-1 min-h-0">
+    <!-- Active filters and search term display -->
+    <div
+      :if={not is_nil(@term) or Enum.any?(Map.values(@selected_by_field || %{}), &(length(&1) > 0))}
+      class="p-3 bg-base-200 rounded-lg flex justify-between items-center"
+    >
+      <div class="flex flex-1 flex-wrap gap-2">
+        {#if @term}
+          <div class="badge badge-accent badge-soft">
+            <span>Search: {String.slice(@term, 0, 30)}{if String.length(@term) > 30, do: ~s(...)}</span>
+          </div>
+        {/if}
+
+        {#for badge <- @active_filter_badges}
+          {#for value <- badge.values}
+            <div class="badge badge-accent badge-soft">
+              <span>{badge.label}: {value}</span>
+            </div>
+          {/for}
+        {/for}
+      </div>
+      <button
+        type="button"
+        phx-click="clear_filters"
+        phx-target={@myself}
+        class="btn btn-ghost btn-soft gap-2"
+        disabled={@loading}
+      >
+        <#Icon iconify="carbon:filter-remove" class="w-4 h-4" />
+        {l("Clear filters")}
+      </button>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto relative">
     {#if @loading && @page == 0}
       <div class="bg-base-200/50 p-20 flex items-center justify-center z-10">
         <div class="loading loading-spinner loading-lg text-primary" />
@@ -94,54 +137,5 @@
   </div> --}
     </div>
     {!-- <ResultsDisplay :if={@results} results={@results} search_term={@search_term} /> --}
-      </div>
-    </div>
-
-    <!-- Right column: filter boxes (compact, Movie Info style) -->
-    <aside class="w-full lg:w-52 xl:w-60 flex-shrink-0 flex flex-col gap-2 order-first lg:order-last">
-      {#for section <- @filter_sections}
-        <nav class="bg-base-200 flex flex-col rounded-lg border border-base-content/10 overflow-hidden">
-          <div class="px-2.5 py-1.5 border-b border-base-content/10">
-            <h2 class="text-xs font-semibold text-base-content/60 uppercase tracking-wide">{section.label}</h2>
-          </div>
-          <div
-            :hook
-            id={"#{section.id}-container"}
-            data-page={section.page}
-            data-type="filter"
-            phx-update="append"
-          >
-            <ul
-              class="menu menu-vertical menu-sm flex-nowrap max-h-[140px] overflow-y-auto w-full py-0.5 px-1"
-              id={"#{section.id}-list"}
-              style="overscroll-behavior: contain;"
-            >
-              {#for %{name: name, items: count} <- section.available}
-                <li class="w-full min-w-0" id={"#{section.id}-#{name}"}>
-                  <a
-                    phx-click={"filter_by_#{section.id}"}
-                    phx-target={@myself}
-                    phx-value-id={name}
-                    class={"flex gap-1.5 px-2 py-1 text-xs rounded-md" <> if(name in section.selected, do: ~s( active bg-primary/10 text-primary), else: " text-base-content")}
-                    disabled={@loading}
-                  >
-                    <span class="flex-1 truncate">{name}</span>
-                    <span class="text-[10px] opacity-60 flex-shrink-0">({count})</span>
-                    {#if name in section.selected}
-                      <span class="text-primary flex-shrink-0">✓</span>
-                    {/if}
-                  </a>
-                </li>
-              {/for}
-            </ul>
-            {#if section.loading}
-              <div class="flex justify-center py-1">
-                <div class="loading loading-spinner loading-xs" />
-              </div>
-            {/if}
-          </div>
-        </nav>
-      {/for}
-    </aside>
   </div>
 </div>
