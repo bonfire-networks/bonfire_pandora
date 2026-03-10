@@ -746,7 +746,7 @@ defmodule PanDoRa.API.Client do
       * Additional key/value pairs for the fields to update
 
   ## Examples
-      iex> edit_movie(%{id: "movie123", title: "New Title", year: "2023"})
+      iex> edit_movie(%{id: "movie123", title: "New Title", director: ["Alice"], summary: "...", year: "2023", featuring: ["Bob"], country: "Italy", language: "Italian"})
       {:ok, %{title: "New Title", year: "2023"}}
   """
   def edit_movie(data, opts) when is_map(data) do

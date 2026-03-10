@@ -13,7 +13,9 @@ defmodule Bonfire.PanDoRa.Utils do
   so they appear dynamically via extra_metadata/1.
   """
   @known_fields ~w(id title item_id public_id stable_id order duration director image
-                   year summary hue saturation lightness volume cutsperminute rights stream)
+                   year summary hue saturation lightness volume cutsperminute rightslevel stream
+                   streams bitrate editable featuring country language
+                   aspectRatio aspect_ratio ratio resolution)
 
   def known_fields, do: @known_fields
 

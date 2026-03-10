@@ -237,13 +237,20 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     movie_data =
       movie_data
       |> process_director_field()
+      |> process_featuring_field()
       |> process_section_field()
 
-    # Convert string keys to atoms for the API client
+    # Build edit_data from whitelisted fields (avoids String.to_existing_atom on dynamic keys)
     edit_data =
-      movie_data
-      |> Map.new(fn {k, v} -> {String.to_existing_atom(k), v} end)
-      |> Map.put(:id, movie_id)
+      %{id: movie_id}
+      |> put_edit_field(:title, movie_data)
+      |> put_edit_field(:director, movie_data)
+      |> put_edit_field(:summary, movie_data)
+      |> put_edit_field(:year, movie_data)
+      |> put_edit_field(:featuring, movie_data)
+      |> put_edit_field(:country, movie_data)
+      |> put_edit_field(:language, movie_data)
+      |> put_edit_field(:sezione, movie_data)
 
     case Client.edit_movie(edit_data, current_user: current_user(socket)) do
       {:ok, updated_fields} ->
@@ -370,6 +377,14 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     end
   end
 
+  defp put_edit_field(acc, key, movie_data) when is_atom(key) do
+    str_key = to_string(key)
+    case Map.fetch(movie_data, str_key) do
+      :error -> acc
+      {:ok, value} -> Map.put(acc, key, value)
+    end
+  end
+
   # Process the director field to ensure it's a list
   defp process_director_field(movie_data) do
     if Map.has_key?(movie_data, "director") do
@@ -384,6 +399,21 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
       # Update the movie_data with the director as a list
       Map.put(movie_data, "director", director_list)
+    else
+      movie_data
+    end
+  end
+
+  # Process the featuring field to ensure it's a list (comma-separated input)
+  defp process_featuring_field(movie_data) do
+    if Map.has_key?(movie_data, "featuring") do
+      featuring_list =
+        movie_data["featuring"]
+        |> String.split(",")
+        |> Enum.map(&String.trim/1)
+        |> Enum.filter(&(&1 != ""))
+
+      Map.put(movie_data, "featuring", featuring_list)
     else
       movie_data
     end

@@ -36,6 +36,46 @@
                   <legend class="fieldset-legend">{l("Summary")}</legend>
                   <textarea name="movie[summary]" class="textarea w-full h-32">{to_attr(e(@movie, "summary", ""))}</textarea>
                 </fieldset>
+                <fieldset class="fieldset w-full">
+                  <legend class="fieldset-legend">{l("Year")}</legend>
+                  <input
+                    type="text"
+                    name="movie[year]"
+                    value={to_attr(e(@movie, "year", ""))}
+                    placeholder={l("e.g. 2024")}
+                    class="input w-full"
+                  />
+                </fieldset>
+                <fieldset class="fieldset w-full">
+                  <legend class="fieldset-legend">{l("Featuring")}</legend>
+                  <input
+                    type="text"
+                    name="movie[featuring]"
+                    value={to_attr(@movie["featuring"])}
+                    placeholder={l("Enter names separated by commas")}
+                    class="input w-full"
+                  />
+                </fieldset>
+                <fieldset class="fieldset w-full">
+                  <legend class="fieldset-legend">{l("Country")}</legend>
+                  <input
+                    type="text"
+                    name="movie[country]"
+                    value={to_attr(e(@movie, "country", ""))}
+                    placeholder={l("e.g. Italy")}
+                    class="input w-full"
+                  />
+                </fieldset>
+                <fieldset class="fieldset w-full">
+                  <legend class="fieldset-legend">{l("Language")}</legend>
+                  <input
+                    type="text"
+                    name="movie[language]"
+                    value={to_attr(e(@movie, "language", ""))}
+                    placeholder={l("e.g. Italian")}
+                    class="input w-full"
+                  />
+                </fieldset>
                 <div class="mt-4 flex justify-end">
                   <button type="submit" class="btn btn-primary">{l("Save Changes")}</button>
                 </div>
@@ -49,62 +89,131 @@
       </div>
 
       <div class="mt-4">
-        <div class="text-base-content/70">
-          <span class="font-semibold text-base-content">{raw(to_attr(e(@movie, "title", "")))}</span>
-          {#if @movie["director"]}
-            ,
-            {#for director <- List.wrap(@movie["director"]) |> Enum.filter(&is_binary/1)}
-              {director}
-            {/for}
-          {/if}
-          {#if @movie["year"]}
-            , {to_attr(e(@movie, "year", ""))},
-          {/if}
-          {#if @movie["duration"]}
-            , {Bonfire.Common.DatesTimes.format_duration(e(@movie, "duration", ""))}
-          {/if}
-        </div>
-
-        <div class="mt-3">
-          <div class="transition text-sm prose prose-sm">
-            {rich(to_attr(e(@movie, "summary", "")))}
+        {!-- Summary: primo campo in apertura --}
+        {#if summary_present?(@movie)}
+          <div class="mb-4">
+            <div class="text-sm text-base-content/50 font-medium mb-1">{l("Summary")}</div>
+            <div class="text-xs text-base-content whitespace-pre-wrap">{rich(get_summary(@movie))}</div>
           </div>
+        {/if}
 
-          <ul id="movie_more_info" class="flex flex-col gap-3 w-full mt-3">
-            {!-- Technical / colour stats --}
-            {#if @movie["hue"]}
-              <li class="items-center flex justify-between">
-                <span class="text-sm text-base-content/50 font-medium">{l("HUE")}</span>
-                <span
-                  class="font-semibold text-sm px-2 py-1 rounded"
-                  style={"background-color: hsl(#{to_attr(@movie["hue"])}, #{to_attr(@movie["saturation"])}, #{to_attr(@movie["lightness"])});"}
-                >{to_attr(@movie["hue"])}</span>
-              </li>
-            {/if}
-            {#if @movie["rights"]}
-              <li class="items-center flex justify-between">
-                <span class="text-sm text-base-content/50 font-medium">{l("Rights level")}</span>
-                <span class="font-semibold text-sm">{to_attr(@movie["rights"])}</span>
-              </li>
-            {/if}
+        <ul id="movie_more_info" class="flex flex-col gap-3 w-full">
+          {!-- Director --}
+          {#if Enum.any?(director_list(@movie))}
+            <li class="items-center flex justify-between gap-2">
+              <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Director")}</span>
+              <div class="flex flex-wrap gap-1.5 justify-end">
+                {#for name <- director_list(@movie)}
+                  <a href={"/archive?director=#{URI.encode(name)}"} class="btn btn-xs btn-soft btn-accent">{name}</a>
+                {/for}
+              </div>
+            </li>
+          {/if}
+          {!-- Year --}
+          {#if @movie["year"]}
+            <li class="items-center flex justify-between gap-2">
+              <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Year")}</span>
+              <a href={"/archive?year=#{URI.encode(to_attr(@movie["year"]))}"} class="btn btn-xs btn-soft btn-accent">{to_attr(@movie["year"])}</a>
+            </li>
+          {/if}
+          {!-- Duration --}
+          {#if api_duration(@movie)}
+            <li class="items-center flex justify-between gap-2">
+              <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Duration")}</span>
+              <span class="text-xs">{format_duration_seconds(api_duration(@movie))}</span>
+            </li>
+          {/if}
+          {!-- Featuring --}
+          {#if Enum.any?(featuring_list(@movie))}
+            <li class="items-center flex justify-between gap-2">
+              <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Featuring")}</span>
+              <div class="flex flex-wrap gap-1.5 justify-end">
+                {#for name <- featuring_list(@movie)}
+                  <a href={"/archive?featuring=#{URI.encode(name)}"} class="btn btn-xs btn-soft btn-accent">{name}</a>
+                {/for}
+              </div>
+            </li>
+          {/if}
+          {!-- Country --}
+          {#if to_attr(@movie["country"]) != ""}
+            <li class="items-center flex justify-between gap-2">
+              <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Country")}</span>
+              <a href={"/archive?country=#{URI.encode(to_attr(@movie["country"]))}"} class="btn btn-xs btn-soft btn-accent">{to_attr(@movie["country"])}</a>
+            </li>
+          {/if}
+          {!-- Language --}
+          {#if to_attr(@movie["language"]) != ""}
+            <li class="items-center flex justify-between gap-2">
+              <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Language")}</span>
+              <a href={"/archive?language=#{URI.encode(to_attr(@movie["language"]))}"} class="btn btn-xs btn-soft btn-accent">{to_attr(@movie["language"])}</a>
+            </li>
+          {/if}
+          {!-- Dynamic extra fields from this Pandora instance --}
+          {#for {field, value} <- extra_metadata(@movie)}
+            <li class="items-center flex justify-between gap-2">
+              <span class="text-sm text-base-content/50 font-medium capitalize shrink-0">{field}</span>
+              <a href={"/archive?#{URI.encode(field)}=#{URI.encode(value)}"} class="btn btn-xs btn-soft btn-accent">{value}</a>
+            </li>
+          {/for}
+        </ul>
 
-            {!-- Dynamic extra fields from this Pandora instance --}
-            {#for {field, value} <- extra_metadata(@movie)}
-              <li class="items-center flex justify-between">
-                <span class="text-sm text-base-content/50 font-medium capitalize">{field}</span>
-                <button
-                  class="btn btn-xs btn-soft btn-accent"
-                  phx-click="filter_by_field"
-                  phx-value-field={field}
-                  phx-value-id={value}
-                >
-                  {value}
-                </button>
-              </li>
-            {/for}
-          </ul>
+          {!-- More: technical fields (Hue, Aspect Ratio, etc.) --}
+          {#if @show_more}
+            <ul class="flex flex-col gap-3 w-full mt-3 pt-3 border-t border-base-content/10">
+              {#if @movie["hue"]}
+                <li class="items-center flex justify-between">
+                  <span class="text-sm text-base-content/50 font-medium">{l("Hue")}</span>
+                  <span class="text-sm">{format_decimal(@movie["hue"])}</span>
+                </li>
+              {/if}
+              {#if api_aspect_ratio(@movie)}
+                <li class="items-center flex justify-between">
+                  <span class="text-sm text-base-content/50 font-medium">{l("Aspect ratio")}</span>
+                  <span class="text-sm">{to_attr(api_aspect_ratio(@movie))}</span>
+                </li>
+              {/if}
+              {#if @movie["saturation"] != nil}
+                <li class="items-center flex justify-between">
+                  <span class="text-sm text-base-content/50 font-medium">{l("Saturation")}</span>
+                  <span class="text-sm">{format_decimal(@movie["saturation"])}</span>
+                </li>
+              {/if}
+              {#if @movie["lightness"] != nil}
+                <li class="items-center flex justify-between">
+                  <span class="text-sm text-base-content/50 font-medium">{l("Lightness")}</span>
+                  <span class="text-sm">{format_decimal(@movie["lightness"])}</span>
+                </li>
+              {/if}
+              {#if @movie["volume"] != nil}
+                <li class="items-center flex justify-between">
+                  <span class="text-sm text-base-content/50 font-medium">{l("Volume")}</span>
+                  <span class="text-sm">{format_decimal(@movie["volume"])}</span>
+                </li>
+              {/if}
+              {#if @movie["cutsperminute"] != nil and @movie["cutsperminute"] != ""}
+                <li class="items-center flex justify-between">
+                  <span class="text-sm text-base-content/50 font-medium">{l("Cuts per minute")}</span>
+                  <span class="text-sm">{format_decimal(@movie["cutsperminute"])}</span>
+                </li>
+              {/if}
+              {#if @movie["rightslevel"] || @movie["rights"]}
+                <li class="items-center flex justify-between">
+                  <span class="text-sm text-base-content/50 font-medium">{l("Rights levels")}</span>
+                  <span class="text-sm">{to_attr(@movie["rightslevel"] || @movie["rights"])}</span>
+                </li>
+              {/if}
+            </ul>
+          {/if}
+
+          <div class="flex justify-center mt-3">
+            <button
+              type="button"
+              phx-click="toggle_more"
+              phx-target={@myself}
+              class="btn btn-sm btn-ghost"
+            >{if @show_more, do: l("Less"), else: l("More")}</button>
+          </div>
         </div>
       </div>
-    </div>
   </Bonfire.UI.Common.WidgetBlockLive>
 </div>
