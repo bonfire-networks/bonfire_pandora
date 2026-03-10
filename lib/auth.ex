@@ -16,13 +16,20 @@ defmodule Bonfire.PanDoRa.Auth do
   use Bonfire.Common.Repo
 
   @doc """
-  Bootstraps the shadow Pandora user during Bonfire signup.
+  Manual v1 sync/recovery flow for the Pandora shadow account.
 
-  Today this delegates to the existing password-based bootstrap flow. The goal
-  is to keep that implementation detail behind a stable boundary.
+  This function is used by the settings tool when automatic Bonfire-signup
+  bootstrap is not yet available upstream. It will try to sign in first and,
+  if needed, create the Pandora user and then sign in, finally persisting the
+  Pandora session cookie for runtime access.
   """
-  def bootstrap_from_signup(user, password, _opts \\ []) do
+  def connect_or_bootstrap(user, password, _opts \\ []) do
     Client.sync_new_user_to_pandora(user, password)
+  end
+
+  @doc false
+  def bootstrap_from_signup(user, password, opts \\ []) do
+    connect_or_bootstrap(user, password, opts)
   end
 
   @doc """

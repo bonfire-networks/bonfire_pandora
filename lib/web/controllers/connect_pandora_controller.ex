@@ -1,7 +1,11 @@
 defmodule Bonfire.PanDoRa.Web.ConnectPandoraController do
   @moduledoc """
-  Handles "Connect to Pandora" from Settings: creates/syncs Pandora account
-  with the given password and stores encrypted credentials for the current user.
+  Handles the manual Pandora sync/recovery flow from Settings.
+
+  For v1 this is the explicit fallback tool that:
+  - tries to sign in to an existing Pandora account
+  - creates the shadow Pandora user if needed
+  - signs in and stores the Pandora session cookie for runtime use
   """
   use Bonfire.UI.Common.Web, :controller
   use Bonfire.Common.Localise
@@ -23,10 +27,10 @@ defmodule Bonfire.PanDoRa.Web.ConnectPandoraController do
         |> redirect(to: redirect_back_after(conn))
 
       true ->
-        case Auth.bootstrap_from_signup(user, password) do
+        case Auth.connect_or_bootstrap(user, password) do
           {:ok, _} ->
             conn
-            |> put_flash(:info, l("Connected to Pandora. Your credentials are stored securely."))
+            |> put_flash(:info, l("Pandora account synced. Runtime session is now active."))
             |> redirect(to: redirect_back_after(conn))
 
           {:error, msg} when is_binary(msg) ->

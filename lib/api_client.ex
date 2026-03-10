@@ -1069,9 +1069,16 @@ defmodule PanDoRa.API.Client do
   end
 
   @doc """
-  Syncs the current Bonfire user to Pandora: creates Pandora account with the same
-  email/username and the given password, then stores encrypted credentials in user settings.
-  Use this when the user explicitly provides a password (e.g. "Connect to Pandora" in Settings).
+  Syncs the current Bonfire user to Pandora using a signin-first flow.
+
+  Behaviour:
+  1. Save the provided password as the Pandora credential for this Bonfire user.
+  2. Try signing in to Pandora with the Bonfire username/email identity.
+  3. If the Pandora user does not exist yet, sign up on Pandora.
+  4. Immediately sign in and persist the Pandora session cookie for runtime use.
+
+  This is intended for the v1 manual recovery/bootstrap flow exposed by the
+  Sync Pandora settings tool.
   """
   def sync_new_user_to_pandora(user, password)
       when is_binary(password) and password != "" do
@@ -1081,22 +1088,20 @@ defmodule PanDoRa.API.Client do
     email = e(account, :email, :email_address, nil)
 
     if is_binary(username) and is_binary(email) do
-      case sign_up(user, email, username, password) do
-        {:ok, _} ->
-          sign_in(username, password, current_user: user)
+      with {:ok, _} <- save_user_credentials(user, email, username, password) do
+        case sign_in(username, password, current_user: user) do
+          {:ok, _} = ok ->
+            ok
 
-        {:error, %{"email" => _}} ->
-          with {:ok, _} <- save_user_credentials(user, email, username, password) do
-            sign_in(username, password, current_user: user)
-          end
+          {:error, %{"username" => _}} ->
+            create_and_sign_in_pandora_user(user, email, username, password)
 
-        {:error, %{"username" => _}} ->
-          with {:ok, _} <- save_user_credentials(user, email, username, password) do
-            sign_in(username, password, current_user: user)
-          end
+          {:error, %{"email" => _}} ->
+            create_and_sign_in_pandora_user(user, email, username, password)
 
-        other ->
-          other
+          other ->
+            other
+        end
       end
     else
       error(
@@ -1107,6 +1112,22 @@ defmodule PanDoRa.API.Client do
   end
 
   def sync_new_user_to_pandora(_user, _), do: error(:bad_password, l("Password is required"))
+
+  defp create_and_sign_in_pandora_user(user, email, username, password) do
+    case sign_up(user, email, username, password) do
+        {:ok, _} ->
+          sign_in(username, password, current_user: user)
+
+        {:error, %{"email" => _}} ->
+          sign_in(username, password, current_user: user)
+
+        {:error, %{"username" => _}} ->
+          sign_in(username, password, current_user: user)
+
+        other ->
+          other
+    end
+  end
 
   def sign_up(opts \\ []) do
     user = Utils.current_user_required!(opts)
@@ -1126,7 +1147,7 @@ defmodule PanDoRa.API.Client do
       Logger.info("[PanDoRa API] sign_up error: #{inspect(e)}")
       error(e, format_pandora_error(e))
     else
-      # Email already exists on Pandora: try sign_in with saved credentials (from "Connect to Pandora")
+      # Email already exists on Pandora: try sign_in with saved credentials from the Sync Pandora tool.
       {:error, %{"email" => _} = err} ->
         case sign_in(opts) do
           {:ok, data} -> {:ok, data}
@@ -1134,7 +1155,7 @@ defmodule PanDoRa.API.Client do
             error(
               err,
               l(
-                "This email is already registered on Pandora. Use 'Connect to Pandora' in Settings to sign in with your password."
+                "This email is already registered on Pandora. Use 'Sync Pandora' in Settings to sign in with your password."
               )
             )
         end

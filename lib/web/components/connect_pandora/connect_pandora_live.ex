@@ -1,14 +1,16 @@
 defmodule Bonfire.PanDoRa.Components.ConnectPandoraLive do
   @moduledoc """
-  Widget for Settings: "Connect to Pandora" button opens a modal with a password form.
-  Submits POST to /archive/connect. Registered as a SettingsModule component so it appears
-  in the extension configure tab automatically.
+  Settings widget for the manual Pandora sync/recovery flow.
+
+  It opens a password form and submits to `/archive/connect`, where the backend
+  will try signin first and fall back to signup+signin if the Pandora shadow
+  user does not exist yet.
   """
   use Bonfire.UI.Common.Web, :stateful_component
 
-  declare_settings_component("Connect to Pandora",
+  declare_settings_component("Sync Pandora access",
     description: l(
-      "Connect your Bonfire account to a Pandora archive using your profile email and username."
+      "Manual sync/recovery tool for the Pandora shadow account used by this Bonfire user."
     ),
     scope: :user
   )
