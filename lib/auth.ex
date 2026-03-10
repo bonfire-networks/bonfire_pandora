@@ -12,6 +12,7 @@ defmodule Bonfire.PanDoRa.Auth do
   alias Bonfire.Common.Utils
   alias PanDoRa.API.Client
   use Bonfire.Common.Settings
+  use Bonfire.Common.Repo
 
   @doc """
   Bootstraps the shadow Pandora user during Bonfire signup.
@@ -36,6 +37,8 @@ defmodule Bonfire.PanDoRa.Auth do
   end
 
   def session_cookie(user, opts) when is_map(user) do
+    user = repo().maybe_preload(user, :settings)
+
     Settings.get([:bonfire_pandora, Client, :my_session_cookie], nil,
       current_user: user
     )
@@ -73,6 +76,8 @@ defmodule Bonfire.PanDoRa.Auth do
   end
 
   def put_session_cookie(user, cookie, opts) when is_map(user) do
+    user = repo().maybe_preload(user, :settings)
+
     Settings.put([:bonfire_pandora, Client, :my_session_cookie], cookie,
       current_user: user
     )
