@@ -22,6 +22,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
   @browser_image_max_age 600
   @browser_video_max_age 60
   @initial_video_range_end 262_143
+  @max_video_range_size 1_048_576
 
   def proxy_image(conn, %{"path" => path}) when is_list(path) do
     if Enum.empty?(path) do
@@ -97,16 +98,27 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
 
       req_headers ->
         url = pandora_url(path_string)
-        req_headers =
+        range_header =
           case get_req_header(conn, "range") do
-            [range] -> req_headers ++ [{"range", range}]
-            _ -> req_headers ++ [{"range", "bytes=0-#{@initial_video_range_end}"}]
+            [range] -> range
+            _ -> "bytes=0-#{@initial_video_range_end}"
           end
+          |> normalize_range_header()
+
+        req_headers = auth_headers_with_range(req_headers, range_header)
 
         case Req.get(url, headers: req_headers, decode_body: false, receive_timeout: 60_000) do
           {:ok, %Req.Response{status: status, body: body, headers: resp_headers}}
           when status in [200, 206] and is_binary(body) ->
             ct = upstream_content_type(resp_headers, guess_content_type(path_string, "video/mp4"))
+
+            debug(%{
+              path: path_string,
+              requested_range: range_header,
+              upstream_status: status,
+              content_type: ct,
+              body_size: byte_size(body)
+            }, "[PanDoRa] proxy_video_buffered success")
 
             conn
             |> put_cache_headers(@browser_video_max_age)
@@ -116,6 +128,10 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
             |> send_resp(status, body)
 
           {:ok, %Req.Response{status: status}} ->
+            warn(%{path: path_string, requested_range: range_header, upstream_status: status},
+              "[PanDoRa] proxy_video_buffered upstream status"
+            )
+
             conn |> put_status(status) |> text("Pandora returned #{status}")
 
           {:error, reason} ->
@@ -179,6 +195,37 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
         nil
     end)
   end
+
+  defp auth_headers_with_range(auth_headers, range_header) do
+    auth_headers
+    |> Enum.reject(fn {key, _} -> String.downcase(key) == "range" end)
+    |> Kernel.++([{"range", range_header}])
+  end
+
+  defp normalize_range_header(range_header) when is_binary(range_header) do
+    case Regex.run(~r/^bytes=(\d+)-(\d*)$/, range_header) do
+      [_, start_s, ""] ->
+        start_i = String.to_integer(start_s)
+        stop_i = start_i + @max_video_range_size - 1
+        "bytes=#{start_i}-#{stop_i}"
+
+      [_, start_s, stop_s] ->
+        start_i = String.to_integer(start_s)
+        stop_i = String.to_integer(stop_s)
+        max_stop = start_i + @max_video_range_size - 1
+
+        if stop_i > max_stop do
+          "bytes=#{start_i}-#{max_stop}"
+        else
+          range_header
+        end
+
+      _ ->
+        range_header
+    end
+  end
+
+  defp normalize_range_header(_), do: "bytes=0-#{@initial_video_range_end}"
 
   defp guess_content_type(path, default) do
     cond do
