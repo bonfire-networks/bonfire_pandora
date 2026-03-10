@@ -28,6 +28,13 @@ defmodule Bonfire.PanDoRa.Auth do
   """
   def session_cookie(user_or_username_or_opts, opts \\ [])
 
+  def session_cookie(opts, []) when is_list(opts) do
+    case Utils.current_user(opts) do
+      user when is_map(user) -> session_cookie(user, opts)
+      _ -> nil
+    end
+  end
+
   def session_cookie(user, opts) when is_map(user) do
     Settings.get([:bonfire_pandora, Client, :my_session_cookie], nil,
       current_user: user
@@ -51,19 +58,19 @@ defmodule Bonfire.PanDoRa.Auth do
     end
   end
 
-  def session_cookie(opts, []) when is_list(opts) do
-    case Utils.current_user(opts) do
-      user when is_map(user) -> session_cookie(user, opts)
-      _ -> nil
-    end
-  end
-
   def session_cookie(_, _), do: nil
 
   @doc """
   Stores a Pandora session cookie for the given user or username.
   """
   def put_session_cookie(user_or_username_or_opts, cookie, opts \\ [])
+
+  def put_session_cookie(opts, cookie, []) when is_list(opts) do
+    case Utils.current_user(opts) do
+      user when is_map(user) -> put_session_cookie(user, cookie, opts)
+      _ -> nil
+    end
+  end
 
   def put_session_cookie(user, cookie, opts) when is_map(user) do
     Settings.put([:bonfire_pandora, Client, :my_session_cookie], cookie,
@@ -86,13 +93,6 @@ defmodule Bonfire.PanDoRa.Auth do
   end
 
   def put_session_cookie(_unknown, cookie, opts) when is_list(opts) do
-    case Utils.current_user(opts) do
-      user when is_map(user) -> put_session_cookie(user, cookie, opts)
-      _ -> nil
-    end
-  end
-
-  def put_session_cookie(opts, cookie, []) when is_list(opts) do
     case Utils.current_user(opts) do
       user when is_map(user) -> put_session_cookie(user, cookie, opts)
       _ -> nil
@@ -126,6 +126,12 @@ defmodule Bonfire.PanDoRa.Auth do
   @doc """
   Extracts the Pandora `sessionid` cookie value from response headers.
   """
+  def extract_session_cookie(%{} = headers) do
+    headers
+    |> Enum.to_list()
+    |> extract_session_cookie()
+  end
+
   def extract_session_cookie(headers) when is_list(headers) do
     headers
     |> Enum.filter(fn {key, _} -> String.downcase(key) == "set-cookie" end)
@@ -149,10 +155,6 @@ defmodule Bonfire.PanDoRa.Auth do
   """
   def auth_headers(user_or_opts, opts \\ [])
 
-  def auth_headers(user, opts) when is_map(user) do
-    auth_headers(Keyword.put(opts, :current_user, user))
-  end
-
   def auth_headers(opts, []) when is_list(opts) do
     case session_cookie(opts) do
       cookie when is_binary(cookie) and cookie != "" ->
@@ -161,6 +163,10 @@ defmodule Bonfire.PanDoRa.Auth do
       _ ->
         nil
     end
+  end
+
+  def auth_headers(user, opts) when is_map(user) do
+    auth_headers(Keyword.put(opts, :current_user, user))
   end
 
   def auth_headers(_, _), do: nil
