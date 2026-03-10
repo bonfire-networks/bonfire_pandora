@@ -1211,12 +1211,14 @@ defmodule PanDoRa.API.Client do
   defp maybe_sign_in_and_or_put_auth_cookie(req, _, _, _, _), do: req
 
   defp maybe_save_auth_cookie(headers, username, action, opts) do
-    if cookie = Auth.extract_session_cookie(headers) do
-      Auth.put_session_cookie(username, cookie, opts)
-    else
-      if action in ["signin", "signup"] do
+    if action in ["signin", "signup"] do
+      if cookie = Auth.extract_session_cookie(headers) do
+        Auth.put_session_cookie(username, cookie, opts)
+      else
         error(headers, l("No Pandora session cookie received"))
       end
+    else
+      nil
     end
   end
 
