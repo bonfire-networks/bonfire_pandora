@@ -5,8 +5,9 @@
     {#else}
       <img
         class="size-24 rounded-box"
-        src={Client.media_proxy_url(to_attr(e(@movie, "id", "")), "icon128.jpg")}
+        src={@media_url || Client.media_proxy_url(to_attr(e(@movie, "id", "")), "icon128.jpg")}
         data-movie-id={to_attr(e(@movie, "id", ""))}
+        loading="lazy"
       />
     {/if}
   </div>
@@ -22,6 +23,7 @@
             phx-click="filter_by_director"
             phx-target={@event_target || false}
             phx-value-id={director}
+            phx-throttle="300"
             class="link link-hover text-xs uppercase font-semibold opacity-60"
           >{director}</span>
         {/for}
@@ -42,6 +44,7 @@
             phx-target={@event_target || false}
             phx-value-field={field}
             phx-value-id={value}
+            phx-throttle="300"
           >
             {value}
           </button>

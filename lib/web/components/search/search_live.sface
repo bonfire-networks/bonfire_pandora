@@ -41,6 +41,7 @@
                     phx-click={"filter_by_#{section.id}"}
                     phx-target={@myself}
                     phx-value-id={name}
+                    phx-throttle="300"
                     class={"flex gap-3 px-2 text-base-content" <> if(name in section.selected, do: ~s( active bg-primary/10), else: "")}
                     disabled={@loading}
                   >
@@ -115,6 +116,7 @@
             event_target={@myself}
             movie={result}
             movie_id={id}
+            media_url={if @pandora_token, do: "#{@pandora_base_url}/#{e(result, "id", "")}/icon128.jpg?token=#{@pandora_token}", else: Client.media_proxy_url(e(result, "id", ""), "icon128.jpg")}
           />
         {/for}
       </ul>

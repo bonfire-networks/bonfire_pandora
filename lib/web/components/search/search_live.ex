@@ -1,6 +1,7 @@
 defmodule Bonfire.PanDoRa.Web.SearchLive do
   use Bonfire.UI.Common.Web, :stateful_component
   alias PanDoRa.API.Client
+  alias Bonfire.PanDoRa.Auth
   alias Bonfire.PanDoRa.Utils
   @behaviour Bonfire.UI.Common.LiveHandler
 
@@ -62,7 +63,12 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         fetch_initial_data(socket)
       end
 
-    socket = assign_filter_by_field_assigns(socket)
+    socket =
+      socket
+      |> assign(:pandora_token, Auth.pandora_token(current_user: socket.assigns[:current_user]))
+      |> assign(:pandora_base_url, String.trim_trailing(Client.get_pandora_url() || "", "/"))
+      |> assign_filter_by_field_assigns()
+
     {:ok, socket}
   end
 
