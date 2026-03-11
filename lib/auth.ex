@@ -5,7 +5,9 @@ defmodule Bonfire.PanDoRa.Auth do
   This module centralises how Bonfire obtains Pandora auth material for a user,
   so callers do not need to know how Pandora authentication is implemented.
 
-  At the moment the active runtime mechanism is the Pandora session cookie.
+  Active runtime mechanisms:
+  - Session cookie: used for API calls and proxy requests
+  - Access token (Bearer): optional, used for direct video URLs with ?token=
   """
 
   alias Bonfire.Common.Config
@@ -119,6 +121,98 @@ defmodule Bonfire.PanDoRa.Auth do
   """
   def clear_session(user_or_username_or_opts, opts \\ []) do
     put_session_cookie(user_or_username_or_opts, nil, opts)
+  end
+
+  @doc """
+  Returns the currently stored Pandora access token (Bearer), if any.
+
+  The token is created via POST /api/tokens on Pandora and used for direct
+  video URLs and API calls with Authorization: Bearer.
+  """
+  def pandora_token(user_or_username_or_opts, opts \\ [])
+
+  def pandora_token(opts, []) when is_list(opts) do
+    case Utils.current_user(opts) do
+      user when is_map(user) -> pandora_token(user, opts)
+      _ -> nil
+    end
+  end
+
+  def pandora_token(user, opts) when is_map(user) do
+    user = repo().maybe_preload(user, :settings)
+
+    Settings.get([:bonfire_pandora, Client, :my_pandora_token], nil,
+      current_user: user
+    )
+  end
+
+  def pandora_token(username, opts) when is_binary(username) do
+    case Utils.current_user(opts) do
+      user when is_map(user) ->
+        pandora_token(user, opts)
+
+      _ ->
+        Config.get([:bonfire_pandora, Client, :pandora_token, username], nil, :bonfire_pandora)
+    end
+  end
+
+  def pandora_token(_unknown, opts) when is_list(opts) do
+    case Utils.current_user(opts) do
+      user when is_map(user) -> pandora_token(user, opts)
+      _ -> nil
+    end
+  end
+
+  def pandora_token(_, _), do: nil
+
+  @doc """
+  Stores a Pandora access token for the given user or username.
+  """
+  def put_pandora_token(user_or_username_or_opts, token, opts \\ [])
+
+  def put_pandora_token(opts, token, []) when is_list(opts) do
+    case Utils.current_user(opts) do
+      user when is_map(user) -> put_pandora_token(user, token, opts)
+      _ -> nil
+    end
+  end
+
+  def put_pandora_token(user, token, opts) when is_map(user) do
+    user = repo().maybe_preload(user, :settings)
+
+    Settings.put([:bonfire_pandora, Client, :my_pandora_token], token,
+      current_user: user
+    )
+  end
+
+  def put_pandora_token(username, token, opts) when is_binary(username) do
+    case Utils.current_user(opts) do
+      user when is_map(user) ->
+        put_pandora_token(user, token, opts)
+
+      _ ->
+        Config.put(
+          [:bonfire_pandora, Client, :pandora_token],
+          %{username => token},
+          :bonfire_pandora
+        )
+    end
+  end
+
+  def put_pandora_token(_unknown, token, opts) when is_list(opts) do
+    case Utils.current_user(opts) do
+      user when is_map(user) -> put_pandora_token(user, token, opts)
+      _ -> nil
+    end
+  end
+
+  def put_pandora_token(_, _, _), do: nil
+
+  @doc """
+  Clears the stored Pandora access token.
+  """
+  def clear_pandora_token(user_or_username_or_opts, opts \\ []) do
+    put_pandora_token(user_or_username_or_opts, nil, opts)
   end
 
   @doc """
