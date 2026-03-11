@@ -4,8 +4,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   alias Bonfire.PanDoRa.Utils
   @behaviour Bonfire.UI.Common.LiveHandler
 
-  # Fallback filter types if the Pandora API init call fails or returns no filterable keys
-  @filter_types_fallback ~w(director)
+  # Fallback if get_filter_keys returns empty (fixed list: director, featuring, language, country, year, keywords)
+  @filter_types_fallback ~w(director featuring language country year keywords)
   # Essential fields always requested from find
   @essential_keys ~w(title id item_id public_id duration)
   @default_per_page 20
@@ -21,7 +21,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     has_more_items: true,
     current_count: 0,
     per_page: @default_per_page,
-    # Dynamic filter state (keyed by field name, populated from Pandora init API)
+    # Filter state (keyed by field name, uses fixed filter types)
     filter_types: [],
     available_filters: %{},
     current_filters: %{},
@@ -127,8 +127,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            keys: keys,
            total: true,
            current_user: current_user(socket)
-         )
-         |> debug("fiiid") do
+         ) do
       {:ok, %{items: items} = data} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
 
@@ -165,11 +164,12 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            total: true,
            current_user: current_user(socket)
          ) do
-      {:ok, %{items: items}} when is_list(items) ->
+      {:ok, %{items: items} = data} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
 
         socket =
           socket
+          |> maybe_assign_context(data)
           |> stream(:search_results, prepare_items(items_to_show), reset: true)
           |> assign(has_more_items: has_more, current_count: length(items_to_show), page: 0)
           |> track_loading(:search_load, false)
@@ -282,6 +282,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   end
 
   def handle_event("search", %{"term" => term}, socket) do
+    conditions = [%{key: "*", operator: "=", value: term}]
     socket =
       socket
       |> assign(
@@ -295,7 +296,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       |> track_loading(:search_load, true)
 
     case Client.find(
-           conditions: [%{key: "*", operator: "=", value: term}],
+           conditions: conditions,
            range: [0, @default_per_page],
            keys: build_request_keys(socket),
            total: true,
@@ -310,7 +311,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
           |> assign(has_more_items: has_more, current_count: length(items_to_show), page: 0)
           |> track_loading(:search_load, false)
 
-        case fetch_metadata(socket, [%{key: "*", operator: "=", value: term}]) do
+        case fetch_metadata(socket, conditions) do
           {:ok, socket} -> {:noreply, socket}
           {:error, socket} -> {:noreply, put_flash(socket, :error, l("Error updating filters"))}
         end
@@ -388,8 +389,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            keys: keys,
            total: true,
            current_user: current_user(socket)
-         )
-         |> debug("initiall") do
+         ) do
       {:ok, %{items: items} = data} when is_list(items) ->
         {items_to_show, has_more} = handle_pagination_results(items, @default_per_page)
 
@@ -539,7 +539,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     end
   end
 
-  # Toggle a filter value in/out of current_filters and re-run the search
+  # Toggle a filter value in/out of current_filters and re-run the search.
+  # On find failure: rollback current_filters to avoid inconsistent state.
   defp toggle_filter(socket, filter_type, value)
        when is_binary(filter_type) and is_binary(value) do
     current_filters = socket.assigns[:current_filters] || %{}
@@ -561,6 +562,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       end
 
     new_filters = Map.put(current_filters, filter_type, updated_values)
+    previous_filters = current_filters
+    previous_first = socket.assigns[:first_selected_filter]
 
     socket =
       socket
@@ -588,7 +591,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         |> track_loading(:global_load, false)
 
       _ ->
+        # Rollback: restore previous filters to avoid inconsistent state
         socket
+        |> assign(:current_filters, previous_filters)
+        |> assign(:first_selected_filter, previous_first)
         |> put_flash(:error, l("Error updating results"))
         |> track_loading(:global_load, false)
     end

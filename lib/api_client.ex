@@ -16,10 +16,11 @@ defmodule PanDoRa.API.Client do
 
   # Cache TTL of 1 hour
   @cache_ttl :timer.hours(1)
-  # Minimal fallback used only when the Pandora init API is unreachable.
-  # Do NOT add instance-specific field names here.
-  @metadata_keys ~w(director)
-  @metadata_fields ~w(director)
+  # Fixed filter types (legacy-style, deterministic, no init/site_config needed)
+  @filter_types_fixed ~w(director featuring language country year keywords)
+  # Kept for backward compat where @metadata_keys is referenced
+  @metadata_keys @filter_types_fixed
+  @metadata_fields @filter_types_fixed
 
   @doc """
   Basic find function that matches the API's find endpoint functionality with pagination support
@@ -794,7 +795,7 @@ defmodule PanDoRa.API.Client do
 
   # Process specific fields with custom logic
   defp process_field_values(values, field_type)
-       when field_type in ~w(director sezione edizione featuring) do
+       when field_type in ~w(director sezione edizione featuring keywords) do
     values
     |> Enum.reject(&(&1 == "" or is_nil(&1)))
     |> Enum.frequencies()
@@ -1314,30 +1315,11 @@ defmodule PanDoRa.API.Client do
   end
 
   @doc """
-  Returns the list of item key ids that are marked as filterable on this Pandora instance.
-  Falls back to `@metadata_keys` if the site config is not available.
+  Returns the fixed list of filterable keys. Deterministic, no init/site_config call.
+  Uses legacy-style hardcoded list: director, featuring, language, country, year, keywords.
   """
-  def get_filter_keys(opts \\ []) do
-    site_result = get_site_config(opts)
-    debug(site_result, "[PanDoRa] get_filter_keys: get_site_config returned")
-
-    case site_result do
-      {:ok, %{"itemKeys" => item_keys}} when is_list(item_keys) ->
-        keys =
-          item_keys
-          |> Enum.filter(fn
-            %{"filter" => true} -> true
-            _ -> false
-          end)
-          |> Enum.map(fn %{"id" => id} -> id end)
-
-        debug(keys, "[PanDoRa] get_filter_keys: filterable keys")
-        if keys == [], do: @metadata_keys, else: keys
-
-      other ->
-        warn(other, "[PanDoRa] get_filter_keys: falling back to @metadata_keys, got")
-        @metadata_keys
-    end
+  def get_filter_keys(_opts \\ []) do
+    @filter_types_fixed
   end
 
   @doc """
@@ -1369,6 +1351,23 @@ defmodule PanDoRa.API.Client do
   """
   def media_proxy_url(item_id, filename) when is_binary(item_id) and is_binary(filename) do
     "/archive/media/#{item_id}/#{filename}"
+  end
+
+  @doc """
+  Returns the best URL for a Pandora image/thumbnail: direct URL with ?token= when
+  a token exists (faster loading), otherwise the proxy URL.
+  """
+  def media_url(item_id, filename, opts \\ []) when is_binary(item_id) and is_binary(filename) do
+    opts = Utils.to_options(opts)
+
+    case Auth.pandora_token(opts) do
+      token when is_binary(token) and token != "" ->
+        base = String.trim_trailing(get_pandora_url() || "", "/")
+        "#{base}/#{item_id}/#{filename}?token=#{token}"
+
+      _ ->
+        media_proxy_url(item_id, filename)
+    end
   end
 
   @doc """
