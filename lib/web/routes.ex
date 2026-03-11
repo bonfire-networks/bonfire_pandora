@@ -31,15 +31,10 @@ defmodule Bonfire.PanDoRa.Web.Routes do
         pipe_through(:browser)
         pipe_through(:user_required)
 
-        post("/connect", ConnectPandoraController, :create)
         live("/movies/:id", MovieLive)
         live("/my_lists/", MyListsLive)
         live("/featured_lists/", FeaturedListsLive)
         live("/lists/:id", ListLive)
-
-        # Media proxy: forwards image and video requests to Pandora with auth
-        get("/media/*path", ProxyController, :proxy_image)
-        get("/video/*path", ProxyController, :proxy_video)
       end
 
       # pages only admins can view

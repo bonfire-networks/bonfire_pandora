@@ -15,9 +15,6 @@
 # Where 3rd-party dependencies like ExDoc output generated docs.
 /doc/
 
-# Project docs (for now)
-/docs/
-
 # Ignore .fetch files in case you like to edit your project deps locally.
 /.fetch
 
@@ -41,9 +38,6 @@ npm-debug.log
 
 # App and user data
 /data/
-
-# Cursor IDE
-.cursor/
 
 # user-local overrides for mess
 deps.path

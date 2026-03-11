@@ -7,7 +7,6 @@ defmodule PanDoRa.API.Client do
   use Bonfire.Common.Localise
   use Bonfire.Common.E
   alias Bonfire.Common.Utils
-  alias Bonfire.PanDoRa.Auth
   use Bonfire.Common.Config
   use Bonfire.Common.Settings
   alias Bonfire.Common.Cache
@@ -16,10 +15,8 @@ defmodule PanDoRa.API.Client do
 
   # Cache TTL of 1 hour
   @cache_ttl :timer.hours(1)
-  # Minimal fallback used only when the Pandora init API is unreachable.
-  # Do NOT add instance-specific field names here.
-  @metadata_keys ~w(director)
-  @metadata_fields ~w(director)
+  @metadata_keys ~w(director sezione edizione featuring)
+  @metadata_fields ~w(director sezione edizione featuring)
 
   @doc """
   Basic find function that matches the API's find endpoint functionality with pagination support
@@ -88,28 +85,31 @@ defmodule PanDoRa.API.Client do
   Fetches metadata efficiently using parallel requests and caching
   """
   def fetch_all_metadata(conditions \\ [], opts) do
-    filter_keys = get_filter_keys(opts)
-    cache_key = "pandora_metadata_#{get_pandora_url()}_#{:erlang.phash2(conditions)}"
+    cache_key = "pandora_metadata_#{:erlang.phash2(conditions)}"
 
-    case Cache.get!(cache_key) do
+    case Cache.get(cache_key) do
       nil ->
+        # Fetch metadata for each field in parallel
         tasks =
-          filter_keys
+          @metadata_keys
           |> Enum.map(fn field ->
             Task.async(fn ->
               fetch_field_metadata(field, conditions, nil, opts)
             end)
           end)
 
+        # Wait for all tasks with timeout
         results = Task.await_many(tasks, 30_000)
 
+        # Combine results
         metadata =
           results
-          |> Enum.zip(filter_keys)
+          |> Enum.zip(@metadata_keys)
           |> Enum.reduce(%{}, fn {result, key}, acc ->
             Map.put(acc, "#{key}s", result)
           end)
 
+        # Cache the results
         Cache.put(cache_key, metadata, ttl: @cache_ttl)
         {:ok, metadata}
 
@@ -123,11 +123,11 @@ defmodule PanDoRa.API.Client do
   """
   @decorate time()
   def fetch_metadata(conditions, opts \\ []) do
+    # High limit to get comprehensive data
     limit = Keyword.get(opts, :limit, 20)
-    filter_keys = get_filter_keys(opts)
 
     tasks =
-      filter_keys
+      @metadata_keys
       |> Enum.map(fn field ->
         Task.async(fn ->
           fetch_field_metadata(field, conditions, limit, opts)
@@ -138,7 +138,7 @@ defmodule PanDoRa.API.Client do
 
     metadata =
       results
-      |> Enum.zip(filter_keys)
+      |> Enum.zip(@metadata_keys)
       |> Enum.reduce(%{}, fn {result, key}, acc ->
         processed_results = process_metadata_field(result, key)
         Map.put(acc, "#{key}s", processed_results)
@@ -166,13 +166,7 @@ defmodule PanDoRa.API.Client do
       "fetching grouped metadata for field #{field} with page #{page} and per_page #{per_page}"
     )
 
-    # Prefer explicit `fields:` opt, then single `field:`, then fallback to get_filter_keys
-    fields =
-      cond do
-        field -> [field]
-        Keyword.has_key?(opts, :fields) -> Keyword.get(opts, :fields)
-        true -> get_filter_keys(opts)
-      end
+    fields = if field, do: [field], else: @metadata_fields
 
     # Make a single request per field but in parallel
     tasks =
@@ -229,7 +223,7 @@ defmodule PanDoRa.API.Client do
   @doc """
   Fetches grouped values for a single metadata field.
   """
-  def fetch_grouped_field(field, conditions, opts) when is_binary(field) do
+  def fetch_grouped_field(field, conditions, opts) when field in @metadata_fields do
     # Build the query payload according to API docs
     payload = %{
       query: %{
@@ -891,7 +885,7 @@ defmodule PanDoRa.API.Client do
       Utils.to_options(opts)
       |> debug("opts")
 
-    username = opts[:username] || Auth.default_username()
+    username = opts[:username] || get_auth_default_user()
 
     req =
       Req.new(
@@ -905,7 +899,7 @@ defmodule PanDoRa.API.Client do
         # Try twice more on failure
         max_retries: 2
       )
-      |> Auth.attach_request_auth(username, endpoint, opts)
+      |> maybe_sign_in_and_or_put_auth_cookie(username, endpoint, opts, retry_count)
 
     # |> debug("reqqq")
 
@@ -918,7 +912,7 @@ defmodule PanDoRa.API.Client do
       {:ok, %Req.Response{status: 200, headers: headers, body: body}} ->
         # debug(body, "API Response (raw)")
 
-        save_cookie = Auth.persist_session_cookie(headers, username, endpoint, opts)
+        save_cookie = maybe_save_auth_cookie(headers, username, endpoint, opts)
 
         case maybe_return_data(body) do
           {:ok, data} ->
@@ -968,7 +962,7 @@ defmodule PanDoRa.API.Client do
     end
   end
 
-  defp maybe_return_data(%{"data" => %{"errors" => errors}}) do
+  defp maybe_return_data(%{"data" => %{"errors" => errors} = data}) do
     Logger.info("[PanDoRa API] error response: #{inspect(errors)}")
     error(errors, format_pandora_error(errors))
   end
@@ -989,18 +983,6 @@ defmodule PanDoRa.API.Client do
 
   defp maybe_return_data(%{"data" => data, "status" => %{"code" => status}}) do
     error(data, l("API request failed with code %{status}", status: status))
-  end
-
-  # Pandora may return validation errors in data without "errors" or "status" key
-  # (e.g. %{"data" => %{"email" => "E-mail address already exists"}})
-  defp maybe_return_data(%{"data" => data}) when is_map(data) do
-    if not Map.has_key?(data, "user") and
-         (Map.has_key?(data, "email") or Map.has_key?(data, "username")) do
-      Logger.info("[PanDoRa API] error response (data): #{inspect(data)}")
-      error(data, format_pandora_error(data))
-    else
-      {:ok, data}
-    end
   end
 
   defp maybe_return_data(%{} = data) do
@@ -1035,7 +1017,7 @@ defmodule PanDoRa.API.Client do
       password: password
     }
 
-    with {:ok, %{"user" => %{} = pandora_user}} <-
+    with {:ok, %{"user" => %{} = pandora_user}} =
            make_request("signup", payload, current_user: user, username: username) do
       if user,
         do: save_user_credentials(user, email, username, password),
@@ -1068,69 +1050,9 @@ defmodule PanDoRa.API.Client do
     end
   end
 
-  @doc """
-  Syncs the current Bonfire user to Pandora using a signin-first flow.
-
-  Behaviour:
-  1. Save the provided password as the Pandora credential for this Bonfire user.
-  2. Try signing in to Pandora with the Bonfire username/email identity.
-  3. If the Pandora user does not exist yet, sign up on Pandora.
-  4. Immediately sign in and persist the Pandora session cookie for runtime use.
-
-  This is intended for the v1 manual recovery/bootstrap flow exposed by the
-  Sync Pandora settings tool.
-  """
-  def sync_new_user_to_pandora(user, password)
-      when is_binary(password) and password != "" do
-    username = e(user, :character, :username, nil)
-    account =
-      repo().maybe_preload(e(user, :account, nil) || e(user, :accounted, :account, nil), :email)
-    email = e(account, :email, :email_address, nil)
-
-    if is_binary(username) and is_binary(email) do
-      with {:ok, _} <- save_user_credentials(user, email, username, password) do
-        case sign_in(username, password, current_user: user) do
-          {:ok, _} = ok ->
-            ok
-
-          {:error, %{"username" => _}} ->
-            create_and_sign_in_pandora_user(user, email, username, password)
-
-          {:error, %{"email" => _}} ->
-            create_and_sign_in_pandora_user(user, email, username, password)
-
-          other ->
-            other
-        end
-      end
-    else
-      error(
-        user,
-        l("Need a profile username and account email to connect to Pandora")
-      )
-    end
-  end
-
-  def sync_new_user_to_pandora(_user, _), do: error(:bad_password, l("Password is required"))
-
-  defp create_and_sign_in_pandora_user(user, email, username, password) do
-    case sign_up(user, email, username, password) do
-        {:ok, _} ->
-          sign_in(username, password, current_user: user)
-
-        {:error, %{"email" => _}} ->
-          sign_in(username, password, current_user: user)
-
-        {:error, %{"username" => _}} ->
-          sign_in(username, password, current_user: user)
-
-        other ->
-          other
-    end
-  end
-
   def sign_up(opts \\ []) do
     user = Utils.current_user_required!(opts)
+    # |> debug("tuuu")
     username = e(user, :character, :username, nil)
 
     account =
@@ -1146,22 +1068,6 @@ defmodule PanDoRa.API.Client do
          {:error, e} <- sign_up(user, email, username, pw) do
       Logger.info("[PanDoRa API] sign_up error: #{inspect(e)}")
       error(e, format_pandora_error(e))
-    else
-      # Email already exists on Pandora: try sign_in with saved credentials from the Sync Pandora tool.
-      {:error, %{"email" => _} = err} ->
-        case sign_in(opts) do
-          {:ok, data} -> {:ok, data}
-          _ ->
-            error(
-              err,
-              l(
-                "This email is already registered on Pandora. Use 'Sync Pandora' in Settings to sign in with your password."
-              )
-            )
-        end
-
-      other ->
-        other
     end
   end
 
@@ -1181,7 +1087,7 @@ defmodule PanDoRa.API.Client do
       {:error, %{username: "Unknown Username"}}
   """
   def sign_in(username, password, opts \\ []) do
-    Auth.clear_session(username, opts)
+    set_session_cookie(username, nil)
 
     payload = %{
       username: username,
@@ -1192,11 +1098,11 @@ defmodule PanDoRa.API.Client do
   end
 
   def sign_in(opts \\ []) do
-    case Auth.credentials(opts) do
+    case get_auth_credentials(opts) do
       {username, password} when is_binary(username) and is_binary(password) ->
         sign_in(username, password, opts)
 
-      {:error, :no_credentials} ->
+      :no_user_credentials ->
         if !opts[:looping] do
           with {:ok, %{__context__: context}} <- sign_up(opts) do
             sign_in(Enum.into(context, looping: true))
@@ -1213,121 +1119,128 @@ defmodule PanDoRa.API.Client do
     end
   end
 
+  # avoid looping
+  defp maybe_sign_in_and_or_put_auth_cookie(req, _, "signup", _, _), do: req
+  defp maybe_sign_in_and_or_put_auth_cookie(req, _, "signin", _, _), do: req
+
+  defp maybe_sign_in_and_or_put_auth_cookie(req, username, action, opts, retry_count) do
+    case get_session_cookie(username, opts) do
+      cookie when is_binary(cookie) ->
+        Req.Request.put_header(req, "cookie", "sessionid=#{cookie}")
+        |> debug()
+
+      _ ->
+        with {:ok, _} <- sign_in(Utils.current_user(opts) || username) do
+          if retry_count < 1 do
+            maybe_sign_in_and_or_put_auth_cookie(req, username, action, opts, retry_count + 1)
+          else
+            warn("skip auth because failed once")
+            req
+          end
+        else
+          auth_failed ->
+            warn(auth_failed, "Could not authenticate, continue as guest")
+            req
+        end
+    end
+  end
+
+  defp maybe_sign_in_and_or_put_auth_cookie(req, _, _, _, _), do: req
+
+  defp maybe_save_auth_cookie(headers, username, action, opts) do
+    if cookie = extract_session_cookie(headers) do
+      set_session_cookie(username, cookie, opts)
+    else
+      if action == "signin" do
+        error(headers, l("No Pandora session cookie received"))
+      end
+    end
+  end
+
+  defp extract_session_cookie(headers) do
+    headers
+    |> Enum.filter(fn {key, _} -> String.downcase(key) == "set-cookie" end)
+    |> Enum.flat_map(fn {_, values} -> List.wrap(values) end)
+    |> Enum.find_value(fn cookie_string ->
+      case Regex.run(~r/sessionid=([^;]+)/, cookie_string) do
+        [_, session_id] -> session_id
+        _ -> nil
+      end
+    end)
+  end
+
+  defp set_session_cookie(username, cookie, opts \\ []) do
+    user = Utils.current_user(opts)
+
+    cond do
+      is_map(user) ->
+        Settings.put([:bonfire_pandora, __MODULE__, :my_session_cookie], cookie,
+          current_user: user
+        )
+
+      is_binary(username) ->
+        Config.put(
+          [:bonfire_pandora, __MODULE__, :session_cookie],
+          %{username => cookie},
+          :bonfire_pandora
+        )
+
+      true ->
+        nil
+    end
+  end
+
   def get_session_cookie(username, opts) do
-    Auth.session_cookie(username, opts)
+    user = Utils.current_user(opts)
+
+    cond do
+      is_map(user) ->
+        Settings.get([:bonfire_pandora, __MODULE__, :my_session_cookie], nil, current_user: user)
+
+      is_binary(username) ->
+        Config.get(
+          [:bonfire_pandora, __MODULE__, :session_cookie, username],
+          nil,
+          :bonfire_pandora
+        )
+
+      true ->
+        nil
+    end
   end
 
   def get_auth_default_user do
-    Auth.default_username()
+    Config.get([:bonfire_pandora, __MODULE__, :username], nil, :bonfire_pandora)
   end
 
-  @doc """
-  Calls the Pandora `init` action and returns the `site` object.
-  The result is cached for `@cache_ttl`.
-  The site object contains `itemKeys` (with filter/type info), `sortKeys`, etc.
-  """
-  @doc """
-  Fetches the Pandora site config via the public `init` endpoint.
-  Uses a direct HTTP call (no auth required) and caches the result for `@cache_ttl`.
-  """
-  def get_site_config(_opts \\ []) do
-    cache_key = "pandora_site_config_#{get_pandora_url()}"
+  defp get_auth_pw(username) do
+    Config.get([:bonfire_pandora, __MODULE__, :password], nil, :bonfire_pandora)
+  end
 
-    case Cache.get!(cache_key) do
-      nil ->
-        result =
-          try do
-            req =
-              Req.new(
-                url: get_api_url(),
-                connect_options: [timeout: 3_000],
-                receive_timeout: 5_000
-              )
+  defp get_auth_credentials(opts \\ []) do
+    current_user = Utils.current_user(opts)
 
-            case Req.post(req, form: %{action: "init", data: "{}"}) do
-              {:ok, %{status: 200, body: body}} ->
-                decoded =
-                  if is_binary(body), do: Jason.decode(body), else: {:ok, body}
+    username = get_auth_default_user()
 
-                case decoded do
-                  {:ok, %{"data" => %{"site" => site}}} when is_map(site) ->
-                    {:ok, site}
+    cond do
+      is_binary(username) ->
+        {username, get_auth_pw(username)}
 
-                  {:ok, other} ->
-                    warn(other, "[PanDoRa] init: unexpected response structure")
-                    {:error, :unexpected_response}
-
-                  {:error, reason} ->
-                    warn(reason, "[PanDoRa] init: JSON decode error")
-                    {:error, :json_error}
-                end
-
-              {:ok, %{status: status}} ->
-                warn(status, "[PanDoRa] init: HTTP error #{status}")
-                {:error, {:http_error, status}}
-
-              {:error, reason} ->
-                warn(reason, "[PanDoRa] init: request failed")
-                {:error, reason}
-            end
-          rescue
-            e ->
-              warn(e, "[PanDoRa] init: exception in get_site_config")
-              {:error, :exception}
-          end
-
-        case result do
-          {:ok, site} ->
-            Cache.put(cache_key, site, ttl: @cache_ttl)
-            {:ok, site}
-
-          err ->
-            err
+      is_map(current_user) ->
+        with %{username: username, password: password} <-
+               Settings.get([:bonfire_pandora, __MODULE__, :credentials], :no_user_credentials,
+                 current_user: current_user
+               ),
+             {:ok, password} <- password |> Base.decode64(),
+             {:ok, password} <- password |> Vault.decrypt() do
+          {username, password}
         end
 
-      site ->
-        {:ok, site}
-    end
-  end
+      is_binary(opts) ->
+        {opts, get_auth_pw(opts)}
 
-  @doc """
-  Returns the list of item key ids that are marked as filterable on this Pandora instance.
-  Falls back to `@metadata_keys` if the site config is not available.
-  """
-  def get_filter_keys(opts \\ []) do
-    site_result = get_site_config(opts)
-    debug(site_result, "[PanDoRa] get_filter_keys: get_site_config returned")
-
-    case site_result do
-      {:ok, %{"itemKeys" => item_keys}} when is_list(item_keys) ->
-        keys =
-          item_keys
-          |> Enum.filter(fn
-            %{"filter" => true} -> true
-            _ -> false
-          end)
-          |> Enum.map(fn %{"id" => id} -> id end)
-
-        debug(keys, "[PanDoRa] get_filter_keys: filterable keys")
-        if keys == [], do: @metadata_keys, else: keys
-
-      other ->
-        warn(other, "[PanDoRa] get_filter_keys: falling back to @metadata_keys, got")
-        @metadata_keys
-    end
-  end
-
-  @doc """
-  Returns ALL item key ids for this Pandora instance (not just filterable ones).
-  Falls back to a default list if the site config is not available.
-  """
-  def get_item_keys(opts \\ []) do
-    case get_site_config(opts) do
-      {:ok, %{"itemKeys" => item_keys}} when is_list(item_keys) ->
-        Enum.map(item_keys, fn %{"id" => id} -> id end)
-
-      _ ->
-        ["title", "id", "director", "year", "duration", "summary"] ++ @metadata_keys
+      true ->
+        error(opts, "No Pandora credentials found")
     end
   end
 
@@ -1338,41 +1251,6 @@ defmodule PanDoRa.API.Client do
   defp get_api_url do
     get_pandora_url() <> "/api/"
   end
-
-  @doc """
-  Returns the Bonfire-internal proxy URL for a Pandora image/thumbnail.
-  The proxy adds authentication server-side, so the browser can load it directly.
-  Example: media_proxy_url("FZV", "icon128.jpg") → "/archive/media/FZV/icon128.jpg"
-  """
-  def media_proxy_url(item_id, filename) when is_binary(item_id) and is_binary(filename) do
-    "/archive/media/#{item_id}/#{filename}"
-  end
-
-  @doc """
-  Returns the Bonfire-internal proxy URL for a Pandora video stream.
-  Supports HTTP Range requests so the player can seek.
-  Example: video_proxy_url("FZV", "480p.mp4") -> "/archive/video/FZV/480p.mp4"
-  """
-  def video_proxy_url(item_id, filename) when is_binary(item_id) and is_binary(filename) do
-    "/archive/video/#{item_id}/#{filename}"
-  end
-
-  @doc """
-  Returns the best video filename for a given movie, based on the `stream` field.
-  Falls back to 480p.mp4 if stream info is not available.
-  """
-  def best_video_filename(movie) when is_map(movie) do
-    resolution = movie["stream"]
-    format = "mp4"
-
-    if is_integer(resolution) and resolution > 0 do
-      "#{resolution}p.#{format}"
-    else
-      "480p.mp4"
-    end
-  end
-
-  def best_video_filename(_), do: "480p.mp4"
 
   @doc """
   Basic test function for annotations following API structure

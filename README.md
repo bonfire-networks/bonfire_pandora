@@ -1,4 +1,4 @@
-# Bonfire.pandora
+# Bonfire.PanDoRa
 
 A template for creating custom extensions for [Bonfire](https://bonfire.cafe/)
 
