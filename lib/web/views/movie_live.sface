@@ -3,8 +3,8 @@
     <div :hook id="vidstack_movie_player" data-role="movie-player-shell">
       <video
         class="player w-full"
-        src={Client.video_proxy_url(to_string(@movie["id"] || ""), Client.best_video_filename(@movie))}
-        preload="metadata"
+        src={@video_url}
+        preload="auto"
         playsinline
         controls
       >

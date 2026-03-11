@@ -1091,6 +1091,7 @@ defmodule PanDoRa.API.Client do
       with {:ok, _} <- save_user_credentials(user, email, username, password) do
         case sign_in(username, password, current_user: user) do
           {:ok, _} = ok ->
+            maybe_create_and_store_token(user)
             ok
 
           {:error, %{"username" => _}} ->
@@ -1115,17 +1116,39 @@ defmodule PanDoRa.API.Client do
 
   defp create_and_sign_in_pandora_user(user, email, username, password) do
     case sign_up(user, email, username, password) do
-        {:ok, _} ->
-          sign_in(username, password, current_user: user)
+      {:ok, _} ->
+        sign_in_and_maybe_token(username, password, user)
 
-        {:error, %{"email" => _}} ->
-          sign_in(username, password, current_user: user)
+      {:error, %{"email" => _}} ->
+        sign_in_and_maybe_token(username, password, user)
 
-        {:error, %{"username" => _}} ->
-          sign_in(username, password, current_user: user)
+      {:error, %{"username" => _}} ->
+        sign_in_and_maybe_token(username, password, user)
 
-        other ->
-          other
+      other ->
+        other
+    end
+  end
+
+  defp sign_in_and_maybe_token(username, password, user) do
+    case sign_in(username, password, current_user: user) do
+      {:ok, _} = ok ->
+        maybe_create_and_store_token(user)
+        ok
+
+      other ->
+        other
+    end
+  end
+
+  defp maybe_create_and_store_token(user) do
+    case create_pandora_token(current_user: user) do
+      {:ok, token} ->
+        Auth.put_pandora_token(user, token)
+        :ok
+
+      _ ->
+        :ok
     end
   end
 
@@ -1355,6 +1378,81 @@ defmodule PanDoRa.API.Client do
   """
   def video_proxy_url(item_id, filename) when is_binary(item_id) and is_binary(filename) do
     "/archive/video/#{item_id}/#{filename}"
+  end
+
+  @doc """
+  Returns the best URL for a Pandora video: direct URL with ?token= when a token
+  exists (faster playback), otherwise the proxy URL.
+  """
+  def video_url(item_id, filename, opts \\ []) when is_binary(item_id) and is_binary(filename) do
+    opts = Utils.to_options(opts)
+
+    case Auth.pandora_token(opts) do
+      token when is_binary(token) and token != "" ->
+        base = String.trim_trailing(get_pandora_url() || "", "/")
+        "#{base}/#{item_id}/#{filename}?token=#{token}"
+
+      _ ->
+        video_proxy_url(item_id, filename)
+    end
+  end
+
+  @doc """
+  Creates a Pandora access token via POST /api/tokens. Requires a valid session cookie.
+  Returns {:ok, token_value} or {:error, reason}.
+  """
+  def create_pandora_token(opts \\ []) do
+    opts = Utils.to_options(opts)
+
+    case Auth.auth_headers(opts) do
+      nil ->
+        {:error, :no_session}
+
+      headers when is_list(headers) ->
+        url = String.trim_trailing(get_pandora_url() || "", "/") <> "/api/tokens"
+        req_headers = [{"x-create-token", "1"} | headers]
+
+        req =
+          Req.new(
+            url: url,
+            headers: req_headers,
+            connect_options: [timeout: 3_000],
+            receive_timeout: 5_000
+          )
+
+        case Req.post(req, body: "") do
+          {:ok, %Req.Response{status: 200, body: body}} ->
+            decoded =
+              case body do
+                %{} = m -> {:ok, m}
+                b when is_binary(b) -> Jason.decode(b)
+                _ -> {:error, :invalid_body}
+              end
+
+            case decoded do
+              {:ok, %{"data" => %{"value" => value}}} when is_binary(value) ->
+                {:ok, value}
+
+              {:ok, %{"data" => _}} ->
+                {:error, :no_value_in_response}
+
+              _ ->
+                {:error, :invalid_response}
+            end
+
+          {:ok, %Req.Response{status: 403}} ->
+            {:error, :forbidden}
+
+          {:ok, %Req.Response{status: 401}} ->
+            {:error, :unauthorized}
+
+          {:ok, %Req.Response{status: status}} ->
+            {:error, {:http_status, status}}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+    end
   end
 
   @doc """

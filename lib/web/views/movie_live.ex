@@ -21,6 +21,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       # Add this to track if we're in editing mode
       |> assign(:editing_mode, false)
       |> assign(:movie, nil)
+      |> assign(:video_url, nil)
 
     {:ok, socket}
   end
@@ -32,12 +33,20 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
     with {:ok, movie} <- Client.get_movie(id, current_user: current_user(socket)),
          {:ok, public_notes} <- Client.fetch_annotations(id, current_user: current_user(socket)) do
+      video_url =
+        Client.video_url(
+          to_string(movie["id"] || ""),
+          Client.best_video_filename(movie),
+          current_user: current_user(socket)
+        )
+
       socket =
         socket
         |> assign(:params, id)
         |> assign(:back, true)
         |> assign(:page_title, movie["title"] || "")
         |> assign(:movie, movie)
+        |> assign(:video_url, video_url)
         |> assign(
           :media,
           from_ok(Archives.movie_get_media(movie["id"]) |> debug("movie_get_media"))
@@ -73,6 +82,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         socket =
           socket
           |> assign(:movie, nil)
+          |> assign(:video_url, nil)
           |> assign(:back, true)
           |> assign(:page_title, "Movie not found")
 
