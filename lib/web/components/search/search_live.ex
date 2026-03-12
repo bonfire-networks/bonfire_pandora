@@ -85,10 +85,11 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       Enum.map(filter_types, fn type ->
         list = Map.get(available_filters, type, [])
 
+        # Normalize name to string so phx-value-id and section.selected match (year can be int from API)
         available =
           Enum.map(list, fn
-            %{"name" => n, "items" => c} -> %{name: n, items: c}
-            %{name: n, items: c} -> %{name: n, items: c}
+            %{"name" => n, "items" => c} -> %{name: to_string(n), items: c}
+            %{name: n, items: c} -> %{name: to_string(n), items: c}
             other -> %{name: inspect(other), items: 0}
           end)
 
@@ -217,10 +218,12 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   # ── handle_event ───────────────────────────────────────────────────────────
 
-  # Specific handler for generic "filter_by_field" events from extra_metadata badges
+  # Specific handler for generic "filter_by_field" events from extra_metadata badges.
+  # Map API key to filter type (e.g. "keyword" -> "keywords") for UI consistency.
   def handle_event("filter_by_field", %{"field" => field, "id" => value}, socket)
       when is_binary(field) and is_binary(value) do
-    {:noreply, toggle_filter(socket, field, value)}
+    filter_type = Client.api_key_to_filter_type(field)
+    {:noreply, toggle_filter(socket, filter_type, value)}
   end
 
   # Generic handler for any "filter_by_X" event emitted by the filter panel
@@ -427,10 +430,12 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     assign(socket, :filter_types, types)
   end
 
-  # Build the list of item keys to request from find (essential + filterable)
+  # Build the list of item keys to request from find (essential + filterable).
+  # Uses filter_type_to_api_key so we request "keyword" not "keywords".
   defp build_request_keys(socket) do
     filter_types = socket.assigns[:filter_types] || @filter_types_fallback
-    (@essential_keys ++ filter_types) |> Enum.uniq()
+    api_keys = Enum.map(filter_types, &Client.filter_type_to_api_key/1)
+    (@essential_keys ++ api_keys) |> Enum.uniq()
   end
 
   defp fetch_metadata(socket, conditions) do
@@ -619,15 +624,19 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     |> assign(:loading, MapSet.size(new_loading) > 0)
   end
 
-  # Build Pandora API conditions from the current search term and selected filters
+  # Build Pandora API conditions. Legacy filter.js uses flat conditions + "==" for all.
+  # query.conditions = [c1, c2, ...], query.operator = "&"
   defp build_search_conditions(%{term: term, current_filters: current_filters}) do
     filter_conditions =
       (current_filters || %{})
       |> Enum.flat_map(fn {type, values} ->
+        api_key = Client.filter_type_to_api_key(type)
+        op = Client.operator_for_filter_type(type)
+
         case values do
           [] -> []
-          [single] -> [%{key: type, operator: "==", value: single}]
-          multiple -> [%{conditions: Enum.map(multiple, &%{key: type, operator: "==", value: &1}), operator: "|"}]
+          [single] -> [normalize_condition_value(api_key, single, type)]
+          multiple -> [%{conditions: Enum.map(multiple, &normalize_condition_value(api_key, &1, type)), operator: "|"}]
         end
       end)
 
@@ -641,12 +650,27 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       {nil, [single]} ->
         [single]
 
+      # Multiple filters: flat array like legacy (query.operator "&" combines them)
       {nil, multiple} when length(multiple) > 0 ->
-        [%{conditions: multiple, operator: "&"}]
+        multiple
 
       {term, filters} when is_binary(term) and term != "" ->
-        [%{conditions: [%{key: "*", operator: "=", value: term} | filters], operator: "&"}]
+        [%{key: "*", operator: "=", value: term} | filters]
     end
+  end
+
+  # Year may need integer for API (Pandora stores as number)
+  defp normalize_condition_value(api_key, value, "year") when is_binary(value) do
+    op = Client.operator_for_filter_type("year")
+    case Integer.parse(value) do
+      {num, ""} -> %{key: api_key, operator: op, value: num}
+      _ -> %{key: api_key, operator: op, value: value}
+    end
+  end
+
+  defp normalize_condition_value(api_key, value, type) do
+    op = Client.operator_for_filter_type(type)
+    %{key: api_key, operator: op, value: value}
   end
 
   # Fallback: called with raw assigns map

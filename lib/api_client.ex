@@ -22,6 +22,14 @@ defmodule PanDoRa.API.Client do
   @metadata_keys @filter_types_fixed
   @metadata_fields @filter_types_fixed
 
+  # Filter type (UI) <-> API key. Instance-dependent: some use "keyword", some "keywords".
+  # filter_type_to_api_key: empty = use filter_type as-is (e.g. "keywords" for group/conditions).
+  # api_key_to_filter_type: when extra_metadata returns "keyword" from API, map to "keywords" for UI.
+  @filter_type_to_api_key %{}
+  @api_key_to_filter_type %{"keyword" => "keywords"}
+  # Array fields (director, featuring, keywords) need "=" (contains) per Pandora QuerySyntax
+  @array_filter_types ~w(director featuring keyword keywords)
+
   @doc """
   Basic find function that matches the API's find endpoint functionality with pagination support
 
@@ -180,20 +188,22 @@ defmodule PanDoRa.API.Client do
       fields
       |> Enum.map(fn field ->
         Task.async(fn ->
-          # Build query for each field
+          api_key = filter_type_to_api_key(field)
+
+          # Build query for each field (use API key for group, e.g. keyword not keywords)
           payload = %{
             query: %{
               conditions: conditions,
               operator: "&"
             },
-            group: field,
+            group: api_key,
             # Sort by count descending
             sort: [%{key: "items", operator: "-"}],
             # Use pagination range
             range: [start_idx, end_idx]
           }
 
-          debug("Making request for field #{field}")
+          debug("Making request for field #{field} (api_key=#{api_key})")
           result = make_request("find", payload, opts)
           debug(result, "Got result for field #{field}")
 
@@ -850,23 +860,25 @@ defmodule PanDoRa.API.Client do
 
   @decorate time()
   defp fetch_field_metadata(field, conditions, limit \\ nil, opts) do
+    api_key = filter_type_to_api_key(field)
+
     payload = %{
       query: %{
         conditions: conditions,
         # Default to AND operator
         operator: "&"
       },
-      keys: [field],
+      keys: [api_key],
       group_by: [
         %{
-          key: field,
+          key: api_key,
           sort: [%{key: "items", operator: "-"}],
           limit: limit || 1000
         }
       ]
     }
 
-    debug(payload, "Making metadata request for #{field} with payload")
+    debug(payload, "Making metadata request for #{field} (api_key=#{api_key})")
 
     case make_request("find", payload, opts) do
       {:ok, %{"items" => items}} when is_list(items) ->
@@ -1320,6 +1332,29 @@ defmodule PanDoRa.API.Client do
   """
   def get_filter_keys(_opts \\ []) do
     @filter_types_fixed
+  end
+
+  @doc """
+  Maps filter type (UI) to API key. Pandora uses "keyword" (singular), we use "keywords" (plural) in UI.
+  """
+  def filter_type_to_api_key(type) when is_binary(type) do
+    Map.get(@filter_type_to_api_key, type, type)
+  end
+
+  @doc """
+  Maps API key to filter type (UI). Use when receiving field from extra_metadata (e.g. "keyword" -> "keywords").
+  """
+  def api_key_to_filter_type(api_key) when is_binary(api_key) do
+    Map.get(@api_key_to_filter_type, api_key, api_key)
+  end
+
+  @doc """
+  Returns the comparison operator for a filter type.
+  Array fields (director, featuring, keyword) use "=" (contains).
+  Scalar fields (year, country, language) use "==" (is).
+  """
+  def operator_for_filter_type(type) when is_binary(type) do
+    if type in @array_filter_types, do: "=", else: "=="
   end
 
   @doc """
