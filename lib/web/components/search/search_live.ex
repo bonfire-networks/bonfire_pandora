@@ -118,7 +118,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   defp do_initial_search(socket, term) do
     socket = track_loading(socket, :search_load, true)
-    conditions = build_search_conditions(%{term: term, current_filters: socket.assigns.current_filters})
+
+    conditions =
+      build_search_conditions(%{term: term, current_filters: socket.assigns.current_filters})
+
     keys = build_request_keys(socket)
 
     case Client.find(
@@ -155,7 +158,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   def do_component_search(socket, term) do
     socket = track_loading(socket, :search_load, true)
-    conditions = build_search_conditions(%{term: term, current_filters: socket.assigns.current_filters})
+
+    conditions =
+      build_search_conditions(%{term: term, current_filters: socket.assigns.current_filters})
+
     keys = build_request_keys(socket)
 
     case Client.find(
@@ -175,13 +181,18 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
           |> track_loading(:search_load, false)
 
         case fetch_metadata(socket, conditions) do
-          {:ok, updated_socket} -> {:noreply, updated_socket}
-          {:error, error_socket} -> {:noreply, put_flash(error_socket, :error, l("Error updating filters"))}
+          {:ok, updated_socket} ->
+            {:noreply, updated_socket}
+
+          {:error, error_socket} ->
+            {:noreply, put_flash(error_socket, :error, l("Error updating filters"))}
         end
 
       other ->
         error(other, "Search failed")
-        {:noreply, socket |> assign_error(l("Search failed")) |> track_loading(:search_load, false)}
+
+        {:noreply,
+         socket |> assign_error(l("Search failed")) |> track_loading(:search_load, false)}
     end
   end
 
@@ -265,7 +276,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
           |> update(:filter_loading, &Map.put(&1, filter_type, false))
           |> update(:filter_has_more, &Map.put(&1, filter_type, has_more))
           |> update(:filter_pages, &Map.put(&1, page_key, current_page + 1))
-          |> update(:available_filters, &Map.update(&1, filter_type, new_items, fn cur -> cur ++ new_items end))
+          |> update(
+            :available_filters,
+            &Map.update(&1, filter_type, new_items, fn cur -> cur ++ new_items end)
+          )
           |> track_loading(String.to_atom("#{filter_type}_load"), false)
 
         {:noreply, socket}
@@ -417,7 +431,12 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   # Fetch dynamic filter types from Pandora init API; fall back to @filter_types_fallback
   defp load_filter_types(socket) do
     filter_types = Client.get_filter_keys(current_user: current_user(socket))
-    types = if is_list(filter_types) and filter_types != [], do: filter_types, else: @filter_types_fallback
+
+    types =
+      if is_list(filter_types) and filter_types != [],
+        do: filter_types,
+        else: @filter_types_fallback
+
     assign(socket, :filter_types, types)
   end
 
@@ -613,9 +632,19 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       (current_filters || %{})
       |> Enum.flat_map(fn {type, values} ->
         case values do
-          [] -> []
-          [single] -> [%{key: type, operator: "==", value: single}]
-          multiple -> [%{conditions: Enum.map(multiple, &%{key: type, operator: "==", value: &1}), operator: "|"}]
+          [] ->
+            []
+
+          [single] ->
+            [%{key: type, operator: "==", value: single}]
+
+          multiple ->
+            [
+              %{
+                conditions: Enum.map(multiple, &%{key: type, operator: "==", value: &1}),
+                operator: "|"
+              }
+            ]
         end
       end)
 

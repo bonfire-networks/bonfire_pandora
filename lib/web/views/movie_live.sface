@@ -11,94 +11,94 @@
       </video>
 
       <div class="controls-container mt-2" style="pointer-events: auto;">
-            <!-- Play/Pause button with dynamic icon -->
-            <button
-              class="control-button btn btn-sm btn-circle btn-soft btn-ghost play-button"
-              data-action="play-pause"
-              style="pointer-events: auto;"
-            >
-              <span class="play-icon">
-                <#Icon iconify="heroicons:play-16-solid" class="w-4 h-4" />
-              </span>
-              <span class="pause-icon btn btn-sm btn-circle btn-soft btn-ghost" style="display: none;">
-                <#Icon iconify="heroicons:pause-16-solid" class="w-4 h-4" />
-              </span>
-            </button>
-            <button
-              class="control-button btn btn-sm btn-circle btn-soft btn-ghost play-button"
-              data-action="next-frame"
-              style="pointer-events: auto;"
-            >
-              <span class="play-icon">
-                <#Icon iconify="heroicons:forward-16-solid" class="w-4 h-4" />
-              </span>
-            </button>
-            <button
-              class="btn btn-sm btn-circle btn-soft btn-ghost control-button play-button"
-              data-action="prev-frame"
-              style="pointer-events: auto;"
-            >
-              <span class="play-icon">
-                <#Icon iconify="heroicons:backward-16-solid" class="w-4 h-4" />
-              </span>
-            </button>
+        <!-- Play/Pause button with dynamic icon -->
+        <button
+          class="control-button btn btn-sm btn-circle btn-soft btn-ghost play-button"
+          data-action="play-pause"
+          style="pointer-events: auto;"
+        >
+          <span class="play-icon">
+            <#Icon iconify="heroicons:play-16-solid" class="w-4 h-4" />
+          </span>
+          <span class="pause-icon btn btn-sm btn-circle btn-soft btn-ghost" style="display: none;">
+            <#Icon iconify="heroicons:pause-16-solid" class="w-4 h-4" />
+          </span>
+        </button>
+        <button
+          class="control-button btn btn-sm btn-circle btn-soft btn-ghost play-button"
+          data-action="next-frame"
+          style="pointer-events: auto;"
+        >
+          <span class="play-icon">
+            <#Icon iconify="heroicons:forward-16-solid" class="w-4 h-4" />
+          </span>
+        </button>
+        <button
+          class="btn btn-sm btn-circle btn-soft btn-ghost control-button play-button"
+          data-action="prev-frame"
+          style="pointer-events: auto;"
+        >
+          <span class="play-icon">
+            <#Icon iconify="heroicons:backward-16-solid" class="w-4 h-4" />
+          </span>
+        </button>
 
-            <!-- Custom buttons -->
-            <button
-              class="custom-button btn btn-sm btn-circle btn-soft btn-ghost"
-              data-action="mark-in"
-              style="pointer-events: auto;"
-            >
-              IN
-            </button>
+        <!-- Custom buttons -->
+        <button
+          class="custom-button btn btn-sm btn-circle btn-soft btn-ghost"
+          data-action="mark-in"
+          style="pointer-events: auto;"
+        >
+          IN
+        </button>
 
-            <button
-              class="custom-button btn btn-sm btn-circle btn-soft btn-ghost"
-              data-action="mark-out"
-              style="pointer-events: auto;"
-            >
-              OUT
-            </button>
+        <button
+          class="custom-button btn btn-sm btn-circle btn-soft btn-ghost"
+          data-action="mark-out"
+          style="pointer-events: auto;"
+        >
+          OUT
+        </button>
 
-            <!-- Mute button with dynamic icon -->
-            <button
-              class="control-button btn btn-sm btn-circle btn-soft btn-ghost mute-button"
-              data-action="mute"
-              style="pointer-events: auto;"
-            >
-              <span class="unmuted-icon">
-                <#Icon iconify="heroicons-solid:volume-up" class="w-4 h-4" />
-              </span>
-              <span class="muted-icon" style="display: none;">
-                <#Icon iconify="heroicons-solid:volume-off" class="w-4 h-4" />
-              </span>
-            </button>
+        <!-- Mute button with dynamic icon -->
+        <button
+          class="control-button btn btn-sm btn-circle btn-soft btn-ghost mute-button"
+          data-action="mute"
+          style="pointer-events: auto;"
+        >
+          <span class="unmuted-icon">
+            <#Icon iconify="heroicons-solid:volume-up" class="w-4 h-4" />
+          </span>
+          <span class="muted-icon" style="display: none;">
+            <#Icon iconify="heroicons-solid:volume-off" class="w-4 h-4" />
+          </span>
+        </button>
 
-            <!-- Time slider and display -->
-            <div
-              class="time-controls"
-              style="pointer-events: auto; flex: 1; display: flex; align-items: center;"
-            >
-              <span class="current-time">0:00</span>
-              <input
-                type="range"
-                class="time-slider"
-                min="0"
-                value="0"
-                step="0.1"
-                style="flex: 1; margin: 0 10px; pointer-events: auto !important;"
-              />
-              <span class="duration">0:00</span>
-            </div>
+        <!-- Time slider and display -->
+        <div
+          class="time-controls"
+          style="pointer-events: auto; flex: 1; display: flex; align-items: center;"
+        >
+          <span class="current-time">0:00</span>
+          <input
+            type="range"
+            class="time-slider"
+            min="0"
+            value="0"
+            step="0.1"
+            style="flex: 1; margin: 0 10px; pointer-events: auto !important;"
+          />
+          <span class="duration">0:00</span>
+        </div>
 
-            <!-- Fullscreen button -->
-            <button
-              class="control-button btn btn-sm btn-circle btn-soft btn-ghost fullscreen-button"
-              data-action="fullscreen"
-              style="pointer-events: auto;"
-            >
-              <#Icon iconify="heroicons-outline:arrows-expand" class="w-4 h-4" />
-            </button>
+        <!-- Fullscreen button -->
+        <button
+          class="control-button btn btn-sm btn-circle btn-soft btn-ghost fullscreen-button"
+          data-action="fullscreen"
+          style="pointer-events: auto;"
+        >
+          <#Icon iconify="heroicons-outline:arrows-expand" class="w-4 h-4" />
+        </button>
       </div>
     </div>
   </div>

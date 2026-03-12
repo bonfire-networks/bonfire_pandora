@@ -47,7 +47,10 @@ defmodule Bonfire.PanDoRa.Web.ConnectPandoraController do
   end
 
   defp get_password(%{"password" => p}) when is_binary(p), do: String.trim(p)
-  defp get_password(%{"connect_pandora" => %{"password" => p}}) when is_binary(p), do: String.trim(p)
+
+  defp get_password(%{"connect_pandora" => %{"password" => p}}) when is_binary(p),
+    do: String.trim(p)
+
   defp get_password(_), do: nil
 
   defp redirect_back_after(conn) do

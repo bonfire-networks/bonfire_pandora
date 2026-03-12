@@ -1083,8 +1083,10 @@ defmodule PanDoRa.API.Client do
   def sync_new_user_to_pandora(user, password)
       when is_binary(password) and password != "" do
     username = e(user, :character, :username, nil)
+
     account =
       repo().maybe_preload(e(user, :account, nil) || e(user, :accounted, :account, nil), :email)
+
     email = e(account, :email, :email_address, nil)
 
     if is_binary(username) and is_binary(email) do
@@ -1115,17 +1117,17 @@ defmodule PanDoRa.API.Client do
 
   defp create_and_sign_in_pandora_user(user, email, username, password) do
     case sign_up(user, email, username, password) do
-        {:ok, _} ->
-          sign_in(username, password, current_user: user)
+      {:ok, _} ->
+        sign_in(username, password, current_user: user)
 
-        {:error, %{"email" => _}} ->
-          sign_in(username, password, current_user: user)
+      {:error, %{"email" => _}} ->
+        sign_in(username, password, current_user: user)
 
-        {:error, %{"username" => _}} ->
-          sign_in(username, password, current_user: user)
+      {:error, %{"username" => _}} ->
+        sign_in(username, password, current_user: user)
 
-        other ->
-          other
+      other ->
+        other
     end
   end
 
@@ -1150,7 +1152,9 @@ defmodule PanDoRa.API.Client do
       # Email already exists on Pandora: try sign_in with saved credentials from the Sync Pandora tool.
       {:error, %{"email" => _} = err} ->
         case sign_in(opts) do
-          {:ok, data} -> {:ok, data}
+          {:ok, data} ->
+            {:ok, data}
+
           _ ->
             error(
               err,
