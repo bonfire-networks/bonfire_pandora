@@ -78,9 +78,18 @@
 
         {#for badge <- @active_filter_badges}
           {#for value <- badge.values}
-            <div class="badge badge-accent badge-soft">
+            <button
+              type="button"
+              phx-click={"filter_by_#{badge.id}"}
+              phx-target={@myself}
+              phx-value-id={to_string(value)}
+              class="badge badge-accent badge-soft gap-1 cursor-pointer hover:bg-primary/30 border-0"
+              disabled={@loading}
+              title={l("Remove filter")}
+            >
               <span>{badge.label}: {value}</span>
-            </div>
+              <span class="ml-0.5 opacity-70 hover:opacity-100" aria-hidden="true">×</span>
+            </button>
           {/for}
         {/for}
       </div>
