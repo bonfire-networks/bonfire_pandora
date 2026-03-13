@@ -1,4 +1,4 @@
-<div class="w-full max-w-full flex flex-col lg:flex-row gap-4 feed w-full max-w-full lg:rounded-xl lg:shadow bg-base-100">
+<div class="w-full flex flex-col lg:flex-row gap-4 lg:rounded-xl lg:shadow bg-base-100">
   <!-- Main area: form, badges, results -->
   <div class="flex-1 min-w-0 flex flex-col">
     <div class="flex rounded-t-xl border-b border-base-content/10 flex-col gap-2 p-3">
