@@ -111,9 +111,10 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
 
   # Check if movie exists in any of user's lists
   defp check_movie_in_lists(socket) do
+    opts = [current_user: current_user(socket)]
     lists_with_items =
       Enum.map(socket.assigns.lists, fn list ->
-        case Client.find_list_items(list["id"], socket) do
+        case Client.find_list_items(list["id"], opts) do
           {:ok, %{items: items}} -> Map.put(list, "items", items)
           _ -> Map.put(list, "items", [])
         end
@@ -143,8 +144,13 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
     assign(socket, :movie_in_lists, Map.put(socket.assigns.movie_in_lists, list_id, presence))
   end
 
-  # Check if movie exists in a specific list
-  def movie_in_list?(list_id, movie_id, opts) do
+  # Check if movie exists in a specific list.
+  # Third arg: keyword opts or socket (converted to opts).
+  def movie_in_list?(list_id, movie_id, %{assigns: _} = socket) do
+    movie_in_list?(list_id, movie_id, [current_user: current_user(socket)])
+  end
+
+  def movie_in_list?(list_id, movie_id, opts) when is_list(opts) do
     case Client.find_list_items(list_id, opts) do
       {:ok, %{items: items}} -> Enum.any?(items, &(&1["id"] == movie_id))
       _ -> false

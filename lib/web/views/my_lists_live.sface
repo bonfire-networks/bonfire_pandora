@@ -1,3 +1,17 @@
+<div>
+  {#if @loading}
+    <div class="flex justify-center py-12">
+      <div class="loading loading-spinner loading-lg" />
+    </div>
+  {#else}
+    {#if @error}
+      <div class="p-4 rounded-lg bg-error/10 text-error">
+        {l("Could not load lists")}: {@error}
+      </div>
+      <p class="mt-4 text-base-content/70">
+        {l("Connect your Pandora account in settings (Connect Pandora / Sync) to see your lists.")}
+      </p>
+    {#else}
 <div data-role="new_list">
   <Bonfire.PanDoRa.Components.CreateNewListLive
     id="create_new_list"
@@ -126,3 +140,9 @@
     </div>
   </li>
 </ul>
+{#if @lists == []}
+  <p class="p-6 text-center text-base-content/60">{l("No lists yet. Create one above.")}</p>
+{/if}
+    {/if}
+  {/if}
+</div>

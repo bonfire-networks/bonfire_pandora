@@ -1,34 +1,53 @@
-<ul class="list mt-4">
-  <li
-    :for={list <- @lists}
-    id={e(list, "id", "")}
-    phx-click="toggle_in_list"
-    phx-target={@myself}
-    phx-value-id={e(list, "id", "")}
-    class="list-row cursor-pointer hover:bg-base-content/5"
-  >
-    <div class="w-12 h-12 rounded bg-base-content/5">
-      {#if poster_frame = e(list, "posterFrames", nil)}
-        <img
-          src={with frames when is_list(frames) <- e(list, "posterFrames", []),
-               frame when is_map(frame) <- Enum.at(frames, 0) do
-            frame |> Map.keys() |> List.first() || ""
-          else
-            _ -> ""
-          end}
-          class="object-cover w-full h-full rounded"
-        />
-      {/if}
+<div>
+  {#if @loading}
+    <div class="flex justify-center py-8">
+      <div class="loading loading-spinner loading-md" />
     </div>
-    <div>
-      <div>{e(list, "name", "")}</div>
-      {!-- <div class="text-xs uppercase font-semibold opacity-60">Remaining Reason</div> --}
-    </div>
-
-    {#if Map.get(@movie_in_lists, e(list, "id", ""))}
-      <#Icon solid="MinusCircle" class="w-5 h-5 text-error" />
+  {#else}
+    {#if @error}
+      <div class="p-4 rounded-lg bg-error/10 text-error text-sm">
+        {l("Could not load lists")}: {@error}
+      </div>
+      <p class="mt-2 text-sm text-base-content/60">
+        {l("Connect your Pandora account in settings to use lists.")}
+      </p>
     {#else}
-      <#Icon solid="PlusCircle" class="w-5 h-5 text-success" />
+      <ul class="list mt-4">
+        <li
+          :for={list <- @lists}
+          id={e(list, "id", "")}
+          phx-click="toggle_in_list"
+          phx-target={@myself}
+          phx-value-id={e(list, "id", "")}
+          class="list-row cursor-pointer hover:bg-base-content/5"
+        >
+          <div class="w-12 h-12 rounded bg-base-content/5">
+            {#if poster_frame = e(list, "posterFrames", nil)}
+              <img
+                src={with frames when is_list(frames) <- e(list, "posterFrames", []),
+                     frame when is_map(frame) <- Enum.at(frames, 0) do
+                  frame |> Map.keys() |> List.first() || ""
+                else
+                  _ -> ""
+                end}
+                class="object-cover w-full h-full rounded"
+              />
+            {/if}
+          </div>
+          <div>
+            <div>{e(list, "name", "")}</div>
+          </div>
+
+          {#if Map.get(@movie_in_lists, e(list, "id", ""))}
+            <#Icon solid="MinusCircle" class="w-5 h-5 text-error" />
+          {#else}
+            <#Icon solid="PlusCircle" class="w-5 h-5 text-success" />
+          {/if}
+        </li>
+      </ul>
+      {#if @lists == []}
+        <p class="mt-4 text-sm text-base-content/60">{l("No lists yet. Create one from My lists.")}</p>
+      {/if}
     {/if}
-  </li>
-</ul>
+  {/if}
+</div>

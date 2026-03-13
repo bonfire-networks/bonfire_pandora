@@ -444,20 +444,44 @@ defmodule PanDoRa.API.Client do
     end
   end
 
-  # Fetch public lists for current user
+  # Fetch lists owned by the current Pandora user.
+  # Uses session auth (same as search): credentials, or init() to get user from session.
   def my_lists(opts) do
-    find_lists(
-      [
-        keys: ["id", "description", "poster_frames", "posterFrames", "name", "status", "user"],
-        sort: [%{key: "name", operator: "+"}],
-        type: :user,
-        # TODO: based on current creds?
-        user:
-          Settings.get([:bonfire_pandora, __MODULE__, :credentials], %{}, opts)[:username] ||
-            get_auth_default_user()
-      ] ++
-        opts
-    )
+    opts = Utils.to_options(opts)
+
+    pandora_username =
+      case Auth.credentials(opts) do
+        {username, _} when is_binary(username) ->
+          username
+
+        _ ->
+          opts[:username] || get_auth_default_user() || pandora_username_from_init(opts)
+      end
+
+    if is_nil(pandora_username) or pandora_username == "" do
+      error(:no_credentials, l("Connect your Pandora account in settings to see your lists"))
+    else
+      find_lists(
+        [
+          keys: ["id", "description", "poster_frames", "posterFrames", "name", "status", "user"],
+          sort: [%{key: "name", operator: "+"}],
+          type: :user,
+          user: pandora_username
+        ] ++ opts
+      )
+    end
+  end
+
+  # Derive Pandora username from init() when session cookie exists but credentials are not stored
+  # (e.g. OAuth/token auth). Same session auth as search/find.
+  defp pandora_username_from_init(opts) do
+    case init(opts) do
+      {:ok, %{"user" => %{} = user}} ->
+        user["username"] || user["id"] || user["email"]
+
+      _ ->
+        nil
+    end
   end
 
   @doc """
