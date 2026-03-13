@@ -359,8 +359,8 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
              per_page: 10,
              current_user: current_user(socket)
            ) do
-        {:ok, metadata} ->
-          sections = Map.get(metadata, field_name, [])
+        {:ok, %{filters: filters}} ->
+          sections = Map.get(filters, field_name, [])
           # Filter sections that match the search text
           matching_sections =
             sections

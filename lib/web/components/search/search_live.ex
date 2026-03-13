@@ -25,6 +25,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
     # Filter state (keyed by field name, uses fixed filter types)
     filter_types: [],
     available_filters: %{},
+    effective_api_keys: %{},
     current_filters: %{},
     filter_pages: %{},
     filter_loading: %{},
@@ -142,7 +143,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   defp do_initial_search(socket, term) do
     socket = track_loading(socket, :search_load, true)
-    conditions = build_search_conditions(%{term: term, current_filters: socket.assigns.current_filters})
+    conditions = build_search_conditions(Map.merge(socket.assigns, %{term: term}))
     keys = build_request_keys(socket)
 
     case Client.find(
@@ -178,7 +179,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   def do_component_search(socket, term) do
     socket = track_loading(socket, :search_load, true)
-    conditions = build_search_conditions(%{term: term, current_filters: socket.assigns.current_filters})
+    conditions = build_search_conditions(Map.merge(socket.assigns, %{term: term}))
     keys = build_request_keys(socket)
 
     case Client.find(
@@ -275,8 +276,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            per_page: @filter_per_page,
            current_user: current_user(socket)
          ) do
-      {:ok, metadata} ->
-        items = Map.get(metadata, filter_type, [])
+      {:ok, %{filters: filters, api_keys: api_keys}} ->
+        items = Map.get(filters, filter_type, [])
         current_items = get_in(socket.assigns, [:available_filters, filter_type]) || []
 
         new_items =
@@ -299,6 +300,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
           |> update(:filter_has_more, &Map.put(&1, filter_type, has_more))
           |> update(:filter_pages, &Map.put(&1, page_key, current_page + 1))
           |> update(:available_filters, &Map.update(&1, filter_type, new_items, fn cur -> cur ++ new_items end))
+          |> update(:effective_api_keys, &Map.merge(&1 || %{}, api_keys))
           |> assign_filter_by_field_assigns()
           |> track_loading(String.to_atom("#{filter_type}_load"), false)
 
@@ -473,10 +475,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            per_page: @filter_per_page,
            current_user: current_user(socket)
          ) do
-      {:ok, metadata} ->
+      {:ok, %{filters: filters, api_keys: api_keys}} ->
         available_filters =
           Enum.reduce(filter_types, %{}, fn type, acc ->
-            Map.put(acc, type, Map.get(metadata, type, []))
+            Map.put(acc, type, Map.get(filters, type, []))
           end)
 
         filter_has_more =
@@ -487,6 +489,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
         {:ok,
          socket
          |> assign(:available_filters, available_filters)
+         |> assign(:effective_api_keys, api_keys)
          |> assign(:filter_has_more, filter_has_more)
          |> track_loading(:metadata_load, false)}
 
@@ -506,13 +509,15 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
            fields: filter_types,
            current_user: current_user(socket)
          ) do
-      {:ok, metadata} ->
+      {:ok, %{filters: filters, api_keys: api_keys}} ->
         new_available =
           Enum.reduce(filter_types, %{}, fn type, acc ->
-            Map.put(acc, type, Map.get(metadata, type, []))
+            Map.put(acc, type, Map.get(filters, type, []))
           end)
 
-        assign(socket, :available_filters, new_available)
+        socket
+        |> assign(:available_filters, new_available)
+        |> assign(:effective_api_keys, Map.merge(socket.assigns[:effective_api_keys] || %{}, api_keys))
 
       _ ->
         put_flash(socket, :error, l("Error updating filters"))
@@ -565,8 +570,9 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
       |> assign(:current_filters, new_filters)
       |> track_loading(:global_load, true)
 
-    # Use new_filters explicitly so conditions always reflect the filters we're about to search with
-    conditions = build_search_conditions(%{term: socket.assigns[:term], current_filters: new_filters})
+    # Use new_filters explicitly so conditions always reflect the filters we're about to search with.
+    # Pass full assigns so effective_api_keys (from fetch_grouped_metadata) is used for conditions.
+    conditions = build_search_conditions(Map.merge(socket.assigns, %{current_filters: new_filters}))
     keys = build_request_keys(socket)
 
     case Client.find(
@@ -610,11 +616,13 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
 
   # Build Pandora API conditions. Legacy filter.js uses flat conditions + "==" for all.
   # query.conditions = [c1, c2, ...], query.operator = "&"
-  defp build_search_conditions(%{term: term, current_filters: current_filters}) do
+  # Uses effective_api_keys when available (from fetch_grouped_metadata) so the key
+  # matches the one that returned facet data (e.g. "keyword" vs "keywords").
+  defp build_search_conditions(%{term: term, current_filters: current_filters, effective_api_keys: effective_api_keys}) do
     filter_conditions =
       (current_filters || %{})
       |> Enum.flat_map(fn {type, values} ->
-        api_key = Client.filter_type_to_api_key(type)
+        api_key = Map.get(effective_api_keys || %{}, type) || Client.filter_type_to_api_key(type)
 
         case values do
           [] -> []
@@ -645,7 +653,8 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   defp build_search_conditions(assigns) when is_map(assigns) do
     build_search_conditions(%{
       term: Map.get(assigns, :term),
-      current_filters: Map.get(assigns, :current_filters, %{})
+      current_filters: Map.get(assigns, :current_filters, %{}),
+      effective_api_keys: Map.get(assigns, :effective_api_keys, %{})
     })
   end
 

@@ -22,9 +22,9 @@ defmodule PanDoRa.API.Client do
   @metadata_keys @filter_types_fixed
   @metadata_fields @filter_types_fixed
 
-  # Filter type (UI) <-> API key. Pandora schema uses "keyword" (singular) for the field.
-  # UI uses "keywords" (plural); conditions and group must use "keyword" to match Pandora.
-  @filter_type_to_api_key %{"keywords" => "keyword"}
+  # Filter type (UI) <-> API key. Instance-dependent: some use "keyword", others "keywords".
+  # Init ui.filters shows which id this instance uses. Default to "keywords" (no mapping).
+  @filter_type_to_api_key %{}
   @api_key_to_filter_type %{"keyword" => "keywords"}
   # Pandora parseCondition uses "==" for facet fields (director, featuring, year, keyword).
 
@@ -183,14 +183,15 @@ defmodule PanDoRa.API.Client do
 
     # Make a single request per field but in parallel.
     # For "keywords": try both "keyword" and "keywords" (instance-dependent).
+    # Return effective_api_key so conditions use the same key that returned facet data.
     tasks =
       fields
       |> Enum.map(fn field ->
         Task.async(fn ->
           api_keys = api_keys_for_field(field)
 
-          items =
-            Enum.reduce_while(api_keys, [], fn api_key, acc ->
+          {winning_key, items} =
+            Enum.reduce_while(api_keys, {nil, []}, fn api_key, {_, acc} ->
               payload = %{
                 query: %{
                   conditions: conditions,
@@ -207,35 +208,43 @@ defmodule PanDoRa.API.Client do
 
               case result do
                 {:ok, %{"items" => items}} when is_list(items) and items != [] ->
-                  {:halt, items}
+                  {:halt, {api_key, items}}
 
                 _ ->
-                  {:cont, acc}
+                  {:cont, {nil, []}}
               end
             end)
 
-          {field, items}
+          # Use first api_key as fallback when none returned data
+          effective_key = winning_key || List.first(api_keys)
+          {field, {effective_key, items}}
         end)
       end)
 
     # Wait for all requests with a reasonable timeout
     results = Task.yield_many(tasks, 5000)
 
-    metadata =
+    {filters, api_keys} =
       Enum.zip(fields, tasks)
-      |> Map.new(fn {field, task} ->
+      |> Enum.reduce({%{}, %{}}, fn {field, task}, {filters_acc, keys_acc} ->
         case Enum.find(results, fn {t, _} -> t.ref == task.ref end) do
-          {_, {:ok, {^field, items}}} ->
-            debug("Successfully got #{length(items)} items for #{field}")
-            {field, items}
+          {_, {:ok, {^field, {effective_key, items}}}} ->
+            debug("Successfully got #{length(items)} items for #{field} (api_key=#{effective_key})")
+            {
+              Map.put(filters_acc, field, items),
+              Map.put(keys_acc, field, effective_key)
+            }
 
           _ ->
             debug("Failed or timeout getting items for #{field}")
-            {field, []}
+            {
+              Map.put(filters_acc, field, []),
+              Map.put(keys_acc, field, filter_type_to_api_key(field))
+            }
         end
       end)
 
-    {:ok, metadata}
+    {:ok, %{filters: filters, api_keys: api_keys}}
   end
 
   @doc """
@@ -297,6 +306,7 @@ defmodule PanDoRa.API.Client do
         "genere",
         "genre",
         "keyword",
+        "keywords",
         "summary",
         "stream",
         "streams",
@@ -1336,14 +1346,14 @@ defmodule PanDoRa.API.Client do
   end
 
   @doc """
-  Maps filter type (UI) to API key. Pandora uses "keyword" (singular), we use "keywords" (plural) in UI.
+  Maps filter type (UI) to API key. Instance-dependent; pass-through by default (e.g. "keywords" stays "keywords").
   """
   def filter_type_to_api_key(type) when is_binary(type) do
     Map.get(@filter_type_to_api_key, type, type)
   end
 
-  # For "keywords": try both "keyword" and "keywords" (instance-dependent).
-  defp api_keys_for_field("keywords"), do: ["keyword", "keywords"]
+  # For "keywords": try both (instance-dependent). Prefer "keywords" first (common in ui.filters).
+  defp api_keys_for_field("keywords"), do: ["keywords", "keyword"]
   defp api_keys_for_field(field), do: [filter_type_to_api_key(field)]
 
   @doc """
