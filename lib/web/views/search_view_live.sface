@@ -1,1 +1,54 @@
-<Bonfire.PanDoRa.Web.SearchLive id="search-component" term={@term} current_user={@current_user} />
+<div class="w-full flex flex-col lg:rounded-xl lg:shadow bg-base-100">
+  <Bonfire.PanDoRa.Web.SearchLive
+    id="search-component"
+    term={@term}
+    current_user={@current_user}
+    filter_sections={@filter_sections}
+    active_filter_badges={@active_filter_badges}
+    selected_by_field={@selected_by_field}
+    loading={@loading}
+    page={@page}
+    has_more_items={@has_more_items}
+    current_count={@current_count}
+    pandora_token={@pandora_token}
+    pandora_base_url={@pandora_base_url}
+  />
+
+  <div class="overflow-x-auto relative flex-1">
+    {#if @loading && @page == 0}
+      <div class="bg-base-200/50 p-20 flex items-center justify-center z-10">
+        <div class="loading loading-spinner loading-lg text-primary" />
+      </div>
+    {/if}
+    <div class="search-results-container" id="search-results-container" phx-hook="InfiniteScroll" data-type="results">
+      <ul
+        id="search_results"
+        phx-update="stream"
+        data-page={@page}
+        data-loading={@loading}
+        class="list"
+      >
+        {#for {id, result} <- @streams.search_results}
+          <Bonfire.PanDoRa.Components.MoviePreviewLive
+            event_target={nil}
+            movie={result}
+            movie_id={id}
+            media_url={if @pandora_token, do: "#{@pandora_base_url}/#{e(result, "id", "")}/icon128.jpg?token=#{@pandora_token}", else: Client.media_proxy_url(e(result, "id", ""), "icon128.jpg")}
+          />
+        {/for}
+      </ul>
+      {#if not @loading and (@current_count || 0) == 0}
+        <div class="p-10 text-center text-base-content/50">
+          {l("No items found. Make sure you are connected to Pandora.")}
+        </div>
+      {/if}
+      <div id="search-results-sentinel" phx-update="ignore">
+        <Bonfire.PanDoRa.Components.LoadingSentinelLive
+          loading={@loading}
+          page={@page}
+          has_more={@has_more_items}
+        />
+      </div>
+    </div>
+  </div>
+</div>
