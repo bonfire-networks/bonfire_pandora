@@ -17,17 +17,45 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
   end
 
   def update(assigns, socket) do
-    # Fetch user's lists when component is updated
-    lists_result = Client.my_lists(current_user: current_user(socket))
+    socket = assign(socket, assigns)
 
-    socket =
-      socket
-      |> assign(assigns)
-      |> handle_lists_result(lists_result)
-      |> check_movie_in_lists()
-      |> update_movie_presence()
+    # Async update from background fetch: assign lists (with icons), movie_in_lists, existing_lists
+    if Map.has_key?(assigns, :movie_in_lists) and Map.has_key?(assigns, :lists) do
+      socket =
+        socket
+        |> assign(:lists, assigns.lists)
+        |> assign(:movie_in_lists, assigns.movie_in_lists)
+        |> assign(:existing_lists, assigns.existing_lists)
 
-    {:ok, socket}
+      {:ok, socket}
+    else
+      # Initial load: fetch lists, show immediately, fetch items in background
+      lists_result = Client.my_lists(current_user: current_user(socket))
+
+      socket =
+        socket
+        |> handle_lists_result(lists_result)
+
+      if socket.assigns.lists != [] and socket.assigns.error == nil do
+        movie_id = socket.assigns.movie_id
+        opts = [current_user: current_user(socket)]
+        lists = socket.assigns.lists
+
+        Task.start(fn ->
+          payload = fetch_list_items_async(lists, opts, movie_id)
+          lists_with_icons = Enum.map(payload.lists_with_items, &add_icon_url/1)
+
+          Phoenix.LiveView.send_update(__MODULE__,
+            id: movie_id,
+            lists: lists_with_icons,
+            movie_in_lists: payload.movie_in_lists,
+            existing_lists: payload.existing_lists
+          )
+        end)
+      end
+
+      {:ok, socket}
+    end
   end
 
   def handle_event("add_to_list", %{"id" => list_id}, socket) do
@@ -109,27 +137,49 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
     |> assign(:error, error)
   end
 
-  # Check if movie exists in any of user's lists
-  defp check_movie_in_lists(socket) do
-    opts = [current_user: current_user(socket)]
+  # Fetches list items in parallel; returns payload for send_update.
+  defp fetch_list_items_async(lists, opts, movie_id) do
     lists_with_items =
-      Enum.map(socket.assigns.lists, fn list ->
-        case Client.find_list_items(list["id"], opts) do
-          {:ok, %{items: items}} -> Map.put(list, "items", items)
-          _ -> Map.put(list, "items", [])
-        end
-      end)
+      lists
+      |> Task.async_stream(
+        fn list ->
+          case Client.find_list_items(list["id"], opts) do
+            {:ok, %{items: items}} -> Map.put(list, "items", items)
+            _ -> Map.put(list, "items", [])
+          end
+        end,
+        max_concurrency: 5,
+        timeout: 15_000
+      )
+      |> Enum.map(fn {:ok, list} -> list end)
 
     existing_lists =
       Enum.filter(lists_with_items, fn list ->
-        Enum.any?(list["items"], &(&1["id"] == socket.assigns.movie_id))
+        Enum.any?(list["items"], &(&1["id"] == movie_id))
       end)
       |> Enum.map(& &1["name"])
 
-    assign(socket, :existing_lists, existing_lists)
+    movie_in_lists =
+      Map.new(lists_with_items, fn list ->
+        {list["id"], Enum.any?(list["items"], &(&1["id"] == movie_id))}
+      end)
+
+    %{lists_with_items: lists_with_items, existing_lists: existing_lists, movie_in_lists: movie_in_lists}
   end
 
-  # Update movie presence in all lists
+  defp add_icon_url(list), do: Map.put(list, "icon_url", Client.list_icon_url(list))
+
+  # Check if movie exists in any of user's lists (sync path, e.g. update_lists).
+  defp check_movie_in_lists(socket) do
+    opts = [current_user: current_user(socket)]
+    payload = fetch_list_items_async(socket.assigns.lists, opts, socket.assigns.movie_id)
+
+    socket
+    |> assign(:existing_lists, payload.existing_lists)
+    |> assign(:movie_in_lists, payload.movie_in_lists)
+  end
+
+  # Update movie presence from lists (no API calls; used after add/remove).
   defp update_movie_presence(socket) do
     movie_in_lists =
       Enum.reduce(socket.assigns.lists, %{}, fn list, acc ->
