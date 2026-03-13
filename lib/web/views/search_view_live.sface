@@ -49,6 +49,20 @@
           has_more={@has_more_items}
         />
       </div>
+      {#if @has_more_items and (@current_count || 0) > 0}
+        <div class="flex flex-col items-center gap-2 py-4 border-t border-base-content/10">
+          <button
+            :if={not @loading}
+            phx-click="load_more_search_results"
+            class="btn btn-secondary btn-wide btn-soft gap-2"
+          >
+            {l("Load more")}
+          </button>
+          <button :if={@loading} class="btn btn-secondary btn-wide btn-soft gap-2" disabled>
+            {l("Loading...")}
+          </button>
+        </div>
+      {/if}
     </div>
   </div>
 </div>

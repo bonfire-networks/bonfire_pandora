@@ -35,6 +35,7 @@ defmodule Bonfire.PanDoRa.Web.Routes do
         live("/movies/:id", MovieLive)
         live("/my_lists/", MyListsLive)
         live("/featured_lists/", FeaturedListsLive)
+        get("/lists", RedirectController, :to_my_lists)
         live("/lists/:id", ListLive)
 
         # Media proxy: forwards image and video requests to Pandora with auth

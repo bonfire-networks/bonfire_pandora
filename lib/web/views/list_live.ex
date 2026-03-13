@@ -23,6 +23,7 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
       |> assign(:list_id, list_id)
       |> assign(:page, 0)
       |> assign(:per_page, @default_per_page)
+      |> assign(:all_items, [])
       |> assign(:has_more_items, false)
       |> assign(:loading, true)
       |> assign(:error, nil)
@@ -48,10 +49,15 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
   end
 
   def handle_info(:load_initial_data, socket) do
-    %{list_id: list_id} = socket.assigns
+    %{list_id: list_id, per_page: per_page} = socket.assigns
 
     list_result = fetch_list(list_id, current_user: current_user(socket))
-    items_result = fetch_list_items(list_id, current_user: current_user(socket))
+    items_result =
+      fetch_list_items(list_id,
+        page: 0,
+        per_page: per_page,
+        current_user: current_user(socket)
+      )
 
     socket =
       socket
@@ -65,7 +71,12 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
     %{list_id: list_id, page: page, per_page: per_page} = socket.assigns
 
     next_page = page + 1
-    items_result = fetch_list_items(list_id, page: next_page, per_page: per_page)
+    items_result =
+      fetch_list_items(list_id,
+        page: next_page,
+        per_page: per_page,
+        current_user: current_user(socket)
+      )
 
     {:noreply, socket |> assign(:page, next_page) |> handle_items_result(items_result)}
   end
@@ -139,10 +150,29 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
   end
 
   # Handle successful items fetch
-  defp handle_items_result(socket, {:ok, %{items: items, total: total}}) do
+  # Accumulate items and always replace stream to avoid stream_insert + static li misalignment.
+  defp handle_items_result(socket, {:ok, %{items: items} = result}) do
+    all_items =
+      if socket.assigns.page == 0 do
+        items
+      else
+        socket.assigns.all_items ++ items
+      end
+
+    # Conservative: show Load More when we got a full page (might be more). Hide only when we got fewer.
+    per_page = socket.assigns.per_page
+    has_more =
+      case result do
+        %{has_more: h} when is_boolean(h) -> h
+        _ -> length(items) >= per_page
+      end
+    # If API says no more but we got a full page, show button anyway (API may not report total)
+    has_more = has_more or length(items) >= per_page
+
     socket
-    |> stream(:list_items, items)
-    |> assign(:has_more_items, length(items) >= socket.assigns.per_page)
+    |> assign(:all_items, all_items)
+    |> stream(:list_items, all_items)
+    |> assign(:has_more_items, has_more)
     |> assign(:items_loading, false)
     |> assign(:items_error, nil)
   end
@@ -150,6 +180,7 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
   # Handle failed items fetch
   defp handle_items_result(socket, {:error, error}) do
     socket
+    |> assign(:all_items, [])
     |> stream(:list_items, [])
     |> assign(:has_more_items, false)
     |> assign(:items_loading, false)
@@ -161,8 +192,27 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
     Client.get_list(id, opts)
   end
 
-  # Fetch items for a specific list
+  # Fetch items for a specific list. Use Client.find (same as SearchLive) for correct pagination.
   defp fetch_list_items(list_id, opts) do
-    Client.find_list_items(list_id, opts)
+    per_page = Keyword.get(opts, :per_page, @default_per_page)
+    page = Keyword.get(opts, :page, 0)
+    start_idx = page * per_page
+
+    case Client.find(
+           conditions: [%{key: "list", operator: "==", value: list_id}],
+           range: [start_idx, start_idx + per_page],
+           keys: ["title", "id", "director", "country", "year", "language", "duration"],
+           sort: [%{key: "title", operator: "+"}],
+           current_user: Keyword.get(opts, :current_user)
+         ) do
+      {:ok, %{items: items, has_more: has_more}} ->
+        {:ok, %{items: items, total: length(items), has_more: has_more}}
+
+      {:ok, %{items: items}} ->
+        {:ok, %{items: items, total: length(items), has_more: length(items) >= per_page}}
+
+      other ->
+        other
+    end
   end
 end
