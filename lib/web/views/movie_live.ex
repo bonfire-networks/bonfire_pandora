@@ -1,6 +1,7 @@
 defmodule Bonfire.PanDoRa.Web.MovieLive do
   use Bonfire.UI.Common.Web, :surface_live_view
   require Logger
+  alias Bonfire.Common.Enums, as: Enums
   alias PanDoRa.API.Client
   alias Bonfire.PanDoRa.Utils
   alias Bonfire.PanDoRa.Archives
@@ -54,7 +55,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
           from_ok(Archives.movie_get_media(movie["id"]) |> debug("movie_get_media"))
         )
         |> then(fn s ->
-          if media = s.assigns.media, do: Logger.info("#{@pandora_thread_tag} page loaded media_id=#{id(media)}")
+          if media = s.assigns.media, do: Logger.info("#{@pandora_thread_tag} page loaded media_id=#{Enums.id(media)}")
           s
         end)
         |> assign(:in_timestamp, nil)
@@ -126,7 +127,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
              socket.assigns.out_timestamp,
              current_user: current_user(socket)
            ) do
-      media_id = socket.assigns.media && id(socket.assigns.media)
+      media_id = socket.assigns.media && Enums.id(socket.assigns.media)
       Logger.info("#{@pandora_thread_tag} annotation published, broadcast expected thread_id=#{media_id}")
 
       # Update the public_notes list in the socket
@@ -398,11 +399,11 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
   def handle_info({{Bonfire.Social.Threads.LiveHandler, :new_reply}, {thread_id, _data}} = msg, socket) do
     Logger.info("#{@pandora_thread_tag} MovieLive received new_reply thread_id=#{thread_id}")
-    super(msg, socket)
+    Bonfire.UI.Common.LiveHandlers.handle_info(msg, socket, __MODULE__)
   end
 
   def handle_info(msg, socket) do
-    super(msg, socket)
+    Bonfire.UI.Common.LiveHandlers.handle_info(msg, socket, __MODULE__)
   end
 
   defp put_edit_field(acc, key, movie_data) when is_atom(key) do
