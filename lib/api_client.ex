@@ -22,14 +22,11 @@ defmodule PanDoRa.API.Client do
   @metadata_keys @filter_types_fixed
   @metadata_fields @filter_types_fixed
 
-  # Filter type (UI) <-> API key. Instance-dependent: some use "keyword", some "keywords".
-  # filter_type_to_api_key: UI "keywords" -> API "keyword" (Pandora schema uses singular).
-  # api_key_to_filter_type: when extra_metadata returns "keyword" from API, map to "keywords" for UI.
-  # filter_type_to_api_key: empty = use as-is. Instance uses "keywords" (verified 91b92b7).
-  # api_key_to_filter_type: when extra_metadata returns "keyword", map to "keywords" for UI.
+  # Filter type (UI) <-> API key. Pandora schema uses "keyword" (singular) for the field.
+  # UI uses "keywords" (plural); conditions and group must use "keyword" to match Pandora.
   @filter_type_to_api_key %{"keywords" => "keyword"}
   @api_key_to_filter_type %{"keyword" => "keywords"}
-  # Array fields (director, featuring, keywords) use "=" (contains); others use "=="
+  # Pandora parseCondition uses "==" for facet fields (director, featuring, year, keyword).
 
   @doc """
   Basic find function that matches the API's find endpoint functionality with pagination support
@@ -1358,9 +1355,9 @@ defmodule PanDoRa.API.Client do
 
   @doc """
   Returns the comparison operator for a filter type.
-  Array fields (director, featuring, keywords) use "=" (contains); others use "==".
+  Pandora uses "==" for all facet fields (director, featuring, year, keyword).
+  See item/managers.py parseCondition: facet_keys use get_operator(op, 'istr') → "==" = __iexact.
   """
-  def operator_for_filter_type(type) when type in ~w(director featuring keyword keywords), do: "="
   def operator_for_filter_type(_type), do: "=="
 
   @doc """
