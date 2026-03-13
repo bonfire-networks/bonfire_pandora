@@ -172,6 +172,8 @@
         showing_within={:annotations}
       />
 
+      {!-- Classic @public_notes block (commented to use ThreadLive only, for debug) --}
+      {!--
       <div
         :for={note <- @public_notes}
         id={"note-#{note["id"]}"}
@@ -254,6 +256,7 @@
           <div class="prose">{e(note, "value", "")}</div>
         </div>
       </div>
+      --}
     </div>
   </div>
 </div>
