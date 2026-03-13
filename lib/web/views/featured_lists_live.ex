@@ -1,6 +1,7 @@
 defmodule Bonfire.PanDoRa.Web.FeaturedListsLive do
   use Bonfire.UI.Common.Web, :surface_live_view
   alias PanDoRa.API.Client
+  alias Bonfire.PanDoRa.Auth
 
   @behaviour Bonfire.UI.Common.LiveHandler
 
@@ -18,8 +19,15 @@ defmodule Bonfire.PanDoRa.Web.FeaturedListsLive do
       #   {Bonfire.PanDoRa.Components.CreateNewListLive, [id: "create_new_list", myself: @myself]}
       # ])
       |> handle_lists_result(lists_result)
+      |> assign_pandora_urls()
 
     {:ok, socket}
+  end
+
+  defp assign_pandora_urls(socket) do
+    socket
+    |> assign(:pandora_token, Auth.pandora_token(current_user: socket.assigns[:current_user]))
+    |> assign(:pandora_base_url, String.trim_trailing(Client.get_pandora_url() || "", "/"))
   end
 
   # Handle successful list fetch

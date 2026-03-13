@@ -1,6 +1,7 @@
 defmodule Bonfire.PanDoRa.Web.ListLive do
   use Bonfire.UI.Common.Web, :surface_live_view
   alias PanDoRa.API.Client
+  alias Bonfire.PanDoRa.Auth
 
   @behaviour Bonfire.UI.Common.LiveHandler
   @default_per_page 20
@@ -26,6 +27,7 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
       |> assign(:loading, true)
       |> assign(:error, nil)
       |> assign(:uploaded_files, nil)
+      |> assign_pandora_urls()
 
     if socket_connected?(socket) do
       send(self(), :load_initial_data)
@@ -33,6 +35,16 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
     else
       {:ok, socket}
     end
+  end
+
+  defp assign_pandora_urls(socket) do
+    socket
+    |> assign(:pandora_token, Auth.pandora_token(current_user: socket.assigns[:current_user]))
+    |> assign(:pandora_base_url, String.trim_trailing(Client.get_pandora_url() || "", "/"))
+  end
+
+  def list_icon_src(pandora_token, pandora_base_url, current_user, list) do
+    Bonfire.PanDoRa.Web.MyListsLive.list_icon_src(pandora_token, pandora_base_url, current_user, list)
   end
 
   def handle_info(:load_initial_data, socket) do

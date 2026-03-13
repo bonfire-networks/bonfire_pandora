@@ -23,11 +23,12 @@
   <li :for={list <- @lists} id={e(list, "id", "")} class="list-row">
     <div><img
         class="w-24 h-24 rounded-box object-cover"
-        src={Client.list_icon_url(list, current_user: @current_user)}
+        loading="lazy"
+        src={list_icon_src(@pandora_token, @pandora_base_url, @current_user, list)}
         alt=""
       /></div>
     <div class="flex flex-col gap-1">
-      <LinkLive to={~p"lists/#{e(list, "id", "")}"} class="text-lg link link-hover font-semibold">{e(list, "name", "")}</LinkLive>
+      <LinkLive to={~p"lists/#{URI.encode(e(list, "id", ""))}"} class="text-lg link link-hover font-semibold">{e(list, "name", "")}</LinkLive>
       <div class="badge badge-info badge-sm badge-soft">{e(list, "status", "")}</div>
       <p class="list-col-wrap text-sm text-base-content/70">
         {e(list, "description", "")}
@@ -55,7 +56,7 @@
         role="menu"
         aria-orientation="vertical"
       >
-        <li><LinkLive to={~p"lists/#{e(list, "id", "")}"}>{l("View")}</LinkLive></li>
+        <li><LinkLive to={~p"lists/#{URI.encode(e(list, "id", ""))}"}>{l("View")}</LinkLive></li>
         <li>
           <Bonfire.UI.Common.OpenModalLive
             id={"edit_list_for_#{e(list, "id", "")}"}
@@ -68,7 +69,7 @@
                 <StatefulComponent
                   module={maybe_component(Bonfire.Files.Web.UploadIconLive, @__context__)}
                   id={:update_icon}
-                  src={Client.list_icon_url(list, current_user: @current_user)}
+                  src={list_icon_src(@pandora_token, @pandora_base_url, @current_user, list)}
                   set_fn={&Bonfire.PanDoRa.Components.CreateNewListLive.set_list_icon/5}
                   label={l("list icon")}
                   label_on_hover={false}

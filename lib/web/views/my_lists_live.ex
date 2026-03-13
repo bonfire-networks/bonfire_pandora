@@ -1,6 +1,7 @@
 defmodule Bonfire.PanDoRa.Web.MyListsLive do
   use Bonfire.UI.Common.Web, :surface_live_view
   alias PanDoRa.API.Client
+  alias Bonfire.PanDoRa.Auth
 
   @behaviour Bonfire.UI.Common.LiveHandler
 
@@ -19,8 +20,33 @@ defmodule Bonfire.PanDoRa.Web.MyListsLive do
       #   {Bonfire.PanDoRa.Components.CreateNewListLive, [id: "create_new_list", myself: @myself]}
       # ])
       |> handle_lists_result(lists_result)
+      |> assign_pandora_urls()
 
     {:ok, socket}
+  end
+
+  defp assign_pandora_urls(socket) do
+    socket
+    |> assign(:pandora_token, Auth.pandora_token(current_user: socket.assigns[:current_user]))
+    |> assign(:pandora_base_url, String.trim_trailing(Client.get_pandora_url() || "", "/"))
+  end
+
+  # SearchLive pattern: build direct URL when token + item_id exist
+  def list_icon_src(pandora_token, pandora_base_url, current_user, list) do
+    item_id = Client.list_icon_item_id(list)
+
+    case {pandora_token, pandora_base_url, item_id} do
+      {t, b, id} when is_binary(t) and t != "" and is_binary(b) and b != "" and
+                       is_binary(id) and id != "" ->
+        "#{String.trim_trailing(b, "/")}/#{id}/icon128.jpg?token=#{t}"
+
+      _ ->
+        Client.list_icon_url(list,
+          current_user: current_user,
+          pandora_token: pandora_token,
+          pandora_base_url: pandora_base_url
+        )
+    end
   end
 
   # Handle successful list fetch

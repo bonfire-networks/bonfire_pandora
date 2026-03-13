@@ -8,6 +8,7 @@ defmodule Bonfire.PanDoRa.Components.MoviePreviewLive do
   prop event_target, :any, default: nil
   prop movie, :map, required: true
   prop image_src, :string, default: nil
+  prop media_url, :string, default: nil
 
   defdelegate to_attr(v), to: Bonfire.PanDoRa.Utils
   defdelegate extra_metadata(movie), to: Bonfire.PanDoRa.Utils

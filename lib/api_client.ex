@@ -1426,16 +1426,77 @@ defmodule PanDoRa.API.Client do
   end
 
   @doc """
+  Returns the item_id for a list's icon (from posterFrames or first item), or nil.
+  Use with direct URL building (SearchLive pattern): when token exists,
+  build URL as base <> "/" <> item_id <> "/icon128.jpg?token=" <> token.
+  """
+  def list_icon_item_id(list) when is_map(list) do
+    list_icon_item_id_from_poster_frames(list) || list_icon_item_id_from_first_item(list)
+  end
+
+  def list_icon_item_id(_), do: nil
+
+  @doc """
   Returns the URL for a list's icon from posterFrames or first item.
   Uses media_url (token when available, else proxy) when opts has current_user.
   posterFrames formats: `[%{"path" => path}]`, `[%{path => pos}]`, `[[path, pos]]`.
   Fallback: first item's icon when list has items but no posterFrames.
   """
-  def list_icon_url(list, opts \\ []) when is_map(list) do
+  def list_icon_url(list, opts \\ [])
+
+  def list_icon_url(list, opts) when is_map(list) do
     from_poster_frames(list, opts) || from_first_item(list, opts) || ""
   end
 
   def list_icon_url(_, _opts), do: ""
+
+  defp list_icon_item_id_from_poster_frames(list) do
+    case list["posterFrames"] || list["poster_frames"] do
+      [frame | _] when is_map(frame) ->
+        path =
+          Map.get(frame, "path") ||
+            Map.get(frame, "0") ||
+            (frame |> Map.keys() |> Enum.find(&(is_binary(&1) and String.contains?(&1, "/"))))
+
+        item_id = Map.get(frame, "item_id") || Map.get(frame, "item")
+        item_id_from_path(path) || (if is_binary(item_id) and item_id != "", do: item_id, else: nil)
+
+      [elem | _] when is_list(elem) ->
+        path = Enum.at(elem, 0) || Enum.at(elem, 1)
+        item_id_from_path(path)
+
+      _ ->
+        nil
+    end
+  end
+
+  defp list_icon_item_id_from_first_item(list) do
+    case list["items"] do
+      [first | _] when is_map(first) ->
+        item_id = first["id"] || first["item_id"]
+        if is_binary(item_id) and item_id != "", do: item_id, else: nil
+
+      _ ->
+        nil
+    end
+  end
+
+  defp item_id_from_path(path) when is_binary(path) and path != "" do
+    case extract_item_id_from_path(path) do
+      {item_id, _filename} -> item_id
+      nil ->
+        # Simple format "item_id/icon128.jpg"
+        case String.split(path, "/", parts: 2) do
+          [id, _] when is_binary(id) and id != "" ->
+            if String.contains?(id, "."), do: nil, else: id
+
+          _ ->
+            nil
+        end
+    end
+  end
+
+  defp item_id_from_path(_), do: nil
 
   defp from_poster_frames(list, opts) do
     case list["posterFrames"] || list["poster_frames"] do
@@ -1478,8 +1539,16 @@ defmodule PanDoRa.API.Client do
 
   defp resolve_list_icon_path(path, opts) when is_binary(path) and path != "" do
     cond do
-      String.starts_with?(path, "http") -> path
-      String.starts_with?(path, "/") -> path
+      # When we have token and base, extract item_id from any path and build direct URL (SearchLive pattern)
+      String.starts_with?(path, "http") or String.starts_with?(path, "/") ->
+        case extract_item_id_from_path(path) do
+          {item_id, filename} when is_binary(item_id) and item_id != "" ->
+            media_url_or_proxy(item_id, filename, opts)
+
+          _ ->
+            path
+        end
+
       true ->
         case String.split(path, "/", parts: 2) do
           [item_id, filename] when item_id != "" and filename != "" ->
@@ -1493,17 +1562,47 @@ defmodule PanDoRa.API.Client do
 
   defp resolve_list_icon_path(_, _opts), do: nil
 
+  # Extract item_id and filename from paths like "/archive/media/ITEM_ID/icon128.jpg" or "https://host/ITEM_ID/icon128.jpg".
+  # item_id must not contain "." to avoid treating hostnames as item_ids.
+  defp extract_item_id_from_path(path) do
+    path_no_query = path |> String.split("?") |> hd()
+    parts = path_no_query |> String.split("/") |> Enum.reject(&(&1 == ""))
+
+    case {Enum.at(parts, -2), Enum.at(parts, -1)} do
+      {item_id, filename}
+      when is_binary(item_id) and item_id != "" and is_binary(filename) and filename != "" ->
+        if String.contains?(item_id, ".") do
+          nil
+        else
+          {item_id, filename}
+        end
+
+      _ ->
+        nil
+    end
+  end
+
   @doc """
   Returns the best URL for a Pandora image/thumbnail: direct URL with ?token= when
   a token exists (faster loading), otherwise the proxy URL.
+  Accepts optional :pandora_token and :pandora_base_url in opts to avoid repeated lookups.
   """
   def media_url(item_id, filename, opts \\ []) when is_binary(item_id) and is_binary(filename) do
     opts = Utils.to_options(opts)
 
-    case Auth.pandora_token(opts) do
-      token when is_binary(token) and token != "" ->
-        base = String.trim_trailing(get_pandora_url() || "", "/")
-        "#{base}/#{item_id}/#{filename}?token=#{token}"
+    token =
+      case {opts[:pandora_token], opts[:pandora_base_url]} do
+        {t, base} when is_binary(t) and t != "" and is_binary(base) and base != "" ->
+          t
+
+        _ ->
+          Auth.pandora_token(opts)
+      end
+
+    case token do
+      t when is_binary(t) and t != "" ->
+        base = opts[:pandora_base_url] || String.trim_trailing(get_pandora_url() || "", "/")
+        "#{String.trim_trailing(base, "/")}/#{item_id}/#{filename}?token=#{t}"
 
       _ ->
         media_proxy_url(item_id, filename)
@@ -1522,14 +1621,24 @@ defmodule PanDoRa.API.Client do
   @doc """
   Returns the best URL for a Pandora video: direct URL with ?token= when a token
   exists (faster playback), otherwise the proxy URL.
+  Accepts optional :pandora_token and :pandora_base_url in opts to avoid repeated lookups.
   """
   def video_url(item_id, filename, opts \\ []) when is_binary(item_id) and is_binary(filename) do
     opts = Utils.to_options(opts)
 
-    case Auth.pandora_token(opts) do
-      token when is_binary(token) and token != "" ->
-        base = String.trim_trailing(get_pandora_url() || "", "/")
-        "#{base}/#{item_id}/#{filename}?token=#{token}"
+    token =
+      case {opts[:pandora_token], opts[:pandora_base_url]} do
+        {t, base} when is_binary(t) and t != "" and is_binary(base) and base != "" ->
+          t
+
+        _ ->
+          Auth.pandora_token(opts)
+      end
+
+    case token do
+      t when is_binary(t) and t != "" ->
+        base = opts[:pandora_base_url] || String.trim_trailing(get_pandora_url() || "", "/")
+        "#{String.trim_trailing(base, "/")}/#{item_id}/#{filename}?token=#{t}"
 
       _ ->
         video_proxy_url(item_id, filename)

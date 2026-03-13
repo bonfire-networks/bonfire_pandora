@@ -8,11 +8,12 @@
   <li :for={list <- @lists} id={e(list, "id", "")} class="list-row">
     <div><img
         class="w-24 h-24 rounded-box object-cover"
-        src={Client.list_icon_url(list, current_user: @current_user)}
+        loading="lazy"
+        src={Bonfire.PanDoRa.Web.MyListsLive.list_icon_src(@pandora_token, @pandora_base_url, @current_user, list)}
         alt=""
       /></div>
     <div class="flex flex-col gap-1">
-      <LinkLive to={~p"lists/#{e(list, "id", "")}"} class="text-lg link link-hover font-semibold">{e(list, "name", "")}</LinkLive>
+      <LinkLive to={~p"lists/#{URI.encode(e(list, "id", ""))}"} class="text-lg link link-hover font-semibold">{e(list, "name", "")}</LinkLive>
       <div class="badge badge-info badge-sm badge-soft">{e(list, "status", "")}</div>
       <p class="list-col-wrap text-sm text-base-content/70">
         {e(list, "description", "")}
