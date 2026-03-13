@@ -23,12 +23,13 @@ defmodule PanDoRa.API.Client do
   @metadata_fields @filter_types_fixed
 
   # Filter type (UI) <-> API key. Instance-dependent: some use "keyword", some "keywords".
-  # filter_type_to_api_key: empty = use filter_type as-is (e.g. "keywords" for group/conditions).
+  # filter_type_to_api_key: UI "keywords" -> API "keyword" (Pandora schema uses singular).
   # api_key_to_filter_type: when extra_metadata returns "keyword" from API, map to "keywords" for UI.
-  @filter_type_to_api_key %{}
+  # filter_type_to_api_key: empty = use as-is. Instance uses "keywords" (verified 91b92b7).
+  # api_key_to_filter_type: when extra_metadata returns "keyword", map to "keywords" for UI.
+  @filter_type_to_api_key %{"keywords" => "keyword"}
   @api_key_to_filter_type %{"keyword" => "keywords"}
-  # Array fields (director, featuring, keywords) need "=" (contains) per Pandora QuerySyntax
-  @array_filter_types ~w(director featuring keyword keywords)
+  # Array fields (director, featuring, keywords) use "=" (contains); others use "=="
 
   @doc """
   Basic find function that matches the API's find endpoint functionality with pagination support
@@ -183,37 +184,40 @@ defmodule PanDoRa.API.Client do
         true -> get_filter_keys(opts)
       end
 
-    # Make a single request per field but in parallel
+    # Make a single request per field but in parallel.
+    # For "keywords": try both "keyword" and "keywords" (instance-dependent).
     tasks =
       fields
       |> Enum.map(fn field ->
         Task.async(fn ->
-          api_key = filter_type_to_api_key(field)
+          api_keys = api_keys_for_field(field)
 
-          # Build query for each field (use API key for group, e.g. keyword not keywords)
-          payload = %{
-            query: %{
-              conditions: conditions,
-              operator: "&"
-            },
-            group: api_key,
-            # Sort by count descending
-            sort: [%{key: "items", operator: "-"}],
-            # Use pagination range
-            range: [start_idx, end_idx]
-          }
+          items =
+            Enum.reduce_while(api_keys, [], fn api_key, acc ->
+              payload = %{
+                query: %{
+                  conditions: conditions,
+                  operator: "&"
+                },
+                group: api_key,
+                sort: [%{key: "items", operator: "-"}],
+                range: [start_idx, end_idx]
+              }
 
-          debug("Making request for field #{field} (api_key=#{api_key})")
-          result = make_request("find", payload, opts)
-          debug(result, "Got result for field #{field}")
+              debug("Making request for field #{field} (api_key=#{api_key})")
+              result = make_request("find", payload, opts)
+              debug(result, "Got result for field #{field}")
 
-          case result do
-            {:ok, %{"items" => items}} when is_list(items) ->
-              {field, items}
+              case result do
+                {:ok, %{"items" => items}} when is_list(items) and items != [] ->
+                  {:halt, items}
 
-            _ ->
-              {field, []}
-          end
+                _ ->
+                  {:cont, acc}
+              end
+            end)
+
+          {field, items}
         end)
       end)
 
@@ -1341,6 +1345,10 @@ defmodule PanDoRa.API.Client do
     Map.get(@filter_type_to_api_key, type, type)
   end
 
+  # For "keywords": try both "keyword" and "keywords" (instance-dependent).
+  defp api_keys_for_field("keywords"), do: ["keyword", "keywords"]
+  defp api_keys_for_field(field), do: [filter_type_to_api_key(field)]
+
   @doc """
   Maps API key to filter type (UI). Use when receiving field from extra_metadata (e.g. "keyword" -> "keywords").
   """
@@ -1350,12 +1358,10 @@ defmodule PanDoRa.API.Client do
 
   @doc """
   Returns the comparison operator for a filter type.
-  Array fields (director, featuring, keyword) use "=" (contains).
-  Scalar fields (year, country, language) use "==" (is).
+  Array fields (director, featuring, keywords) use "=" (contains); others use "==".
   """
-  def operator_for_filter_type(type) when is_binary(type) do
-    if type in @array_filter_types, do: "=", else: "=="
-  end
+  def operator_for_filter_type(type) when type in ~w(director featuring keyword keywords), do: "="
+  def operator_for_filter_type(_type), do: "=="
 
   @doc """
   Returns ALL item key ids for this Pandora instance (not just filterable ones).
