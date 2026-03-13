@@ -1,152 +1,152 @@
-<div class="w-full max-w-full flex flex-col feed w-full max-w-full lg:rounded-xl lg:shadow bg-base-100">
-  <div class="flex rounded-t-xl border-b border-base-content/10 flex-col gap-2 p-3">
-    <form change="validate" phx-submit="search" phx-target={@myself} action="?" autocomplete="off">
-      <div class="flex gap-4">
-        <div class="flex-grow relative">
-          <input
-            type="search"
-            name="term"
-            value={@term}
-            placeholder={l("Enter search term")}
-            class="input w-full"
-            disabled={@loading}
-          />
+<div class="w-full max-w-full flex flex-col lg:flex-row gap-4 feed w-full max-w-full lg:rounded-xl lg:shadow bg-base-100">
+  <!-- Main area: form, badges, results -->
+  <div class="flex-1 min-w-0 flex flex-col">
+    <div class="flex rounded-t-xl border-b border-base-content/10 flex-col gap-2 p-3">
+      <form change="validate" phx-submit="search" phx-target={@myself} action="?" autocomplete="off">
+        <div class="flex gap-4">
+          <div class="flex-grow relative">
+            <input
+              type="search"
+              name="term"
+              value={@term}
+              placeholder={l("Enter search term")}
+              class="input w-full"
+              disabled={@loading}
+            />
+          </div>
+          <button type="submit" class="btn btn-soft btn-secondary" disabled={@loading}>
+            {if @loading, do: l("Searching..."), else: l("Search")}
+          </button>
         </div>
-        <button type="submit" class="btn btn-soft btn-secondary" disabled={@loading}>
-          {if @loading, do: l("Searching..."), else: l("Search")}
+      </form>
+
+      <!-- Active filters and search term display -->
+      <div
+        :if={not is_nil(@term) or Enum.any?(Map.values(@selected_by_field || %{}), &(length(&1) > 0))}
+        class="p-3 bg-base-200 rounded-lg flex justify-between items-center"
+      >
+        <div class="flex flex-1 flex-wrap gap-2">
+          {#if @term}
+            <div class="badge badge-accent badge-soft">
+              <span>Search: {String.slice(@term, 0, 30)}{if String.length(@term) > 30, do: ~s(...)}</span>
+            </div>
+          {/if}
+
+          {#for badge <- @active_filter_badges}
+            {#for value <- badge.values}
+              <button
+                type="button"
+                phx-click={"filter_by_#{badge.id}"}
+                phx-target={@myself}
+                phx-value-id={to_string(value)}
+                class="badge badge-accent badge-soft gap-1 cursor-pointer hover:bg-primary/30 border-0"
+                disabled={@loading}
+                title={l("Remove filter")}
+              >
+                <span>{badge.label}: {value}</span>
+                <span class="ml-0.5 opacity-70 hover:opacity-100" aria-hidden="true">×</span>
+              </button>
+            {/for}
+          {/for}
+        </div>
+        <button
+          type="button"
+          phx-click="clear_filters"
+          phx-target={@myself}
+          class="btn btn-ghost btn-soft gap-2"
+          disabled={@loading}
+        >
+          <#Icon iconify="carbon:filter-remove" class="w-4 h-4" />
+          {l("Clear filters")}
         </button>
       </div>
-    </form>
-    <div class="flex mt-3 justify-between gap-3 flex-col md:flex-row">
-      {#for section <- @filter_sections}
-        <nav class="flex-1 bg-base-200 flex flex-col rounded-box min-w-0">
-          <div class="flex justify-between items-center p-3 pb-2 px-4">
-            <h2 class="text-sm font-medium text-base-content/50">{section.label}</h2>
-          </div>
-          <div
-            :hook
-            id={"#{section.id}-container"}
-            data-page={section.page}
-            data-type="filter"
-            phx-update="append"
-          >
-            <ul
-              class="menu menu-vertical flex-nowrap h-[200px] max-h-[200px] overflow-y-auto flex-1 w-full pt-0 relative"
-              id={"#{section.id}-list"}
-              style="overscroll-behavior: contain;"
-            >
-              {#for %{name: name, items: count} <- section.available}
-                <li class="w-full" id={"#{section.id}-#{name}"}>
-                  <a
-                    phx-click={"filter_by_#{section.id}"}
-                    phx-target={@myself}
-                    phx-value-id={name}
-                    phx-throttle="300"
-                    class={"flex gap-3 px-2 text-base-content" <> if(name in section.selected, do: ~s( active bg-primary/10), else: "")}
-                    disabled={@loading}
-                  >
-                    <span class="flex-1">{name}</span>
-                    <span class="text-sm opacity-50">({count})</span>
-                    {#if name in section.selected}
-                      <span class="text-primary">✓</span>
-                    {/if}
-                  </a>
-                </li>
-              {/for}
-            </ul>
-            {#if section.loading}
-              <div class="flex justify-center p-2">
-                <div class="loading loading-spinner loading-sm" />
-              </div>
-            {/if}
-          </div>
-        </nav>
-      {/for}
     </div>
 
-    <!-- Active filters and search term display -->
-    <div
-      :if={not is_nil(@term) or Enum.any?(Map.values(@selected_by_field || %{}), &(length(&1) > 0))}
-      class="p-3 bg-base-200 rounded-lg flex justify-between items-center"
-    >
-      <div class="flex flex-1 flex-wrap gap-2">
-        {#if @term}
-          <div class="badge badge-accent badge-soft">
-            <span>Search: {String.slice(@term, 0, 30)}{if String.length(@term) > 30, do: ~s(...)}</span>
-          </div>
-        {/if}
-
-        {#for badge <- @active_filter_badges}
-          {#for value <- badge.values}
-            <button
-              type="button"
-              phx-click={"filter_by_#{badge.id}"}
-              phx-target={@myself}
-              phx-value-id={to_string(value)}
-              class="badge badge-accent badge-soft gap-1 cursor-pointer hover:bg-primary/30 border-0"
-              disabled={@loading}
-              title={l("Remove filter")}
-            >
-              <span>{badge.label}: {value}</span>
-              <span class="ml-0.5 opacity-70 hover:opacity-100" aria-hidden="true">×</span>
-            </button>
-          {/for}
-        {/for}
-      </div>
-      <button
-        type="button"
-        phx-click="clear_filters"
-        phx-target={@myself}
-        class="btn btn-ghost btn-soft gap-2"
-        disabled={@loading}
-      >
-        <#Icon iconify="carbon:filter-remove" class="w-4 h-4" />
-        {l("Clear filters")}
-      </button>
-    </div>
-  </div>
-
-  <div class="overflow-x-auto relative">
-    {#if @loading && @page == 0}
-      <div class="bg-base-200/50 p-20 flex items-center justify-center z-10">
-        <div class="loading loading-spinner loading-lg text-primary" />
-      </div>
-    {/if}
-    <div class="search-results-container" id="search-results-container" :hook data-type="results">
-      <ul
-        id="search_results"
-        phx-update="stream"
-        data-page={@page}
-        data-loading={@loading}
-        class="list"
-      >
-        {#for {id, result} <- @streams.search_results}
-          <Bonfire.PanDoRa.Components.MoviePreviewLive
-            event_target={@myself}
-            movie={result}
-            movie_id={id}
-            media_url={if @pandora_token, do: "#{@pandora_base_url}/#{e(result, "id", "")}/icon128.jpg?token=#{@pandora_token}", else: Client.media_proxy_url(e(result, "id", ""), "icon128.jpg")}
-          />
-        {/for}
-      </ul>
-      {#if not @loading and (@current_count || 0) == 0}
-        <div class="p-10 text-center text-base-content/50">
-          {l("No items found. Make sure you are connected to Pandora.")}
+    <div class="overflow-x-auto relative flex-1">
+      {#if @loading && @page == 0}
+        <div class="bg-base-200/50 p-20 flex items-center justify-center z-10">
+          <div class="loading loading-spinner loading-lg text-primary" />
         </div>
       {/if}
-      <div id="search-results-sentinel" phx-update="ignore">
-        <Bonfire.PanDoRa.Components.LoadingSentinelLive
-          loading={@loading}
-          page={@page}
-          has_more={@has_more_items}
-        />
+      <div class="search-results-container" id="search-results-container" :hook data-type="results">
+        <ul
+          id="search_results"
+          phx-update="stream"
+          data-page={@page}
+          data-loading={@loading}
+          class="list"
+        >
+          {#for {id, result} <- @streams.search_results}
+            <Bonfire.PanDoRa.Components.MoviePreviewLive
+              event_target={@myself}
+              movie={result}
+              movie_id={id}
+              media_url={if @pandora_token, do: "#{@pandora_base_url}/#{e(result, "id", "")}/icon128.jpg?token=#{@pandora_token}", else: Client.media_proxy_url(e(result, "id", ""), "icon128.jpg")}
+            />
+          {/for}
+        </ul>
+        {#if not @loading and (@current_count || 0) == 0}
+          <div class="p-10 text-center text-base-content/50">
+            {l("No items found. Make sure you are connected to Pandora.")}
+          </div>
+        {/if}
+        <div id="search-results-sentinel" phx-update="ignore">
+          <Bonfire.PanDoRa.Components.LoadingSentinelLive
+            loading={@loading}
+            page={@page}
+            has_more={@has_more_items}
+          />
+        </div>
+        {!-- <ResultsDisplay :if={@results} results={@results} search_term={@search_term} /> --}
       </div>
-      {!-- <div class="flex flex-col items-center gap-2 py-4 border-t border-base-content/10">
-    {#if @has_more_items && @loading && @page > 0}
-      <div class="loading loading-spinner loading-lg text-primary"></div>
-    {/if}
-  </div> --}
     </div>
-    {!-- <ResultsDisplay :if={@results} results={@results} search_term={@search_term} /> --}
   </div>
+
+  <!-- Sidebar: filter sections (right on lg, below on mobile) -->
+  <aside class="w-full lg:w-80 flex-shrink-0 flex flex-col gap-3 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+    {#for section <- @filter_sections}
+      <nav class="bg-base-200 flex flex-col rounded-box min-w-0 flex-shrink-0">
+        <div class="flex justify-between items-center p-3 pb-2 px-4">
+          <h2 class="text-sm font-medium text-base-content/50">{section.label}</h2>
+        </div>
+        <div
+          :hook
+          id={"#{section.id}-container"}
+          data-page={section.page}
+          data-type="filter"
+          phx-update="append"
+        >
+          <ul
+            class="menu menu-vertical flex-nowrap h-[160px] max-h-[160px] overflow-y-auto flex-1 w-full pt-0 relative"
+            id={"#{section.id}-list"}
+            style="overscroll-behavior: contain;"
+          >
+            {#for %{name: name, items: count} <- section.available}
+              <li class="w-full" id={"#{section.id}-#{name}"}>
+                <a
+                  phx-click={"filter_by_#{section.id}"}
+                  phx-target={@myself}
+                  phx-value-id={name}
+                  phx-throttle="300"
+                  class={"flex gap-3 px-2 text-base-content" <> if(name in section.selected, do: ~s( active bg-primary/10), else: "")}
+                  disabled={@loading}
+                >
+                  <span class="flex-1">{name}</span>
+                  <span class="text-sm opacity-50">({count})</span>
+                  {#if name in section.selected}
+                    <span class="text-primary">✓</span>
+                  {/if}
+                </a>
+              </li>
+            {/for}
+          </ul>
+          {#if section.loading}
+            <div class="flex justify-center p-2">
+              <div class="loading loading-spinner loading-sm" />
+            </div>
+          {/if}
+        </div>
+      </nav>
+    {/for}
+  </aside>
 </div>
