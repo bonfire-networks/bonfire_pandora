@@ -43,7 +43,7 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
 
         Task.start(fn ->
           payload = fetch_list_items_async(lists, opts, movie_id)
-          lists_with_icons = Enum.map(payload.lists_with_items, &add_icon_url/1)
+          lists_with_icons = Enum.map(payload.lists_with_items, &add_icon_url(&1, opts))
 
           Phoenix.LiveView.send_update(__MODULE__,
             id: movie_id,
@@ -123,8 +123,11 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
 
   # Handle successful list fetch
   defp handle_lists_result(socket, {:ok, %{items: lists}}) do
+    opts = [current_user: current_user(socket)]
+
     socket
     |> assign(:lists, lists)
+    |> assign(:pandora_opts, opts)
     |> assign(:loading, false)
     |> assign(:error, nil)
   end
@@ -133,6 +136,7 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
   defp handle_lists_result(socket, {:error, error}) do
     socket
     |> assign(:lists, [])
+    |> assign(:pandora_opts, [])
     |> assign(:loading, false)
     |> assign(:error, error)
   end
@@ -167,7 +171,7 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
     %{lists_with_items: lists_with_items, existing_lists: existing_lists, movie_in_lists: movie_in_lists}
   end
 
-  defp add_icon_url(list), do: Map.put(list, "icon_url", Client.list_icon_url(list))
+  defp add_icon_url(list, opts), do: Map.put(list, "icon_url", Client.list_icon_url(list, opts))
 
   # Check if movie exists in any of user's lists (sync path, e.g. update_lists).
   defp check_movie_in_lists(socket) do

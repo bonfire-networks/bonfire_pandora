@@ -1427,16 +1427,17 @@ defmodule PanDoRa.API.Client do
 
   @doc """
   Returns the URL for a list's icon from posterFrames or first item.
+  Uses media_url (token when available, else proxy) when opts has current_user.
   posterFrames formats: `[%{"path" => path}]`, `[%{path => pos}]`, `[[path, pos]]`.
   Fallback: first item's icon when list has items but no posterFrames.
   """
-  def list_icon_url(list) when is_map(list) do
-    from_poster_frames(list) || from_first_item(list) || ""
+  def list_icon_url(list, opts \\ []) when is_map(list) do
+    from_poster_frames(list, opts) || from_first_item(list, opts) || ""
   end
 
-  def list_icon_url(_), do: ""
+  def list_icon_url(_, _opts), do: ""
 
-  defp from_poster_frames(list) do
+  defp from_poster_frames(list, opts) do
     case list["posterFrames"] || list["poster_frames"] do
       [frame | _] when is_map(frame) ->
         path =
@@ -1445,36 +1446,44 @@ defmodule PanDoRa.API.Client do
             (frame |> Map.keys() |> Enum.find(&(is_binary(&1) and String.contains?(&1, "/"))))
 
         item_id = Map.get(frame, "item_id") || Map.get(frame, "item")
-        resolve_list_icon_path(path) || (item_id && media_proxy_url(item_id, "icon128.jpg"))
+        resolve_list_icon_path(path, opts) || (item_id && media_url_or_proxy(item_id, "icon128.jpg", opts))
 
       [elem | _] when is_list(elem) ->
         path = Enum.at(elem, 0) || Enum.at(elem, 1)
-        resolve_list_icon_path(path)
+        resolve_list_icon_path(path, opts)
 
       _ ->
         nil
     end
   end
 
-  defp from_first_item(list) do
+  defp from_first_item(list, opts) do
     case list["items"] do
       [first | _] when is_map(first) ->
         item_id = first["id"] || first["item_id"]
-        if is_binary(item_id) and item_id != "", do: media_proxy_url(item_id, "icon128.jpg"), else: nil
+        if is_binary(item_id) and item_id != "", do: media_url_or_proxy(item_id, "icon128.jpg", opts), else: nil
 
       _ ->
         nil
     end
   end
 
-  defp resolve_list_icon_path(path) when is_binary(path) and path != "" do
+  defp media_url_or_proxy(item_id, filename, opts) do
+    if opts != [] do
+      media_url(item_id, filename, opts)
+    else
+      media_proxy_url(item_id, filename)
+    end
+  end
+
+  defp resolve_list_icon_path(path, opts) when is_binary(path) and path != "" do
     cond do
       String.starts_with?(path, "http") -> path
       String.starts_with?(path, "/") -> path
       true ->
         case String.split(path, "/", parts: 2) do
           [item_id, filename] when item_id != "" and filename != "" ->
-            media_proxy_url(item_id, filename)
+            media_url_or_proxy(item_id, filename, opts)
 
           _ ->
             path
@@ -1482,7 +1491,7 @@ defmodule PanDoRa.API.Client do
     end
   end
 
-  defp resolve_list_icon_path(_), do: nil
+  defp resolve_list_icon_path(_, _opts), do: nil
 
   @doc """
   Returns the best URL for a Pandora image/thumbnail: direct URL with ?token= when

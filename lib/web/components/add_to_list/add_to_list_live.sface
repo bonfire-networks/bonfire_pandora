@@ -22,7 +22,7 @@
           class="list-row cursor-pointer hover:bg-base-content/5"
         >
           <div class="w-12 h-12 rounded bg-base-content/5 flex items-center justify-center overflow-hidden">
-            {#if icon_url = Map.get(list, "icon_url") || Client.list_icon_url(list)}
+            {#if icon_url = Map.get(list, "icon_url") || Client.list_icon_url(list, @pandora_opts || [])}
               <img
                 src={icon_url}
                 alt=""
