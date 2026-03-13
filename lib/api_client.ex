@@ -466,7 +466,8 @@ defmodule PanDoRa.API.Client do
           keys: ["id", "description", "poster_frames", "posterFrames", "name", "status", "user"],
           sort: [%{key: "name", operator: "+"}],
           type: :user,
-          user: pandora_username
+          user: pandora_username,
+          per_page: Keyword.get(opts, :per_page, 200)
         ] ++ opts
       )
     end
@@ -699,12 +700,11 @@ defmodule PanDoRa.API.Client do
         operator: "&"
       },
       range: range,
+      # Pandora canonical item id is "id" (find returns it, addListItems expects it)
       keys:
         Keyword.get(opts, :keys, [
           "title",
           "id",
-          "item_id",
-          "public_id",
           "director",
           "country",
           "year",

@@ -5,7 +5,7 @@ defmodule Bonfire.PanDoRa.Web.WidgetPublicListsLive do
   prop user, :any, default: nil
 
   def update(assigns, socket) do
-    lists_result = Client.my_lists(current_user: current_user(socket))
+    lists_result = Client.my_lists(current_user: current_user(socket), per_page: 200)
 
     socket =
       socket
