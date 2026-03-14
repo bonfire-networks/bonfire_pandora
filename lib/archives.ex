@@ -195,13 +195,13 @@ defmodule Bonfire.PanDoRa.Archives do
   defp movie_get_or_save_media(current_user, %{"id" => movie_id} = movie, opts) do
     url = "#{Client.get_pandora_url()}/#{movie_id}"
     file_attrs = %{media_type: "video/film", size: 0}
-    #  TODO: should we also add the video & image URLs etc?
+    # Use proxy URLs for icon/image so preview works in feed without auth (MediaLive.preview_img reads metadata.icon)
     attrs = %{
       metadata:
         Map.merge(movie, %{
           canonical_media: "/archive/movies/#{movie_id}",
-          icon: "#{url}/icon128.jpg",
-          image: "#{url}/icon512.jpg"
+          icon: Client.media_proxy_url(movie_id, "icon128.jpg"),
+          image: Client.media_proxy_url(movie_id, "icon512.jpg")
         })
     }
 
