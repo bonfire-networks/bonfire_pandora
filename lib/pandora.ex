@@ -2,6 +2,7 @@ defmodule Bonfire.PanDoRa do
   @moduledoc "./README.md" |> File.stream!() |> Enum.drop(1) |> Enum.join()
 
   use Bonfire.Common.Config
+  use Bonfire.Common.E
   alias Bonfire.Common.Utils
   import Untangle
 

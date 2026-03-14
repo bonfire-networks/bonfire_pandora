@@ -6,10 +6,13 @@ defmodule Bonfire.PanDoRa.Web.WidgetPublicListsLive do
   prop user, :any, default: nil
 
   def update(assigns, socket) do
-    lists_result = Client.my_lists(current_user: current_user(socket), per_page: 200)
+    # Ensure current_user is always set (profile widget may not receive it from parent)
+    current_user = Map.get(assigns, :current_user) || current_user(socket)
+    lists_result = Client.my_lists(current_user: current_user, per_page: 200)
 
     socket =
       socket
+      |> assign(:current_user, current_user)
       |> assign(assigns)
       |> assign_pandora_urls()
       |> handle_lists_result(lists_result)

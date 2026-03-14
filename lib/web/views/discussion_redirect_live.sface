@@ -1,0 +1,20 @@
+<div class="bg-base-100">
+  <StatelessComponent
+    module={maybe_component(Bonfire.UI.Social.ObjectThreadLive)}
+    myself={nil}
+    thread_title={@thread_title}
+    thread_mode={@thread_mode}
+    activity={@activity}
+    object={@object}
+    post_id={@post_id}
+    showing_within={:thread}
+    thread_id={@thread_id}
+    reply_id={@reply_id}
+    include_path_ids={@include_path_ids}
+    participants={@participants}
+    loading={@loading}
+    replies={@replies}
+    threaded_replies={@threaded_replies}
+    page_info={@page_info}
+  />
+</div>

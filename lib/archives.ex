@@ -1,5 +1,7 @@
 # lib/pandora/archives.ex
 defmodule Bonfire.PanDoRa.Archives do
+  import Ecto.Query
+
   alias PanDoRa.API.Client
   alias Bonfire.PanDoRa.PaginationContext
   use Bonfire.Common.Utils
@@ -71,11 +73,11 @@ defmodule Bonfire.PanDoRa.Archives do
   #   end)
   # end
 
-  def add_annotation(%{"id" => movie_id} = movie, note, in_timestamp, out_timestamp, opts) do
+  def add_annotation(%{"id" => _movie_id} = movie, note, in_timestamp, out_timestamp, opts) do
     with current_user = current_user(opts),
          out_timestamp = out_timestamp || in_timestamp,
-         # first check if Media exists for the movie and otherwise create it
-         {:ok, %{id: media_id} = media} <- movie_get_or_save_media(current_user, movie, opts),
+         # use existing media when provided (e.g. from movie page) to avoid thread_id mismatch on reload
+         {:ok, %{id: media_id} = media} <- resolve_media_for_annotation(current_user, movie, opts),
          # create Post first so text is checked by anti-spam
          {:ok, %{id: post_id} = post} <-
            maybe_apply(Bonfire.Posts, :publish, [
@@ -84,6 +86,7 @@ defmodule Bonfire.PanDoRa.Archives do
                verb: :annotate,
                post_attrs: %{
                  thread_id: media_id,
+                 reply_to_id: media_id,
                  # reply_to_id: media_id, # do we reference the media in reply to
                  #  or as a linked media
                  uploaded_media: [media],
@@ -95,11 +98,13 @@ defmodule Bonfire.PanDoRa.Archives do
                boundary: "public"
              ]
            ]),
+         # push to thread (post from epic may lack replied preload; ensure broadcast)
+         _ <- push_annotation_to_thread(post, media_id),
          # next send it to Pandora
          {:ok, %{"id" => pandora_id} = annotation} <-
            Client.add_annotation(
              %{
-               item: movie_id,
+               item: movie["id"],
                # assuming this is your layer ID for public notes - TODO: based on boundary?
                layer: "publicnotes",
                in: in_timestamp || 0.0,
@@ -114,21 +119,77 @@ defmodule Bonfire.PanDoRa.Archives do
              id: post_id,
              info: %{pandora_id: pandora_id, timestamps: %{in: in_timestamp, out: out_timestamp}}
            })
-           |> debug("cssss")
            |> repo().insert() do
-      {:ok, Map.put(annotation, :extra_info, extra_info)}
+      {:ok,
+       annotation
+       |> Map.put(:extra_info, extra_info)
+       |> Map.put("thread_id", media_id)}
     end
+  end
+
+  defp push_annotation_to_thread(post, _thread_id) do
+    post = repo().maybe_preload(post, [:activity, :replied])
+    maybe_apply(Bonfire.Social.LivePush, :push_activity, [[], post, [push_to_thread: true]])
+    {:ok, :pushed}
+  end
+
+  @doc """
+  Get or create the Bonfire Media for a movie. Use when the thread (ThreadLive) must exist,
+  e.g. on the movie playback page so annotations can be shown.
+  """
+  def movie_get_or_create_media(current_user, movie, opts \\ []) do
+    movie_id = Keyword.get(opts, :movie_id) || e(movie, "id", nil)
+    movie = if movie_id, do: Map.put(movie, "id", movie_id), else: movie
+    movie_get_or_save_media(current_user, movie, opts)
   end
 
   def movie_get_media(movie_id, opts \\ [])
 
   def movie_get_media(movie_id, _opts) when is_binary(movie_id) do
     url = "#{Client.get_pandora_url()}/#{movie_id}"
-    Bonfire.Files.Media.get_by_path(url)
+    case Bonfire.Files.Media.get_by_path(url) do
+      {:ok, media} -> {:ok, media}
+      # path is nil for Pandora URLs (remote_url returns http; Media avoids storing presigned URLs)
+      {:error, :not_found} -> movie_get_media_by_canonical(movie_id)
+    end
   end
 
   def movie_get_media(%{"id" => movie_id} = _movie, opts) do
     movie_get_media(movie_id, opts)
+  end
+
+  defp movie_get_media_by_canonical(movie_id) when is_binary(movie_id) do
+    canonical = "/archive/movies/#{movie_id}"
+    from(m in Bonfire.Files.Media, where: fragment("metadata->>'canonical_media' = ?", ^canonical), limit: 1, order_by: [desc: m.id])
+    |> repo().single()
+  end
+
+  @doc """
+  If the given id is a Pandora Media (thread for movie annotations) with canonical_media
+  in metadata, returns the canonical path (e.g. "/archive/movies/FZV") to redirect to.
+  Otherwise returns nil.
+  Used when /discussion/:id is visited with a Media thread id - redirect to the movie page.
+  """
+  def pandora_media_canonical_path(id) when is_binary(id) do
+    case Bonfire.Files.Media.one(id: id) do
+      {:ok, media} ->
+        e(media, :metadata, "canonical_media", nil) || e(media, :metadata, :canonical_media, nil)
+
+      _ ->
+        nil
+    end
+  end
+
+  def pandora_media_canonical_path(_), do: nil
+
+  defp resolve_media_for_annotation(current_user, movie, opts) do
+    case Keyword.get(opts, :media) do
+      %{id: _} = media -> {:ok, media}
+      _ ->
+        movie_id = Keyword.get(opts, :movie_id) || e(movie, "id", nil)
+        movie = if movie_id, do: Map.put(movie, "id", movie_id), else: movie
+        movie_get_or_save_media(current_user, movie, opts)
+    end
   end
 
   defp movie_get_or_save_media(current_user, %{"id" => movie_id} = movie, opts) do

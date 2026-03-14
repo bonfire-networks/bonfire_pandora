@@ -7,6 +7,16 @@ defmodule Bonfire.PanDoRa.Web.Routes do
 
   defmacro __using__(_) do
     quote do
+      # Redirect /discussion/:id when id is a Pandora Media (movie annotation thread) to /archive/movies/:movie_id.
+      # Must be before Social's discussion route so we match first.
+      scope "/", Bonfire.PanDoRa.Web do
+        pipe_through(:browser)
+
+        live("/discussion/:id", DiscussionRedirectLive, as: Needle.Pointer)
+        live("/discussion/:id/reply/:reply_id", DiscussionRedirectLive, as: Needle.Pointer)
+        live("/discussion/:id/reply/:level/:reply_id", DiscussionRedirectLive, as: Needle.Pointer)
+      end
+
       # pages anyone can view
       scope "/archive/", Bonfire.PanDoRa.Web do
         pipe_through(:browser)
