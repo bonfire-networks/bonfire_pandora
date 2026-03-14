@@ -73,7 +73,10 @@ defmodule Bonfire.PanDoRa.Archives do
   #   end)
   # end
 
-  def add_annotation(%{"id" => _movie_id} = movie, note, in_timestamp, out_timestamp, opts) do
+  def add_annotation(%{"id" => movie_id} = movie, note, in_timestamp, out_timestamp, opts) do
+    thumb_html = annotation_thumbnail_html(movie_id)
+    html_body = thumb_html <> (note || "")
+
     with current_user = current_user(opts),
          out_timestamp = out_timestamp || in_timestamp,
          # use existing media when provided (e.g. from movie page) to avoid thread_id mismatch on reload
@@ -91,7 +94,7 @@ defmodule Bonfire.PanDoRa.Archives do
                  #  or as a linked media
                  uploaded_media: [media],
                  post_content: %{
-                   html_body: note
+                   html_body: html_body
                  }
                },
                # TODO
@@ -132,6 +135,20 @@ defmodule Bonfire.PanDoRa.Archives do
     maybe_apply(Bonfire.Social.LivePush, :push_activity, [[], post, [push_to_thread: true]])
     {:ok, :pushed}
   end
+
+  defp annotation_thumbnail_html(movie_id) when is_binary(movie_id) do
+    thumb_url = Client.media_proxy_url(movie_id, "icon128.jpg")
+    path = "/archive/movies/#{movie_id}"
+    """
+    <figure class="annotation-thumbnail block my-2 rounded-lg overflow-hidden border border-base-content/10 aspect-video max-w-xs">
+      <a href="#{path}">
+        <img src="#{thumb_url}" alt="" class="w-full h-full object-cover"/>
+      </a>
+    </figure>
+    """
+  end
+
+  defp annotation_thumbnail_html(_), do: ""
 
   @doc """
   Get or create the Bonfire Media for a movie. Use when the thread (ThreadLive) must exist,
