@@ -8,11 +8,16 @@ defmodule Bonfire.PanDoRa.Web.AnnotationThumbnailLive do
   use Bonfire.UI.Common.Web, :stateless_component
   use Bonfire.Common.Utils
 
+  require Logger
+
   prop activity, :map, required: true
   prop object, :map, required: true
   prop showing_within, :atom, default: :thread
 
   def render(assigns) do
+    # DEBUG: log inputs to trace why thumbnail may not render
+    _log_annotation_thumbnail_debug(assigns)
+
     ~F"""
     <a
       :if={@showing_within == :feed and annotation?(@activity, @object) and thumbnail_src(@activity, @object)}
@@ -69,6 +74,43 @@ defmodule Bonfire.PanDoRa.Web.AnnotationThumbnailLive do
          _ ->
            nil
        end)
+  end
+
+  defp _log_annotation_thumbnail_debug(assigns) do
+    activity = assigns.activity
+    object = assigns.object
+    showing_within = assigns.showing_within
+
+    # Log ALWAYS (use info so it shows) to verify component is invoked at all
+    is_annot = annotation?(activity, object)
+    verb_ok = verb_annotate?(activity)
+    ts_ok = timestamps?(object)
+    media = first_media(activity, object)
+    thumb = thumbnail_src(activity, object)
+
+    Logger.info(
+      "[AnnotationThumbnail] showing_within=#{inspect(showing_within)} " <>
+        "annotation?=#{is_annot} (verb?=#{verb_ok} ts?=#{ts_ok}) " <>
+        "media=#{if media, do: "ok", else: "nil"} thumb=#{if thumb, do: "ok", else: "nil"}"
+    )
+
+    if showing_within == :feed and (not is_annot or not thumb) do
+      act_media = e(activity, :media, nil)
+      obj_media = e(object, :media, nil)
+      media_summary = fn
+        nil -> "nil"
+        [] -> "[]"
+        [h | _] when is_map(h) -> "list[keys=#{inspect(Map.keys(h))}]"
+        other -> inspect(other)
+      end
+
+      Logger.info(
+        "[AnnotationThumbnail] FEED+no_thumb: activity.keys=#{inspect(Map.keys(activity || %{}))} " <>
+          "verb=#{inspect(e(activity, :verb, nil))} verb_id=#{inspect(e(activity, :verb_id, nil))} " <>
+          "activity.media=#{media_summary.(act_media)} object.media=#{media_summary.(obj_media)} " <>
+          "object.extra_info=#{inspect(e(object, :extra_info, nil))}"
+      )
+    end
   end
 
   defp movie_path(activity, object) do
