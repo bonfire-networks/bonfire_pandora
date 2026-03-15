@@ -21,10 +21,12 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
 
   Returns the html_body unchanged if nil, empty, or no markers found.
   """
-  def expand_video_preview_links(nil, _opts \\ []), do: nil
-  def expand_video_preview_links("", _opts \\ []), do: ""
+  def expand_video_preview_links(html_body, opts \\ [])
 
-  def expand_video_preview_links(html_body, opts \\ []) when is_binary(html_body) do
+  def expand_video_preview_links(nil, _opts), do: nil
+  def expand_video_preview_links("", _opts), do: ""
+
+  def expand_video_preview_links(html_body, opts) when is_binary(html_body) do
     opts = Utils.to_options(opts)
     # Regex.replace with arity-2 fn passes (full_match, first_capture); extract all via run
     replace_fn = fn full_match, _first_capture ->
