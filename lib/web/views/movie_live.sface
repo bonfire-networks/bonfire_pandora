@@ -1,6 +1,6 @@
 <div id="movie_wrapper" class="flex flex-col w-full gap-4">
   <div phx-update="ignore" id="movie_container">
-    <div :hook id="vidstack_movie_player" data-role="movie-player-shell">
+    <div :hook id="vidstack_movie_player" data-role="movie-player-shell" data-seek-in={if @in_timestamp, do: to_string(@in_timestamp), else: ""} data-seek-out={if @out_timestamp, do: to_string(@out_timestamp), else: ""}>
       <video
         class="player w-full"
         src={@video_url}

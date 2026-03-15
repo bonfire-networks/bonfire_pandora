@@ -74,9 +74,9 @@ defmodule Bonfire.PanDoRa.Archives do
   # end
 
   def add_annotation(%{"id" => movie_id} = movie, note, in_timestamp, out_timestamp, opts) do
-    # Post standalone (thread proprio): thumbnail + "View full movie" + nota in html_body
+    # Post standalone (thread proprio): video preview + "View full movie" + nota in html_body
     html_body =
-      build_annotation_html_body(movie_id, note || "", in_timestamp, out_timestamp || in_timestamp)
+      build_annotation_html_body(movie, note || "", in_timestamp, out_timestamp || in_timestamp)
 
     with current_user = current_user(opts),
          out_timestamp = out_timestamp || in_timestamp,
@@ -122,17 +122,26 @@ defmodule Bonfire.PanDoRa.Archives do
   end
 
   @doc """
-  Builds html_body for annotation posts: thumbnail, "View full movie" link, note.
-  Uses only tags typically allowed by sanitizer: a, img, p.
+  Builds html_body for annotation posts: video preview of in/out segment, "View full movie" link, note.
+  Link goes to MovieLive without seek params (plain /archive/movies/{id}).
+  Video preview uses Media Fragments URI (#t=in,out) to play the annotated segment.
   """
-  defp build_annotation_html_body(movie_id, note, in_ts, out_ts)
+  defp build_annotation_html_body(%{"id" => movie_id} = movie, note, in_ts, out_ts)
        when is_binary(movie_id) and movie_id != "" do
-    movie_path = "/archive/movies/#{movie_id}"
-    movie_url = media_fragment_url(movie_path, in_ts, out_ts)
-    thumb_src = Client.media_proxy_url(movie_id, "icon128.jpg")
+    in_s = to_seconds(in_ts)
+    out_s = to_seconds(out_ts || in_ts)
+    # Link without seek: just the movie page
+    movie_url = "/archive/movies/#{movie_id}"
+    video_filename = Client.best_video_filename(movie)
+    video_base = Client.video_proxy_url(movie_id, video_filename)
+    video_src = video_src_with_fragment(video_base, in_s, out_s)
+
+    # Video preview: muted autoplay loop for feed; Media Fragment #t=in,out plays the segment
+    video_html =
+      ~s(<video src="#{video_src}" muted loop autoplay playsinline width="320" height="180" preload="metadata"></video>)
 
     parts = [
-      ~s(<p><a href="#{movie_url}"><img src="#{thumb_src}" alt=""></a> ) <>
+      ~s(<p><a href="#{movie_url}">#{video_html}</a> ) <>
         ~s(<a href="#{movie_url}">View full movie</a></p>)
     ]
 
@@ -149,28 +158,46 @@ defmodule Bonfire.PanDoRa.Archives do
 
   defp build_annotation_html_body(_, note, _, _), do: note || ""
 
+  defp video_src_with_fragment(base, in_s, out_s)
+       when is_number(in_s) and is_number(out_s) and out_s > in_s do
+    "#{base}#t=#{Float.to_string(in_s, decimals: 2)},#{Float.to_string(out_s, decimals: 2)}"
+  end
+
+  defp video_src_with_fragment(base, in_s, _)
+       when is_number(in_s) do
+    "#{base}#t=#{Float.to_string(in_s, decimals: 2)}"
+  end
+
+  defp video_src_with_fragment(base, _, _), do: base
+
+  @doc """
+  Path to MovieLive with optional in/out query params for seek.
+  Same host, same format as annotation-checkpoint badge (seconds).
+  """
+  def movie_live_url(movie_id, in_s, out_s)
+      when is_binary(movie_id) and movie_id != "" do
+    base = "/archive/movies/#{movie_id}"
+
+    cond do
+      in_s != nil and out_s != nil and out_s > in_s ->
+        "#{base}?in=#{Float.to_string(in_s, decimals: 6)}&out=#{Float.to_string(out_s, decimals: 6)}"
+
+      in_s != nil ->
+        "#{base}?in=#{Float.to_string(in_s, decimals: 6)}"
+
+      true ->
+        base
+    end
+  end
+
+  defp escape_amp_in_url(url) when is_binary(url), do: String.replace(url, "&", "&amp;")
+
   defp to_absolute_url("http" <> _ = url), do: url
   defp to_absolute_url("https" <> _ = url), do: url
   defp to_absolute_url("/" <> rest) when is_binary(rest) do
     Bonfire.Common.URIs.based_url("/" <> rest, nil)
   end
   defp to_absolute_url(url) when is_binary(url), do: url
-
-  defp media_fragment_url(base, in_ts, out_ts) do
-    in_s = to_seconds(in_ts)
-    out_s = to_seconds(out_ts)
-
-    cond do
-      in_s != nil and out_s != nil and out_s > in_s ->
-        "#{base}#t=#{Float.to_string(in_s, decimals: 1)},#{Float.to_string(out_s, decimals: 1)}"
-
-      in_s != nil ->
-        "#{base}#t=#{Float.to_string(in_s, decimals: 1)}"
-
-      true ->
-        base
-    end
-  end
 
   defp to_seconds(n) when is_number(n) and n >= 0, do: n * 1.0
   defp to_seconds(s) when is_binary(s), do: parse_timestamp_to_seconds(s)

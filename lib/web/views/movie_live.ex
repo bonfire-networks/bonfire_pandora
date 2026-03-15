@@ -29,10 +29,9 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     {:ok, socket}
   end
 
-  def handle_params(%{"id" => id}, _view, socket) do
-    # debug("Testing annotations for movie: #{id}")
-    # annotations_result = Client.fetch_annotations(id)
-    # debug("Annotations result: #{inspect(annotations_result)}")
+  def handle_params(%{"id" => id}, uri, socket) do
+    # Seek from link: ?in=&out= (seconds, same format as annotation-checkpoint badge)
+    {in_ts, out_ts} = parse_seek_params(uri)
 
     with {:ok, movie} <- Client.get_movie(id, current_user: current_user(socket)),
          {:ok, public_notes} <- Client.fetch_annotations(id, current_user: current_user(socket)) do
@@ -50,8 +49,8 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> assign(:page_title, movie["title"] || "")
         |> assign(:movie, movie)
         |> assign(:video_url, video_url)
-        |> assign(:in_timestamp, nil)
-        |> assign(:out_timestamp, nil)
+        |> assign(:in_timestamp, in_ts)
+        |> assign(:out_timestamp, out_ts)
         # Initialize note_content
         |> assign(:note_content, "")
         |> assign(:public_notes, public_notes)
@@ -92,6 +91,27 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
           |> assign(:page_title, "Movie not found")
 
         {:noreply, socket}
+    end
+  end
+
+  defp parse_seek_params(uri) when is_binary(uri) do
+    case URI.parse(uri) do
+      %{query: nil} -> {nil, nil}
+      %{query: query} ->
+        params = URI.decode_query(query)
+        in_ts = parse_float_param(params["in"])
+        out_ts = parse_float_param(params["out"])
+        {in_ts, out_ts}
+    end
+  end
+
+  defp parse_seek_params(_), do: {nil, nil}
+
+  defp parse_float_param(nil), do: nil
+  defp parse_float_param(s) when is_binary(s) do
+    case Float.parse(String.trim(s)) do
+      {n, _} when n >= 0 -> n
+      _ -> nil
     end
   end
 
