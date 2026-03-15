@@ -40,15 +40,17 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
     build_poster_html(movie_id, in_s, out_s, opts)
   end
 
-  # Poster image first; video loads on click via PandoraVideoPreview hook.
-  # No outer <a> wrapper: click plays inline; "View full movie" link shown after expand.
+  # Video: preload="none" = no load until user clicks play. No autoplay.
+  # Wrapped in <figure> so PreviewActivity ignores clicks (opens thread) - see shouldHandlePreviewClick.
   defp build_poster_html(movie_id, in_s, out_s, opts) do
     video_base = Client.video_url(movie_id, "480p.mp4", opts)
     video_src = "#{video_base}#t=#{in_s},#{out_s}"
-    poster_src = Client.media_url(movie_id, "icon512.jpg", opts)
     movie_url = "/archive/movies/#{movie_id}"
 
-    ~s(<span class="pandora-video-preview relative inline-block cursor-pointer rounded" data-video-src="#{escape_attr(video_src)}" data-poster-src="#{escape_attr(poster_src)}" data-movie-url="#{escape_attr(movie_url)}"><img src="#{escape_attr(poster_src)}" alt="" width="320" height="180" loading="lazy" class="rounded"/><span class="absolute inset-0 flex items-center justify-center text-4xl text-white drop-shadow-lg">▶</span></span>)
+    video_tag =
+      ~s(<video class="pandora-video-preview rounded" src="#{escape_attr(video_src)}" preload="none" width="320" height="180" playsinline controls></video>)
+
+    ~s(<figure class="pandora-video-preview-wrapper">#{video_tag}<a href="#{escape_attr(movie_url)}" class="text-sm link link-hover mt-1 block">View full movie</a></figure>)
   end
 
   defp escape_attr(str), do: Plug.HTML.html_escape_to_iodata(str) |> IO.iodata_to_binary()
