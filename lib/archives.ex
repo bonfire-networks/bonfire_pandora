@@ -73,9 +73,10 @@ defmodule Bonfire.PanDoRa.Archives do
   #   end)
   # end
 
-  def add_annotation(%{"id" => _movie_id} = movie, note, in_timestamp, out_timestamp, opts) do
-    # Legacy: Post with uploaded_media, thread_id; NoteLive renders in feed
-    html_body = note || ""
+  def add_annotation(%{"id" => movie_id} = movie, note, in_timestamp, out_timestamp, opts) do
+    # Post standalone (thread proprio): thumbnail + "View full movie" + nota in html_body
+    html_body =
+      build_annotation_html_body(movie_id, note || "", in_timestamp, out_timestamp || in_timestamp)
 
     with current_user = current_user(opts),
          out_timestamp = out_timestamp || in_timestamp,
@@ -91,18 +92,16 @@ defmodule Bonfire.PanDoRa.Archives do
              },
              opts
            ),
-         # resolve media for metadata (media_id, movie_id)
-         {:ok, %{id: media_id} = media} <- resolve_media_for_annotation(current_user, movie, opts),
-         # publish Post for feed; thread_id + uploaded_media as in legacy
+         # resolve media for metadata (ExtraInfo, congruenza)
+         {:ok, %{id: _media_id} = _media} <- resolve_media_for_annotation(current_user, movie, opts),
+         # publish Post standalone (no thread_id, no uploaded_media); NoteLive renders html_body
          {:ok, %{id: post_id} = _post} <-
            maybe_apply(Bonfire.Posts, :publish, [
              [
                current_user: current_user,
                verb: :annotate,
                post_attrs: %{
-                 thread_id: media_id,
-                 post_content: %{html_body: html_body},
-                 uploaded_media: [media]
+                 post_content: %{html_body: html_body}
                },
                boundary: "public"
              ]
@@ -121,6 +120,34 @@ defmodule Bonfire.PanDoRa.Archives do
       {:ok, annotation |> Map.put(:extra_info, extra_info)}
     end
   end
+
+  @doc """
+  Builds html_body for annotation posts: thumbnail, "View full movie" link, note.
+  Uses only tags typically allowed by sanitizer: a, img, p.
+  """
+  defp build_annotation_html_body(movie_id, note, in_ts, out_ts)
+       when is_binary(movie_id) and movie_id != "" do
+    movie_path = "/archive/movies/#{movie_id}"
+    movie_url = media_fragment_url(movie_path, in_ts, out_ts)
+    thumb_src = Client.media_proxy_url(movie_id, "icon128.jpg")
+
+    parts = [
+      ~s(<p><a href="#{movie_url}"><img src="#{thumb_src}" alt=""></a> ) <>
+        ~s(<a href="#{movie_url}">View full movie</a></p>)
+    ]
+
+    parts =
+      if is_binary(note) and String.trim(note) != "" do
+        safe_note = note |> Plug.HTML.html_escape_to_iodata() |> IO.iodata_to_binary()
+        parts ++ ["<p>#{safe_note}</p>"]
+      else
+        parts
+      end
+
+    Enum.join(parts, "\n")
+  end
+
+  defp build_annotation_html_body(_, note, _, _), do: note || ""
 
   defp to_absolute_url("http" <> _ = url), do: url
   defp to_absolute_url("https" <> _ = url), do: url
