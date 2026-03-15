@@ -74,7 +74,7 @@ defmodule Bonfire.PanDoRa.Archives do
   # end
 
   def add_annotation(%{"id" => _movie_id} = movie, note, in_timestamp, out_timestamp, opts) do
-    # Video preview is rendered by AnnotationVideoPreviewLive in the feed; no media in html_body
+    # Legacy: Post with uploaded_media, thread_id; NoteLive renders in feed
     html_body = note || ""
 
     with current_user = current_user(opts),
@@ -93,28 +93,26 @@ defmodule Bonfire.PanDoRa.Archives do
            ),
          # resolve media for metadata (media_id, movie_id)
          {:ok, %{id: media_id} = media} <- resolve_media_for_annotation(current_user, movie, opts),
-         # publish standalone Post for feed; uploaded_media enables thumbnail in feed
+         # publish Post for feed; thread_id + uploaded_media as in legacy
          {:ok, %{id: post_id} = _post} <-
            maybe_apply(Bonfire.Posts, :publish, [
              [
                current_user: current_user,
                verb: :annotate,
                post_attrs: %{
-                 # reply_to_id: media_id, # do we reference the media in reply to
-                 #  or as a linked media
+                 thread_id: media_id,
                  post_content: %{html_body: html_body},
                  uploaded_media: [media]
                },
                boundary: "public"
              ]
            ]),
-         # save ExtraInfo with pandora_id, media_id, movie_id, timestamps
+         # save ExtraInfo (pandora_movie_id for playback redirect)
          {:ok, extra_info} <-
            Bonfire.Data.Identity.ExtraInfo.changeset(%{
              id: post_id,
              info: %{
                pandora_id: pandora_id,
-               media_id: media_id,
                pandora_movie_id: movie["id"],
                timestamps: %{in: in_timestamp, out: out_timestamp}
              }
