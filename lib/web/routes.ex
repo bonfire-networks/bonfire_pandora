@@ -60,6 +60,10 @@ defmodule Bonfire.PanDoRa.Web.Routes do
         # Media proxy: forwards image and video requests to Pandora with auth
         get("/media/*path", ProxyController, :proxy_image)
         get("/video/*path", ProxyController, :proxy_video)
+
+        # Lazy-load annotation thumbnail/movie when object.extra_info not preloaded
+        get("/posts/:id/thumbnail", RedirectController, :annotation_thumbnail)
+        get("/posts/:id/movie_redirect", RedirectController, :annotation_movie_redirect)
       end
 
       # pages only admins can view

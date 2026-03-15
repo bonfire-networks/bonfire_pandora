@@ -49,16 +49,19 @@ defmodule Bonfire.PanDoRa.Web.AnnotationThumbnailLive do
 
   defp thumbnail_src(activity, object) do
     case first_media(activity, object) do
-      nil -> thumbnail_from_pandora_movie_id(object)
-      media -> thumbnail_from_media(media)
+      nil ->
+        case pandora_movie_id(object) do
+          nil -> lazy_thumbnail_url(object)
+          id -> PanDoRa.API.Client.media_proxy_url(String.trim(id), "icon128.jpg")
+        end
+      media ->
+        thumbnail_from_media(media)
     end
   end
 
-  defp thumbnail_from_pandora_movie_id(object) do
-    case pandora_movie_id(object) do
-      nil -> nil
-      id -> PanDoRa.API.Client.media_proxy_url(String.trim(id), "icon128.jpg")
-    end
+  defp lazy_thumbnail_url(object) do
+    id = e(object, :id, nil)
+    if is_binary(id) and id != "", do: "/archive/posts/#{id}/thumbnail", else: nil
   end
 
   defp pandora_movie_id(object) do
@@ -133,11 +136,10 @@ defmodule Bonfire.PanDoRa.Web.AnnotationThumbnailLive do
       nil ->
         case pandora_movie_id(object) do
           nil ->
-            e(activity, :replied, :reply_to, :object, nil)
-            |> case do
+            case e(activity, :replied, :reply_to, :object, nil) do
               %{metadata: %{"canonical_media" => path}} when is_binary(path) -> path
               %{metadata: %{canonical_media: path}} when is_binary(path) -> path
-              _ -> "/"
+              _ -> lazy_movie_redirect_path(object)
             end
 
           id ->
@@ -147,5 +149,10 @@ defmodule Bonfire.PanDoRa.Web.AnnotationThumbnailLive do
       media ->
         e(media, :metadata, "canonical_media", nil) || e(media, :metadata, :canonical_media, nil) || "/"
     end
+  end
+
+  defp lazy_movie_redirect_path(object) do
+    id = e(object, :id, nil)
+    if is_binary(id) and id != "", do: "/archive/posts/#{id}/movie_redirect", else: "/"
   end
 end
