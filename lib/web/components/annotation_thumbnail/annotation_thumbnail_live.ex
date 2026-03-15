@@ -1,7 +1,7 @@
 # lib/web/components/annotation_thumbnail/annotation_thumbnail_live.ex
 defmodule Bonfire.PanDoRa.Web.AnnotationThumbnailLive do
   @moduledoc """
-  Renders a clickable thumbnail for video annotations when showing_within=:feed.
+  Renders a clickable thumbnail for video annotations when showing_within is :feed or :thread.
   Links to the movie page. Uses Pandora proxy URL for the thumbnail (icon128.jpg).
   Renders nothing when not in feed context or when no thumbnail is available.
   """
@@ -20,7 +20,7 @@ defmodule Bonfire.PanDoRa.Web.AnnotationThumbnailLive do
 
     ~F"""
     <a
-      :if={@showing_within == :feed and annotation?(@activity, @object) and thumbnail_src(@activity, @object)}
+      :if={@showing_within in [:feed, :thread] and annotation?(@activity, @object) and thumbnail_src(@activity, @object)}
       href={movie_path(@activity, @object)}
       class="block my-2 rounded-lg overflow-hidden border border-base-content/10 aspect-video max-w-xs"
     >
@@ -49,9 +49,24 @@ defmodule Bonfire.PanDoRa.Web.AnnotationThumbnailLive do
 
   defp thumbnail_src(activity, object) do
     case first_media(activity, object) do
-      nil -> nil
+      nil -> thumbnail_from_pandora_movie_id(object)
       media -> thumbnail_from_media(media)
     end
+  end
+
+  defp thumbnail_from_pandora_movie_id(object) do
+    case pandora_movie_id(object) do
+      nil -> nil
+      id -> PanDoRa.API.Client.media_proxy_url(String.trim(id), "icon128.jpg")
+    end
+  end
+
+  defp pandora_movie_id(object) do
+    id =
+      e(object, :extra_info, :info, :pandora_movie_id, nil) ||
+        e(object, :extra_info, :info, "pandora_movie_id", nil)
+
+    if is_binary(id) and id != "", do: String.trim(id), else: nil
   end
 
   defp first_media(activity, object) do
@@ -94,7 +109,7 @@ defmodule Bonfire.PanDoRa.Web.AnnotationThumbnailLive do
         "media=#{if media, do: "ok", else: "nil"} thumb=#{if thumb, do: "ok", else: "nil"}"
     )
 
-    if showing_within == :feed and (not is_annot or not thumb) do
+    if showing_within in [:feed, :thread] and (not is_annot or not thumb) do
       act_media = e(activity, :media, nil)
       obj_media = e(object, :media, nil)
       media_summary = fn
@@ -116,11 +131,17 @@ defmodule Bonfire.PanDoRa.Web.AnnotationThumbnailLive do
   defp movie_path(activity, object) do
     case first_media(activity, object) do
       nil ->
-        e(activity, :replied, :reply_to, :object, nil)
-        |> case do
-          %{metadata: %{"canonical_media" => path}} when is_binary(path) -> path
-          %{metadata: %{canonical_media: path}} when is_binary(path) -> path
-          _ -> "/"
+        case pandora_movie_id(object) do
+          nil ->
+            e(activity, :replied, :reply_to, :object, nil)
+            |> case do
+              %{metadata: %{"canonical_media" => path}} when is_binary(path) -> path
+              %{metadata: %{canonical_media: path}} when is_binary(path) -> path
+              _ -> "/"
+            end
+
+          id ->
+            "/archive/movies/#{id}"
         end
 
       media ->

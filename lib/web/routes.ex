@@ -7,6 +7,15 @@ defmodule Bonfire.PanDoRa.Web.Routes do
 
   defmacro __using__(_) do
     quote do
+      # Catch GET /post and GET /post/ (missing id) — redirect to home to prevent NoRouteError.
+      # Must be before bonfire_ui_posts' live("/post/:id") so invalid paths are handled.
+      scope "/", Bonfire.PanDoRa.Web do
+        pipe_through(:browser)
+
+        get("/post", RedirectController, :to_home)
+        get("/post/", RedirectController, :to_home)
+      end
+
       # Redirect /discussion/:id when id is a Pandora Media (movie annotation thread) to /archive/movies/:movie_id.
       # Must be before Social's discussion route so we match first.
       scope "/", Bonfire.PanDoRa.Web do

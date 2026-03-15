@@ -1,12 +1,14 @@
 # lib/web/components/annotation_video_preview/annotation_video_preview_live.ex
 defmodule Bonfire.PanDoRa.Web.AnnotationVideoPreviewLive do
   @moduledoc """
-  Renders a video preview for Pandora annotations in the feed.
+  Renders a video preview for Pandora annotations in the feed/thread.
   Uses poster (icon128) and video stream (480p.mp4) via proxy URLs.
-  Renders nothing when not in feed context or when not a Pandora annotation.
+  Renders nothing when not in feed/thread context or when not a Pandora annotation.
   """
   use Bonfire.UI.Common.Web, :stateless_component
   use Bonfire.Common.Utils
+
+  require Logger
 
   alias PanDoRa.API.Client
 
@@ -15,9 +17,10 @@ defmodule Bonfire.PanDoRa.Web.AnnotationVideoPreviewLive do
   prop showing_within, :atom, default: :thread
 
   def render(assigns) do
+    _log_annotation_video_preview_debug(assigns)
     ~F"""
     <div
-      :if={@showing_within == :feed and annotation?(@activity, @object) and movie_id(@object)}
+      :if={@showing_within in [:feed, :thread] and annotation?(@activity, @object) and movie_id(@object)}
       class="block my-2 rounded-lg overflow-hidden border border-base-content/10 aspect-video max-w-xs"
     >
       <video
@@ -81,6 +84,31 @@ defmodule Bonfire.PanDoRa.Web.AnnotationVideoPreviewLive do
     case movie_id(object) do
       nil -> "/"
       id -> "/archive/movies/#{id}"
+    end
+  end
+
+  defp _log_annotation_video_preview_debug(assigns) do
+    activity = assigns.activity
+    object = assigns.object
+    showing_within = assigns.showing_within
+
+    is_annot = annotation?(activity, object)
+    verb_ok = verb_annotate?(activity)
+    ts_ok = timestamps?(object)
+    mid = movie_id(object)
+
+    Logger.info(
+      "[AnnotationVideoPreview] showing_within=#{inspect(showing_within)} " <>
+        "annotation?=#{is_annot} (verb?=#{verb_ok} ts?=#{ts_ok}) " <>
+        "movie_id=#{if mid, do: mid, else: "nil"}"
+    )
+
+    if showing_within in [:feed, :thread] and (not is_annot or not mid) do
+      Logger.info(
+        "[AnnotationVideoPreview] FEED+no_video: verb=#{inspect(e(activity, :verb, nil))} " <>
+          "verb_id=#{inspect(e(activity, :verb_id, nil))} " <>
+          "object.extra_info=#{inspect(e(object, :extra_info, nil))}"
+      )
     end
   end
 end

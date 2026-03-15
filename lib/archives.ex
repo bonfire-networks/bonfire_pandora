@@ -92,8 +92,8 @@ defmodule Bonfire.PanDoRa.Archives do
              opts
            ),
          # resolve media for metadata (media_id, movie_id)
-         {:ok, %{id: media_id} = _media} <- resolve_media_for_annotation(current_user, movie, opts),
-         # publish standalone Post for feed (no thread_id, reply_to_id, uploaded_media)
+         {:ok, %{id: media_id} = media} <- resolve_media_for_annotation(current_user, movie, opts),
+         # publish standalone Post for feed; uploaded_media enables thumbnail in feed
          {:ok, %{id: post_id} = _post} <-
            maybe_apply(Bonfire.Posts, :publish, [
              [
@@ -102,11 +102,9 @@ defmodule Bonfire.PanDoRa.Archives do
                post_attrs: %{
                  # reply_to_id: media_id, # do we reference the media in reply to
                  #  or as a linked media
-                 post_content: %{
-                   html_body: html_body
-                 }
+                 post_content: %{html_body: html_body},
+                 uploaded_media: [media]
                },
-               # TODO
                boundary: "public"
              ]
            ]),
