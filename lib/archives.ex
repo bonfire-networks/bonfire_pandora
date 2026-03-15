@@ -122,27 +122,23 @@ defmodule Bonfire.PanDoRa.Archives do
   end
 
   @doc """
-  Builds html_body for annotation posts: video preview of in/out segment, "View full movie" link, note.
-  Link goes to MovieLive without seek params (plain /archive/movies/{id}).
-  Video preview uses Media Fragments URI (#t=in,out) to play the annotated segment.
+  Builds html_body for annotation posts: trusted embed marker + "View full movie" link + note.
+
+  Uses a link marker `<a href="/archive/movies/{id}#t={in},{out}"></a>` that passes the
+  HTML sanitizer. The renderer (bonfire_ui_social_pandora) expands it to a <video> element
+  at display time. See PIANO_VIDEO_PREVIEW_TRUSTED_EMBED.md.
   """
-  defp build_annotation_html_body(%{"id" => movie_id} = movie, note, in_ts, out_ts)
+  defp build_annotation_html_body(%{"id" => movie_id} = _movie, note, in_ts, out_ts)
        when is_binary(movie_id) and movie_id != "" do
     in_s = to_seconds(in_ts)
     out_s = to_seconds(out_ts || in_ts)
-    # Link without seek: just the movie page
     movie_url = "/archive/movies/#{movie_id}"
-    video_filename = Client.best_video_filename(movie)
-    video_base = Client.video_proxy_url(movie_id, video_filename)
-    video_src = video_src_with_fragment(video_base, in_s, out_s)
 
-    # Video preview: muted autoplay loop for feed; Media Fragment #t=in,out plays the segment
-    video_html =
-      ~s(<video src="#{video_src}" muted loop autoplay playsinline width="320" height="180" preload="metadata"></video>)
+    # Marker: empty link with #t=in,out. Survives sanitizer; preprocessor expands to <video>
+    marker = ~s(<a href="#{movie_url}#t=#{Float.to_string(in_s, decimals: 2)},#{Float.to_string(out_s, decimals: 2)}"></a>)
 
     parts = [
-      ~s(<p><a href="#{movie_url}">#{video_html}</a> ) <>
-        ~s(<a href="#{movie_url}">View full movie</a></p>)
+      ~s(<p>#{marker} ) <> ~s(<a href="#{movie_url}">View full movie</a></p>)
     ]
 
     parts =
@@ -157,18 +153,6 @@ defmodule Bonfire.PanDoRa.Archives do
   end
 
   defp build_annotation_html_body(_, note, _, _), do: note || ""
-
-  defp video_src_with_fragment(base, in_s, out_s)
-       when is_number(in_s) and is_number(out_s) and out_s > in_s do
-    "#{base}#t=#{Float.to_string(in_s, decimals: 2)},#{Float.to_string(out_s, decimals: 2)}"
-  end
-
-  defp video_src_with_fragment(base, in_s, _)
-       when is_number(in_s) do
-    "#{base}#t=#{Float.to_string(in_s, decimals: 2)}"
-  end
-
-  defp video_src_with_fragment(base, _, _), do: base
 
   @doc """
   Path to MovieLive with optional in/out query params for seek.
