@@ -73,26 +73,35 @@ defmodule Bonfire.PanDoRa.Archives do
   #   end)
   # end
 
-  def add_annotation(%{"id" => movie_id} = movie, note, in_timestamp, out_timestamp, opts) do
-    thumb_html = annotation_thumbnail_html(movie_id)
-    html_body = thumb_html <> (note || "")
+  def add_annotation(%{"id" => _movie_id} = movie, note, in_timestamp, out_timestamp, opts) do
+    # Video preview is rendered by AnnotationVideoPreviewLive in the feed; no media in html_body
+    html_body = note || ""
 
     with current_user = current_user(opts),
          out_timestamp = out_timestamp || in_timestamp,
-         # use existing media when provided (e.g. from movie page) to avoid thread_id mismatch on reload
-         {:ok, %{id: media_id} = media} <- resolve_media_for_annotation(current_user, movie, opts),
-         # create Post first so text is checked by anti-spam
-         {:ok, %{id: post_id} = post} <-
+         # Pandora first: get pandora_id before creating Post (source of truth)
+         {:ok, %{"id" => pandora_id} = annotation} <-
+           Client.add_annotation(
+             %{
+               item: movie["id"],
+               layer: "publicnotes",
+               in: in_timestamp || 0.0,
+               out: out_timestamp || 0.0,
+               value: note
+             },
+             opts
+           ),
+         # resolve media for metadata (media_id, movie_id)
+         {:ok, %{id: media_id} = _media} <- resolve_media_for_annotation(current_user, movie, opts),
+         # publish standalone Post for feed (no thread_id, reply_to_id, uploaded_media)
+         {:ok, %{id: post_id} = _post} <-
            maybe_apply(Bonfire.Posts, :publish, [
              [
                current_user: current_user,
                verb: :annotate,
                post_attrs: %{
-                 thread_id: media_id,
-                 reply_to_id: media_id,
                  # reply_to_id: media_id, # do we reference the media in reply to
                  #  or as a linked media
-                 uploaded_media: [media],
                  post_content: %{
                    html_body: html_body
                  }
@@ -101,54 +110,68 @@ defmodule Bonfire.PanDoRa.Archives do
                boundary: "public"
              ]
            ]),
-         # push to thread (post from epic may lack replied preload; ensure broadcast)
-         _ <- push_annotation_to_thread(post, media_id),
-         # next send it to Pandora
-         {:ok, %{"id" => pandora_id} = annotation} <-
-           Client.add_annotation(
-             %{
-               item: movie["id"],
-               # assuming this is your layer ID for public notes - TODO: based on boundary?
-               layer: "publicnotes",
-               in: in_timestamp || 0.0,
-               out: out_timestamp || 0.0,
-               value: note
-             },
-             opts
-           ),
-         # then save ExtraInfo on the Post with the timestamps and reference to the note on Pandora
+         # save ExtraInfo with pandora_id, media_id, movie_id, timestamps
          {:ok, extra_info} <-
            Bonfire.Data.Identity.ExtraInfo.changeset(%{
              id: post_id,
-             info: %{pandora_id: pandora_id, timestamps: %{in: in_timestamp, out: out_timestamp}}
+             info: %{
+               pandora_id: pandora_id,
+               media_id: media_id,
+               pandora_movie_id: movie["id"],
+               timestamps: %{in: in_timestamp, out: out_timestamp}
+             }
            })
            |> repo().insert() do
-      {:ok,
-       annotation
-       |> Map.put(:extra_info, extra_info)
-       |> Map.put("thread_id", media_id)}
+      {:ok, annotation |> Map.put(:extra_info, extra_info)}
     end
   end
 
-  defp push_annotation_to_thread(post, _thread_id) do
-    post = repo().maybe_preload(post, [:activity, :replied])
-    maybe_apply(Bonfire.Social.LivePush, :push_activity, [[], post, [push_to_thread: true]])
-    {:ok, :pushed}
+  defp to_absolute_url("http" <> _ = url), do: url
+  defp to_absolute_url("https" <> _ = url), do: url
+  defp to_absolute_url("/" <> rest) when is_binary(rest) do
+    Bonfire.Common.URIs.based_url("/" <> rest, nil)
+  end
+  defp to_absolute_url(url) when is_binary(url), do: url
+
+  defp media_fragment_url(base, in_ts, out_ts) do
+    in_s = to_seconds(in_ts)
+    out_s = to_seconds(out_ts)
+
+    cond do
+      in_s != nil and out_s != nil and out_s > in_s ->
+        "#{base}#t=#{Float.to_string(in_s, decimals: 1)},#{Float.to_string(out_s, decimals: 1)}"
+
+      in_s != nil ->
+        "#{base}#t=#{Float.to_string(in_s, decimals: 1)}"
+
+      true ->
+        base
+    end
   end
 
-  defp annotation_thumbnail_html(movie_id) when is_binary(movie_id) do
-    thumb_url = Client.media_proxy_url(movie_id, "icon128.jpg")
-    path = "/archive/movies/#{movie_id}"
-    """
-    <figure class="annotation-thumbnail block my-2 rounded-lg overflow-hidden border border-base-content/10 aspect-video max-w-xs">
-      <a href="#{path}">
-        <img src="#{thumb_url}" alt="" class="w-full h-full object-cover"/>
-      </a>
-    </figure>
-    """
+  defp to_seconds(n) when is_number(n) and n >= 0, do: n * 1.0
+  defp to_seconds(s) when is_binary(s), do: parse_timestamp_to_seconds(s)
+  defp to_seconds(_), do: nil
+
+  defp parse_timestamp_to_seconds(s) when is_binary(s) do
+    if String.contains?(s, ":") do
+      # HH:MM:SS or MM:SS
+      parts = String.split(s, ":", parts: 3)
+      case Enum.map(parts, &String.to_float/1) do
+        [{h, _}, {m, _}, {s, _}] -> h * 3600 + m * 60 + s
+        [{m, _}, {s, _}] -> m * 60 + s
+        [{s, _}] -> s
+        _ -> nil
+      end
+    else
+      case Float.parse(s) do
+        {n, ""} when n >= 0 -> n
+        _ -> nil
+      end
+    end
   end
 
-  defp annotation_thumbnail_html(_), do: ""
+  defp parse_timestamp_to_seconds(_), do: nil
 
   @doc """
   Get or create the Bonfire Media for a movie. Use when the thread (ThreadLive) must exist,

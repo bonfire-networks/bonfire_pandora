@@ -1,13 +1,10 @@
 defmodule Bonfire.PanDoRa.Web.MovieLive do
   use Bonfire.UI.Common.Web, :surface_live_view
-  require Logger
-  alias Bonfire.Common.Enums, as: Enums
   alias PanDoRa.API.Client
   alias Bonfire.PanDoRa.Utils
   alias Bonfire.PanDoRa.Archives
 
   @behaviour Bonfire.UI.Common.LiveHandler
-  @pandora_thread_tag "[PANDORA:thread]"
 
   on_mount {LivePlugs, [Bonfire.UI.Me.LivePlugs.UserRequired]}
 
@@ -21,7 +18,6 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       |> assign(:note_content, "")
       |> assign(:in_timestamp, nil)
       |> assign(:out_timestamp, nil)
-      |> assign(:media, nil)
       |> assign(:public_notes, [])
       # Add this to track which annotation is being edited
       |> assign(:editing_annotation, nil)
@@ -54,17 +50,6 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> assign(:page_title, movie["title"] || "")
         |> assign(:movie, movie)
         |> assign(:video_url, video_url)
-        |> assign(
-          :media,
-          from_ok(
-            Archives.movie_get_or_create_media(current_user(socket), movie, movie_id: id)
-            |> debug("movie_get_or_create_media")
-          )
-        )
-        |> then(fn s ->
-          if media = s.assigns.media, do: Logger.info("#{@pandora_thread_tag} page loaded media_id=#{Enums.id(media)}")
-          s
-        end)
         |> assign(:in_timestamp, nil)
         |> assign(:out_timestamp, nil)
         # Initialize note_content
@@ -95,10 +80,9 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
         socket =
           socket
-          |> assign(:movie, nil)
-          |> assign(:video_url, nil)
-          |> assign(:media, nil)
-          |> assign(:public_notes, [])
+        |> assign(:movie, nil)
+        |> assign(:video_url, nil)
+        |> assign(:public_notes, [])
           |> assign(:in_timestamp, nil)
           |> assign(:out_timestamp, nil)
           |> assign(:note_content, "")
@@ -134,7 +118,6 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
   def handle_event("add_annotation", %{"note" => note}, socket) do
     opts = [current_user: current_user(socket)]
-    opts = if media = socket.assigns[:media], do: [media: media] ++ opts, else: opts
     opts = if movie_id = socket.assigns[:params], do: [movie_id: movie_id] ++ opts, else: opts
 
     with {:ok, annotation} <-
@@ -145,18 +128,6 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
              socket.assigns.out_timestamp,
              opts
            ) do
-      thread_id = annotation["thread_id"] || (socket.assigns.media && Enums.id(socket.assigns.media))
-      Logger.info("#{@pandora_thread_tag} annotation published, broadcast expected thread_id=#{thread_id}")
-
-      # Force ThreadLive to reload so the new annotation appears (fallback if broadcast is missed)
-      if thread_id && socket.assigns[:media] do
-        Phoenix.LiveView.send_update(
-          Bonfire.UI.Social.ThreadLive,
-          id: Enums.id(socket.assigns.media),
-          thread_id: thread_id
-        )
-      end
-
       # Update the public_notes list in the socket
       updated_notes = [annotation | socket.assigns.public_notes]
 
@@ -422,11 +393,6 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     else
       {:noreply, socket}
     end
-  end
-
-  def handle_info({{Bonfire.Social.Threads.LiveHandler, :new_reply}, {thread_id, _data}} = msg, socket) do
-    Logger.info("#{@pandora_thread_tag} MovieLive received new_reply thread_id=#{thread_id}")
-    Bonfire.UI.Common.LiveHandlers.handle_info(msg, socket, __MODULE__)
   end
 
   def handle_info(msg, socket) do
