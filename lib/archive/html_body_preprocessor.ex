@@ -7,7 +7,7 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
   `<video>` markup generated server-side. See PIANO_VIDEO_PREVIEW_TRUSTED_EMBED.md.
   """
 
-  alias Bonfire.PanDoRa.Client
+  alias PanDoRa.API.Client
 
   # Matches: <a href="/archive/movies/MOVIE_ID#t=IN,OUT">optional content</a>
   @marker_regex ~r|<a\s+href="/archive/movies/([^"#]+)#t=([\d.]+),([\d.]+)"([^>]*)>(.*?)</a>|s
@@ -21,10 +21,11 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
   def expand_video_preview_links(""), do: ""
 
   def expand_video_preview_links(html_body) when is_binary(html_body) do
-    Regex.replace(@marker_regex, html_body, &replace_marker/2)
+    # Regex.replace passes (full_match, cap1, cap2, cap3, ...) - each capture as separate arg
+    Regex.replace(@marker_regex, html_body, &replace_marker/6)
   end
 
-  defp replace_marker(_full_match, [movie_id, in_s, out_s | _]) do
+  defp replace_marker(_full_match, movie_id, in_s, out_s, _attrs, _content) do
     video_html = build_video_html(movie_id, in_s, out_s)
     movie_url = "/archive/movies/#{movie_id}"
     ~s(<a href="#{movie_url}">#{video_html}</a>)
