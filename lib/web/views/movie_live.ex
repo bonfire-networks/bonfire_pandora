@@ -225,47 +225,43 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     {:noreply, socket}
   end
 
-  # # Handle submitting the edit
-  # def handle_event("update_annotation", %{"note" => note}, socket) do
-  #   with annotation_id <- socket.assigns.editing_annotation["id"],
-  #        in_timestamp <- socket.assigns.in_timestamp,
-  #        out_timestamp <- socket.assigns.out_timestamp,
-  #        edit_data = %{
-  #          id: annotation_id,
-  #          in: in_timestamp,
-  #          out: out_timestamp,
-  #          value: note
-  #        },
-  #        {:ok, updated_annotation} <-
-  #          Client.edit_annotation(edit_data, current_user: current_user(socket)) do
-  #     # Update the public_notes list in the socket
-  #     updated_notes =
-  #       Enum.map(socket.assigns.public_notes, fn note ->
-  #         if note["id"] == annotation_id do
-  #           updated_annotation
-  #         else
-  #           note
-  #         end
-  #       end)
+  # Handle submitting the edit
+  def handle_event("update_annotation", %{"note" => note}, socket) do
+    annotation_id = socket.assigns.editing_annotation["id"]
+    in_timestamp = socket.assigns.in_timestamp
+    out_timestamp = socket.assigns.out_timestamp
 
-  #     # Reset the editing state
-  #     socket =
-  #       socket
-  #       |> assign(:public_notes, updated_notes)
-  #       |> assign(:editing_mode, false)
-  #       |> assign(:editing_annotation, nil)
-  #       |> assign(:note_content, "")
-  #       |> assign(:in_timestamp, nil)
-  #       |> assign(:out_timestamp, nil)
-  #       |> assign_flash(:info, l("Annotation updated successfully"))
+    edit_data = %{
+      id: annotation_id,
+      in: in_timestamp,
+      out: out_timestamp,
+      value: note
+    }
 
-  #     {:noreply, socket}
-  #   else
-  #     error ->
-  #       error("Error updating annotation: #{inspect(error)}")
-  #       {:noreply, assign_flash(socket, :error, l("Could not update annotation"))}
-  #   end
-  # end
+    case Client.edit_annotation(edit_data, current_user: current_user(socket)) do
+      {:ok, updated_annotation} ->
+        updated_notes =
+          Enum.map(socket.assigns.public_notes, fn n ->
+            if n["id"] == annotation_id, do: updated_annotation, else: n
+          end)
+
+        socket =
+          socket
+          |> assign(:public_notes, updated_notes)
+          |> assign(:editing_mode, false)
+          |> assign(:editing_annotation, nil)
+          |> assign(:note_content, "")
+          |> assign(:in_timestamp, nil)
+          |> assign(:out_timestamp, nil)
+          |> assign_flash(:info, l("Annotation updated successfully"))
+
+        {:noreply, socket}
+
+      error ->
+        error(error, "Error updating annotation")
+        {:noreply, assign_flash(socket, :error, l("Could not update annotation"))}
+    end
+  end
 
   # Handle editing a movie
   def handle_event("edit_movie", %{"movie" => movie_data}, socket) do
