@@ -12,7 +12,7 @@
             to={~p"/archive/lists/#{URI.encode(e(list, "id", ""))}"}
             class="text-sm link link-hover font-medium"
           >{e(list, "name", "")}</LinkLive>
-          <p class="list-col-wrap text-xs text-base-content/70">
+          <p class="list-col-wrap text-xs text-base-content/70 line-clamp-3 overflow-hidden">
             {e(list, "description", "")}
           </p>
         </div>
