@@ -34,6 +34,8 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
       send(self(), :load_initial_data)
       {:ok, socket}
     else
+      # Full page load (e.g. open in new tab): load data synchronously so initial HTML includes it
+      socket = do_load_initial_data(socket)
       {:ok, socket}
     end
   end
@@ -49,22 +51,22 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
   end
 
   def handle_info(:load_initial_data, socket) do
+    {:noreply, do_load_initial_data(socket)}
+  end
+
+  defp do_load_initial_data(socket) do
     %{list_id: list_id, per_page: per_page} = socket.assigns
+    opts = [current_user: current_user(socket)]
+    items_opts = [page: 0, per_page: per_page] ++ opts
 
-    list_result = fetch_list(list_id, current_user: current_user(socket))
-    items_result =
-      fetch_list_items(list_id,
-        page: 0,
-        per_page: per_page,
-        current_user: current_user(socket)
-      )
+    list_task = Task.async(fn -> fetch_list(list_id, opts) end)
+    items_task = Task.async(fn -> fetch_list_items(list_id, items_opts) end)
+    list_result = Task.await(list_task)
+    items_result = Task.await(items_task)
 
-    socket =
-      socket
-      |> handle_list_result(list_result)
-      |> handle_items_result(items_result)
-
-    {:noreply, socket}
+    socket
+    |> handle_list_result(list_result)
+    |> handle_items_result(items_result)
   end
 
   def handle_event("load_more", _params, socket) do
