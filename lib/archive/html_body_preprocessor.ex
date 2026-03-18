@@ -41,16 +41,16 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
   end
 
   # Video: preload="none" = no load until user clicks play. No autoplay.
-  # Wrapped in <figure> so PreviewActivity ignores clicks (opens thread) - see shouldHandlePreviewClick.
+  # Wrapped in div so PreviewActivity ignores clicks (see shouldHandlePreviewClick: .pandora-video-preview-wrapper).
   defp build_poster_html(movie_id, in_s, out_s, opts) do
     video_base = Client.video_url(movie_id, "480p.mp4", opts)
     video_src = "#{video_base}#t=#{in_s},#{out_s}"
-    movie_url = "/archive/movies/#{movie_id}"
 
     video_tag =
       ~s(<video class="pandora-video-preview plyr rounded" src="#{escape_attr(video_src)}" preload="none" width="320" height="180" playsinline controls></video>)
 
-    ~s(<figure class="pandora-video-preview-wrapper">#{video_tag}<a href="#{escape_attr(movie_url)}" class="text-sm link link-hover mt-1 block">View full movie</a></figure>)
+    # Archives.build_annotation_html_body already adds "View full movie" link after the marker - do not duplicate
+    ~s(<div class="pandora-video-preview-wrapper">#{video_tag}</div>)
   end
 
   defp escape_attr(str), do: Plug.HTML.html_escape_to_iodata(str) |> IO.iodata_to_binary()
