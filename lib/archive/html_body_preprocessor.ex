@@ -48,7 +48,7 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
     movie_url = "/archive/movies/#{movie_id}"
 
     video_tag =
-      ~s(<video class="pandora-video-preview rounded" src="#{escape_attr(video_src)}" preload="none" width="320" height="180" playsinline controls></video>)
+      ~s(<video class="pandora-video-preview plyr rounded" src="#{escape_attr(video_src)}" preload="none" width="320" height="180" playsinline controls></video>)
 
     ~s(<figure class="pandora-video-preview-wrapper">#{video_tag}<a href="#{escape_attr(movie_url)}" class="text-sm link link-hover mt-1 block">View full movie</a></figure>)
   end
