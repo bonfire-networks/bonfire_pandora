@@ -32,9 +32,15 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   def handle_params(%{"id" => id}, uri, socket) do
     # Seek from link: ?in=&out= (seconds, same format as annotation-checkpoint badge)
     {in_ts, out_ts} = parse_seek_params(uri)
+    opts = [current_user: current_user(socket)]
 
-    with {:ok, movie} <- Client.get_movie(id, current_user: current_user(socket)),
-         {:ok, public_notes} <- Client.fetch_annotations(id, current_user: current_user(socket)) do
+    movie_task = Task.async(fn -> Client.get_movie(id, opts) end)
+    notes_task = Task.async(fn -> Client.fetch_annotations(id, opts) end)
+    movie_result = Task.await(movie_task)
+    notes_result = Task.await(notes_task)
+
+    with {:ok, movie} <- movie_result,
+         {:ok, public_notes} <- notes_result do
       video_url =
         Client.video_url(
           to_string(movie["id"] || ""),
