@@ -41,13 +41,15 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
   end
 
   # Video: preload="none" = no load until user clicks play. No autoplay.
+  # Poster: icon512 (512px) adapted to player 320x180 via object-fit.
   # Wrapped in div so PreviewActivity ignores clicks (see shouldHandlePreviewClick: .pandora-video-preview-wrapper).
   defp build_poster_html(movie_id, in_s, out_s, opts) do
     video_base = Client.video_url(movie_id, "480p.mp4", opts)
     video_src = "#{video_base}#t=#{in_s},#{out_s}"
+    poster_url = Client.media_url(movie_id, "icon512.jpg", opts)
 
     video_tag =
-      ~s(<video class="pandora-video-preview plyr rounded" src="#{escape_attr(video_src)}" preload="none" width="320" height="180" playsinline controls></video>)
+      ~s(<video class="pandora-video-preview plyr rounded" src="#{escape_attr(video_src)}" poster="#{escape_attr(poster_url)}" preload="none" width="320" height="180" playsinline controls></video>)
 
     # Archives.build_annotation_html_body already adds "View full movie" link after the marker - do not duplicate
     ~s(<div class="pandora-video-preview-wrapper">#{video_tag}</div>)
