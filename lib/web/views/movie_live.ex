@@ -87,17 +87,11 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
           current_user: current_user(socket)
         )
 
-      raw_title = movie["title"] |> to_string()
-      header_title = page_title_for_header(raw_title)
-      title_truncated? = raw_title != "" and header_title != raw_title
-
       socket =
         socket
         |> assign(:params, id)
         |> assign(:back, true)
-        |> assign(:page_title, header_title)
-        |> assign(:movie_heading_full, raw_title)
-        |> assign(:movie_heading_truncated, title_truncated?)
+        |> assign_movie_page_heading(movie)
         |> assign(:movie, movie)
         |> assign(:video_url, video_url)
         |> assign(:in_timestamp, in_ts)
@@ -148,6 +142,28 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   end
 
   defp page_title_for_header(_), do: ""
+
+  defp assign_movie_page_heading(socket, movie, form_title \\ nil) when is_map(movie) do
+    raw_title = movie["title"] |> to_string()
+
+    raw_title =
+      if raw_title != "" do
+        raw_title
+      else
+        case form_title do
+          t when is_binary(t) -> String.trim(t)
+          _ -> ""
+        end
+      end
+
+    header_title = page_title_for_header(raw_title)
+    title_truncated? = raw_title != "" and header_title != raw_title
+
+    socket
+    |> assign(:page_title, header_title)
+    |> assign(:movie_heading_full, raw_title)
+    |> assign(:movie_heading_truncated, title_truncated?)
+  end
 
   defp parse_seek_params(uri) when is_binary(uri) do
     case URI.parse(uri) do
@@ -372,9 +388,12 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
             {updated_movie, socket}
           end
 
+        form_title = Map.get(movie_data, "title")
+
         socket =
           socket_after_kw
           |> assign(:movie, final_movie)
+          |> assign_movie_page_heading(final_movie, form_title)
           |> assign_movie_info_sidebar(final_movie)
           |> assign_flash(:info, l("Movie updated successfully"))
 
