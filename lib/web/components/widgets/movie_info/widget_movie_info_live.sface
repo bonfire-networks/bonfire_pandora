@@ -97,14 +97,14 @@
           </div>
         {/if}
 
-        <ul id="movie_more_info" class="flex flex-col gap-3 w-full">
+        <ul id="movie_more_info" class="flex flex-col gap-3 w-full min-w-0">
           {!-- Director --}
           {#if Enum.any?(director_list(@movie))}
-            <li class="items-center flex justify-between gap-2">
+            <li class="items-center flex justify-between gap-2 min-w-0">
               <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Director")}</span>
-              <div class="flex flex-wrap gap-1.5 justify-end">
+              <div class="flex flex-wrap gap-1.5 justify-end min-w-0">
                 {#for name <- director_list(@movie)}
-                  <a href={"/archive?director=#{URI.encode(name)}"} class="btn btn-xs btn-soft btn-accent">{name}</a>
+                  <a href={"/archive?director=#{URI.encode(name)}"} class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1">{name}</a>
                 {/for}
               </div>
             </li>
@@ -125,34 +125,34 @@
           {/if}
           {!-- Featuring --}
           {#if Enum.any?(featuring_list(@movie))}
-            <li class="items-center flex justify-between gap-2">
+            <li class="items-center flex justify-between gap-2 min-w-0">
               <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Featuring")}</span>
-              <div class="flex flex-wrap gap-1.5 justify-end">
+              <div class="flex flex-wrap gap-1.5 justify-end min-w-0">
                 {#for name <- featuring_list(@movie)}
-                  <a href={"/archive?featuring=#{URI.encode(name)}"} class="btn btn-xs btn-soft btn-accent">{name}</a>
+                  <a href={"/archive?featuring=#{URI.encode(name)}"} class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1">{name}</a>
                 {/for}
               </div>
             </li>
           {/if}
           {!-- Country --}
           {#if to_attr(@movie["country"]) != ""}
-            <li class="items-center flex justify-between gap-2">
+            <li class="items-center flex justify-between gap-2 min-w-0">
               <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Country")}</span>
-              <a href={"/archive?country=#{URI.encode(to_attr(@movie["country"]))}"} class="btn btn-xs btn-soft btn-accent">{to_attr(@movie["country"])}</a>
+              <a href={"/archive?country=#{URI.encode(to_attr(@movie["country"]))}"} class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1">{to_attr(@movie["country"])}</a>
             </li>
           {/if}
           {!-- Language --}
           {#if to_attr(@movie["language"]) != ""}
-            <li class="items-center flex justify-between gap-2">
+            <li class="items-center flex justify-between gap-2 min-w-0">
               <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Language")}</span>
-              <a href={"/archive?language=#{URI.encode(to_attr(@movie["language"]))}"} class="btn btn-xs btn-soft btn-accent">{to_attr(@movie["language"])}</a>
+              <a href={"/archive?language=#{URI.encode(to_attr(@movie["language"]))}"} class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1">{to_attr(@movie["language"])}</a>
             </li>
           {/if}
           {!-- Dynamic extra fields from this Pandora instance --}
           {#for {field, value} <- extra_metadata(@movie)}
-            <li class="items-center flex justify-between gap-2">
+            <li class="items-center flex justify-between gap-2 min-w-0">
               <span class="text-sm text-base-content/50 font-medium capitalize shrink-0">{field}</span>
-              <a href={"/archive?#{URI.encode(field)}=#{URI.encode(value)}"} class="btn btn-xs btn-soft btn-accent">{value}</a>
+              <a href={"/archive?#{URI.encode(field)}=#{URI.encode(value)}"} class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1">{value}</a>
             </li>
           {/for}
         </ul>

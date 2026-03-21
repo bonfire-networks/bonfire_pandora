@@ -1,5 +1,5 @@
-<li id={@movie_id} class="list-row">
-  <div>
+<li id={@movie_id} class="list-row min-w-0">
+  <div class="shrink-0">
     {#if @image_src}
       <img class="size-24 rounded-box" src={@image_src}>
     {#else}
@@ -11,7 +11,7 @@
       />
     {/if}
   </div>
-  <div>
+  <div class="min-w-0 flex-1">
     <LinkLive
       to={~p"/archive/movies/#{to_attr(e(@movie, "id", ""))}"}
       class="link link-hover text-base font-semibold break-words max-w-full"
@@ -39,7 +39,7 @@
         {/if}
         {#for {field, value} <- extra_metadata(@movie)}
           <button
-            class="btn btn-xs btn-soft btn-primary"
+            class="btn btn-xs btn-soft btn-primary max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1"
             phx-click="filter_by_field"
             phx-target={@event_target || false}
             phx-value-field={field}

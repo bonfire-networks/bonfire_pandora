@@ -52,7 +52,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         socket
         |> assign(:params, id)
         |> assign(:back, true)
-        |> assign(:page_title, movie["title"] || "")
+        |> assign(:page_title, page_title_for_header(movie["title"]))
         |> assign(:movie, movie)
         |> assign(:video_url, video_url)
         |> assign(:in_timestamp, in_ts)
@@ -99,6 +99,20 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         {:noreply, socket}
     end
   end
+
+  @header_title_max_graphemes 120
+
+  # Long Pandora titles (e.g. path-like ids) expand the page header flex row and push the
+  # sidebar off-screen; keep the layout stable while the full title stays in @movie (edit modal, API).
+  defp page_title_for_header(title) when is_binary(title) and title != "" do
+    if String.length(title) <= @header_title_max_graphemes do
+      title
+    else
+      String.slice(title, 0, @header_title_max_graphemes) <> "…"
+    end
+  end
+
+  defp page_title_for_header(_), do: ""
 
   defp parse_seek_params(uri) when is_binary(uri) do
     case URI.parse(uri) do
