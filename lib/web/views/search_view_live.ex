@@ -50,18 +50,34 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
     {:ok, socket}
   end
 
-  def handle_params(%{"term" => term}, _uri, socket) do
-    socket = assign(socket, :term, term)
-    socket = if term != "" and term != nil, do: do_initial_search(socket, term), else: socket
-    {:noreply, assign_sidebar_and_filter_assigns(socket)}
-  end
+  # Query params like /archive?director=Name&year=2020 mirror the in-app filter model (same keys as
+  # Movie info widget and search sidebar). Reserved keys are ignored for filter extraction.
+  def handle_params(params, _uri, socket) when is_map(params) do
+    q = stringify_query_params(params)
+    term = normalize_term(Map.get(q, "term"))
+    term? = term not in [nil, ""]
+    filter_map = filters_from_query_params(q)
 
-  def handle_params(_params, _uri, socket) do
     socket =
-      if not data_loaded?(socket) do
-        fetch_initial_data(socket)
-      else
-        socket
+      cond do
+        term? ->
+          socket
+          |> assign(:term, term)
+          |> assign(:current_filters, filter_map)
+          |> do_initial_search(term)
+
+        map_size(filter_map) > 0 ->
+          socket
+          |> assign(:term, nil)
+          |> assign(:current_filters, filter_map)
+          |> apply_query_filters_search()
+
+        true ->
+          socket
+          |> assign(:term, nil)
+          |> then(fn s ->
+            if not data_loaded?(s), do: fetch_initial_data(s), else: s
+          end)
       end
 
     {:noreply, assign_sidebar_and_filter_assigns(socket)}
@@ -107,6 +123,78 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
   def handle_event("validate", _, socket), do: {:noreply, socket}
 
   # ── Private ────────────────────────────────────────────────────────────────
+
+  @reserved_query_param_keys ~w(term vsn)
+
+  defp stringify_query_params(params) when is_map(params) do
+    Map.new(params, fn {k, v} -> {to_string(k), v} end)
+  end
+
+  defp normalize_term(t) when is_binary(t), do: String.trim(t)
+  defp normalize_term(_), do: nil
+
+  defp filters_from_query_params(qparams) when is_map(qparams) do
+    qparams
+    |> Enum.reject(fn {k, _} -> k in @reserved_query_param_keys end)
+    |> Enum.reject(fn {_, v} -> query_value_empty?(v) end)
+    |> Enum.flat_map(fn {k, v} ->
+      filter_type = Client.api_key_to_filter_type(k)
+
+      k
+      |> query_values_list(v)
+      |> Enum.map(fn val -> {filter_type, val} end)
+    end)
+    |> Enum.group_by(fn {t, _} -> t end, fn {_, v} -> v end)
+    |> Map.new(fn {t, vals} -> {t, Enum.uniq(vals)} end)
+  end
+
+  defp query_values_list(_key, v) when is_list(v) do
+    v
+    |> Enum.flat_map(&List.wrap/1)
+    |> Enum.map(&to_string/1)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+  end
+
+  defp query_values_list(_key, v), do: query_values_list("ignored", List.wrap(v))
+
+  defp query_value_empty?(nil), do: true
+  defp query_value_empty?(v) when is_binary(v), do: String.trim(v) == ""
+  defp query_value_empty?(v) when is_list(v), do: Enum.all?(v, &query_value_empty?/1)
+  defp query_value_empty?(_), do: false
+
+  defp apply_query_filters_search(socket) do
+    socket =
+      socket
+      |> assign(:filter_types, SearchLogic.load_filter_types(current_user: current_user(socket)))
+      |> track_loading(:global_load, true)
+
+    conditions = SearchLogic.build_search_conditions(socket.assigns)
+    keys = SearchLogic.build_request_keys(socket.assigns[:filter_types])
+
+    case Client.find(
+           conditions: conditions,
+           range: [0, SearchLogic.default_per_page()],
+           keys: keys,
+           total: true,
+           current_user: current_user(socket)
+         ) do
+      {:ok, %{items: items} = data} when is_list(items) ->
+        {items_to_show, has_more} = SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
+
+        socket
+        |> Bonfire.UI.Common.maybe_assign_context(data)
+        |> stream(:search_results, prepare_items(items_to_show), reset: true)
+        |> assign(has_more_items: has_more, current_count: length(items_to_show), page: 0)
+        |> update_available_filters(conditions)
+        |> track_loading(:global_load, false)
+
+      _ ->
+        socket
+        |> put_flash(:error, l("Error loading results"))
+        |> track_loading(:global_load, false)
+    end
+  end
 
   defp assign_sidebar_and_filter_assigns(socket) do
     socket
