@@ -1,6 +1,5 @@
 defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
   use Bonfire.UI.Common.Web, :stateful_component
-  import Phoenix.Component, only: [to_form: 1, to_form: 2]
 
   alias PanDoRa.API.Client
   alias Bonfire.PanDoRa.Utils
