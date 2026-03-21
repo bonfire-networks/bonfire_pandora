@@ -78,10 +78,9 @@
                 </fieldset>
                 <fieldset class="fieldset w-full">
                   <legend class="fieldset-legend">{l("Keywords")}</legend>
-                  <Bonfire.UI.Common.LiveSelectIntegrationLive.live_select
+                  <Bonfire.PanDoRa.Web.MovieKeywordsLiveSelect.movie_keywords_live_select
                     form={@keywords_form}
                     field={:keywords}
-                    mode={:tags}
                     event_target={@myself}
                     options={[]}
                     value={keywords_list(@movie)}
