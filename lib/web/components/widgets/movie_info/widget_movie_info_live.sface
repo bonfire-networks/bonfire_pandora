@@ -78,15 +78,12 @@
                 </fieldset>
                 <fieldset class="fieldset w-full">
                   <legend class="fieldset-legend">{l("Keywords")}</legend>
-                  <Bonfire.PanDoRa.Web.MovieKeywordsLiveSelect.movie_keywords_live_select
-                    form={@keywords_form}
-                    field={:keywords}
-                    event_target={@myself}
-                    options={[]}
-                    placeholder={l("Type to search or add keywords")}
-                    disabled={false}
-                    update_min_len={1}
-                    debounce={200}
+                  <input
+                    type="text"
+                    name="movie[keywords]"
+                    value={to_attr(keywords_csv_for_input(@movie))}
+                    placeholder={l("Comma-separated, same as archive facets")}
+                    class="input w-full"
                   />
                 </fieldset>
                 <div class="mt-4 flex justify-end">

@@ -1,7 +1,6 @@
 defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
   use Bonfire.UI.Common.Web, :stateful_component
 
-  alias PanDoRa.API.Client
   alias Bonfire.PanDoRa.Utils
 
   defdelegate to_attr(v), to: Utils
@@ -12,78 +11,23 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
   prop movie, :any, default: nil
 
   def mount(socket) do
-    {:ok,
-     socket
-     |> assign(:show_more, false)
-     |> assign(:keywords_form, to_form(%{keywords: []}, as: :movie))
-     |> assign(:kw_form_digest, nil)}
+    {:ok, assign(socket, :show_more, false)}
   end
 
   def update(assigns, socket) do
-    socket = assign(socket, assigns)
-    movie = socket.assigns[:movie]
-    kws = if movie, do: keywords_list(movie), else: []
-    digest = keywords_form_digest(movie, kws)
-
-    socket =
-      if digest != socket.assigns[:kw_form_digest] do
-        socket
-        |> assign(:kw_form_digest, digest)
-        |> assign(:keywords_form, to_form(%{keywords: kws}, as: :movie))
-      else
-        socket
-      end
-
-    {:ok, socket}
+    {:ok, assign(socket, assigns)}
   end
 
   def handle_event("toggle_more", _params, socket) do
     {:noreply, update(socket, :show_more, &(!&1))}
   end
 
-  def handle_event("live_select_change", %{"id" => live_select_id, "text" => text}, socket)
-      when is_binary(text) do
-    q = String.trim(text)
+  @doc "Comma-separated keywords for the edit-movie text field (same pattern as featuring)."
+  def keywords_csv_for_input(nil), do: ""
 
-    if q == "" do
-      maybe_send_update(LiveSelect.Component, live_select_id, options: [])
-      {:noreply, socket}
-    else
-      down = String.downcase(q)
-      opts = [field: "keywords", per_page: 50, current_user: current_user(socket)]
-
-      case Client.fetch_grouped_metadata([], opts) do
-        {:ok, %{filters: filters}} ->
-          names =
-            filters
-            |> Map.get("keywords", [])
-            |> Enum.map(&metadata_keyword_name/1)
-            |> Enum.reject(&is_nil/1)
-            |> Enum.uniq()
-
-          matching =
-            names
-            |> Enum.filter(fn name ->
-              String.contains?(String.downcase(name), down)
-            end)
-            |> Enum.take(30)
-
-          options = Enum.map(matching, fn name -> {name, name} end)
-          maybe_send_update(LiveSelect.Component, live_select_id, options: options)
-          {:noreply, socket}
-
-        _ ->
-          maybe_send_update(LiveSelect.Component, live_select_id, options: [])
-          {:noreply, socket}
-      end
-    end
+  def keywords_csv_for_input(movie) when is_map(movie) do
+    movie |> keywords_list() |> Enum.join(", ")
   end
-
-  def handle_event("live_select_change", _, socket), do: {:noreply, socket}
-
-  defp metadata_keyword_name(%{"name" => name}) when is_binary(name), do: name
-  defp metadata_keyword_name(%{name: name}) when is_binary(name), do: name
-  defp metadata_keyword_name(_), do: nil
 
   @doc "True if movie has non-empty summary to display."
   def summary_present?(nil), do: false
@@ -251,12 +195,4 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
   end
 
   defp item_json_keywords(_), do: []
-
-  # Rebuild the keywords form only when server-side movie identity or keyword list changes.
-  # Rebuilding on every parent re-render (e.g. form phx-change) resets LiveSelect selection and drops new tags.
-  defp keywords_form_digest(nil, _kws), do: {:none, nil}
-
-  defp keywords_form_digest(movie, kws) when is_map(movie) do
-    {Map.get(movie, "id"), :erlang.phash2(kws)}
-  end
 end
