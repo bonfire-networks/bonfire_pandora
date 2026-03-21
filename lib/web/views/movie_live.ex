@@ -806,7 +806,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> Enum.map(&facet_item_display_name/1)
         |> Enum.reject(&is_nil/1)
         |> Enum.uniq()
-        |> Enum.sort(:string)
+        |> Enum.sort()
 
       other ->
         debug(other, "fetch_keyword_facet_names: grouped metadata failed")

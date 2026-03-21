@@ -45,7 +45,7 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
         |> Enum.map(&String.trim/1)
         |> Enum.filter(&(&1 != ""))
         |> Enum.uniq()
-        |> Enum.sort(:string)
+        |> Enum.sort()
 
       _ ->
         []
