@@ -248,6 +248,27 @@ defmodule PanDoRa.API.Client do
   end
 
   @doc """
+  Atom to use in the Pandora `edit` payload for keyword lists.
+
+  Instances store facets under `keyword` or `keywords` in item data; search/grouping uses the same
+  key returned by `fetch_grouped_metadata` in `api_keys["keywords"]`. Sending the wrong key updates
+  a field that is not used for archive search.
+  """
+  def keywords_edit_field_atom(opts) do
+    opts =
+      opts
+      |> Utils.to_options()
+      |> Keyword.put(:field, "keywords")
+      |> Keyword.put(:per_page, 1)
+
+    case fetch_grouped_metadata([], opts) do
+      {:ok, %{api_keys: %{"keywords" => "keyword"}}} -> :keyword
+      {:ok, %{api_keys: %{"keywords" => _}}} -> :keywords
+      _ -> :keywords
+    end
+  end
+
+  @doc """
   Fetches grouped values for a single metadata field.
   """
   def fetch_grouped_field(field, conditions, opts) when is_binary(field) do

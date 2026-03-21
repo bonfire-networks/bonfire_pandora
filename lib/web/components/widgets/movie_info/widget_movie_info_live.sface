@@ -78,12 +78,17 @@
                 </fieldset>
                 <fieldset class="fieldset w-full">
                   <legend class="fieldset-legend">{l("Keywords")}</legend>
-                  <input
-                    type="text"
-                    name="movie[keywords]"
-                    value={to_attr(@movie["keywords"] || @movie["keyword"])}
-                    placeholder={l("Enter keywords separated by commas")}
-                    class="input w-full"
+                  <Bonfire.UI.Common.LiveSelectIntegrationLive.live_select
+                    form={@keywords_form}
+                    field={:keywords}
+                    mode={:tags}
+                    event_target={@myself}
+                    options={[]}
+                    value={keywords_list(@movie)}
+                    placeholder={l("Type to search or add keywords")}
+                    disabled={false}
+                    update_min_len={1}
+                    debounce={200}
                   />
                 </fieldset>
                 <div class="mt-4 flex justify-end">

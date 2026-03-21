@@ -1,5 +1,7 @@
 defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
   use Bonfire.UI.Common.Web, :stateful_component
+  import Phoenix.Component, only: [to_form: 1]
+
   alias PanDoRa.API.Client
   alias Bonfire.PanDoRa.Utils
 
@@ -11,12 +13,66 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
   prop movie, :any, default: nil
 
   def mount(socket) do
-    {:ok, assign(socket, :show_more, false)}
+    {:ok,
+     socket
+     |> assign(:show_more, false)
+     |> assign(:keywords_form, to_form(%{keywords: []}, as: :movie))}
+  end
+
+  def update(assigns, socket) do
+    socket = assign(socket, assigns)
+    movie = socket.assigns[:movie]
+    kws = if movie, do: keywords_list(movie), else: []
+    form = to_form(%{keywords: kws}, as: :movie)
+    {:ok, assign(socket, :keywords_form, form)}
   end
 
   def handle_event("toggle_more", _params, socket) do
     {:noreply, update(socket, :show_more, &(!&1))}
   end
+
+  def handle_event("live_select_change", %{"id" => live_select_id, "text" => text}, socket)
+      when is_binary(text) do
+    q = String.trim(text)
+
+    if q == "" do
+      maybe_send_update(LiveSelect.Component, live_select_id, options: [])
+      {:noreply, socket}
+    else
+      down = String.downcase(q)
+      opts = [field: "keywords", per_page: 50, current_user: current_user(socket)]
+
+      case Client.fetch_grouped_metadata([], opts) do
+        {:ok, %{filters: filters}} ->
+          names =
+            filters
+            |> Map.get("keywords", [])
+            |> Enum.map(&metadata_keyword_name/1)
+            |> Enum.reject(&is_nil/1)
+            |> Enum.uniq()
+
+          matching =
+            names
+            |> Enum.filter(fn name ->
+              String.contains?(String.downcase(name), down)
+            end)
+            |> Enum.take(30)
+
+          options = Enum.map(matching, fn name -> {name, name} end)
+          maybe_send_update(LiveSelect.Component, live_select_id, options: options)
+          {:noreply, socket}
+
+        _ ->
+          {:noreply, socket}
+      end
+    end
+  end
+
+  def handle_event("live_select_change", _, socket), do: {:noreply, socket}
+
+  defp metadata_keyword_name(%{"name" => name}) when is_binary(name), do: name
+  defp metadata_keyword_name(%{name: name}) when is_binary(name), do: name
+  defp metadata_keyword_name(_), do: nil
 
   @doc "True if movie has non-empty summary to display."
   def summary_present?(nil), do: false

@@ -315,7 +315,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       |> put_edit_field(:featuring, movie_data)
       |> put_edit_field(:country, movie_data)
       |> put_edit_field(:language, movie_data)
-      |> put_edit_field(:keywords, movie_data)
+      |> put_keywords_edit_field(movie_data, socket)
       |> put_edit_field(:sezione, movie_data)
 
     case Client.edit_movie(edit_data, current_user: current_user(socket)) do
@@ -455,6 +455,18 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     end
   end
 
+  # Form field is always `movie[keywords]`; Pandora item key is instance-dependent (`keyword` vs `keywords`).
+  defp put_keywords_edit_field(edit_data, movie_data, socket) do
+    case Map.fetch(movie_data, "keywords") do
+      {:ok, kw_list} when is_list(kw_list) ->
+        atom = Client.keywords_edit_field_atom(current_user: current_user(socket))
+        Map.put(edit_data, atom, kw_list)
+
+      _ ->
+        edit_data
+    end
+  end
+
   # Process the director field to ensure it's a list
   defp process_director_field(movie_data) do
     if Map.has_key?(movie_data, "director") do
@@ -496,8 +508,12 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         case movie_data["keywords"] do
           list when is_list(list) ->
             list
-            |> Enum.flat_map(&List.wrap/1)
-            |> Enum.map(&to_string/1)
+            |> Enum.flat_map(fn
+              %{"value" => v} -> List.wrap(v)
+              %{value: v} -> List.wrap(v)
+              other -> List.wrap(other)
+            end)
+            |> Enum.map(&keyword_form_entry_to_string/1)
             |> Enum.map(&String.trim/1)
             |> Enum.filter(&(&1 != ""))
 
@@ -514,6 +530,17 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       movie_data
     end
   end
+
+  defp keyword_form_entry_to_string(entry) when is_binary(entry) do
+    case Jason.decode(entry) do
+      {:ok, %{"value" => v}} -> to_string(v)
+      {:ok, %{"name" => n}} -> to_string(n)
+      {:ok, _} -> entry
+      {:error, _} -> entry
+    end
+  end
+
+  defp keyword_form_entry_to_string(entry), do: to_string(entry)
 
   # Process the section field to ensure it's a list
   defp process_section_field(movie_data) do
