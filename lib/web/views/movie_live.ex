@@ -25,6 +25,8 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       |> assign(:editing_mode, false)
       |> assign(:movie, nil)
       |> assign(:video_url, nil)
+      |> assign(:movie_heading_full, nil)
+      |> assign(:movie_heading_truncated, false)
 
     {:ok, socket}
   end
@@ -48,11 +50,17 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
           current_user: current_user(socket)
         )
 
+      raw_title = movie["title"] |> to_string()
+      header_title = page_title_for_header(raw_title)
+      title_truncated? = raw_title != "" and header_title != raw_title
+
       socket =
         socket
         |> assign(:params, id)
         |> assign(:back, true)
-        |> assign(:page_title, page_title_for_header(movie["title"]))
+        |> assign(:page_title, header_title)
+        |> assign(:movie_heading_full, raw_title)
+        |> assign(:movie_heading_truncated, title_truncated?)
         |> assign(:movie, movie)
         |> assign(:video_url, video_url)
         |> assign(:in_timestamp, in_ts)
@@ -85,9 +93,9 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
         socket =
           socket
-        |> assign(:movie, nil)
-        |> assign(:video_url, nil)
-        |> assign(:public_notes, [])
+          |> assign(:movie, nil)
+          |> assign(:video_url, nil)
+          |> assign(:public_notes, [])
           |> assign(:in_timestamp, nil)
           |> assign(:out_timestamp, nil)
           |> assign(:note_content, "")
@@ -95,15 +103,17 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
           |> assign(:editing_mode, false)
           |> assign(:back, true)
           |> assign(:page_title, "Movie not found")
+          |> assign(:movie_heading_full, nil)
+          |> assign(:movie_heading_truncated, false)
 
         {:noreply, socket}
     end
   end
 
-  @header_title_max_graphemes 120
+  # Short header label keeps PageHeaderLive flex row within viewport (bonfire_ui_common is unchanged).
+  # Full title is shown in the template when truncated.
+  @header_title_max_graphemes 48
 
-  # Long Pandora titles (e.g. path-like ids) expand the page header flex row and push the
-  # sidebar off-screen; keep the layout stable while the full title stays in @movie (edit modal, API).
   defp page_title_for_header(title) when is_binary(title) and title != "" do
     if String.length(title) <= @header_title_max_graphemes do
       title

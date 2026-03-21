@@ -93,7 +93,7 @@
         {#if summary_present?(@movie)}
           <div class="mb-4">
             <div class="text-sm text-base-content/50 font-medium mb-1">{l("Summary")}</div>
-            <div class="text-xs text-base-content whitespace-pre-wrap">{rich(get_summary(@movie))}</div>
+            <div class="text-xs text-base-content min-w-0 max-w-full whitespace-pre-wrap break-all [overflow-wrap:anywhere]">{rich(get_summary(@movie))}</div>
           </div>
         {/if}
 

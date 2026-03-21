@@ -12,4 +12,5 @@ defmodule Bonfire.PanDoRa.Components.MoviePreviewLive do
 
   defdelegate to_attr(v), to: Bonfire.PanDoRa.Utils
   defdelegate extra_metadata(movie), to: Bonfire.PanDoRa.Utils
+  defdelegate insert_line_break_hints(title), to: Bonfire.PanDoRa.Utils
 end

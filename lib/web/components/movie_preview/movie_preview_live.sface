@@ -14,8 +14,8 @@
   <div class="min-w-0 flex-1">
     <LinkLive
       to={~p"/archive/movies/#{to_attr(e(@movie, "id", ""))}"}
-      class="link link-hover text-base font-semibold break-words max-w-full"
-    >{rich(to_attr(e(@movie, "title", "")))}</LinkLive>
+      class="link link-hover inline-block max-w-full min-w-0 align-top text-base font-semibold break-all [overflow-wrap:anywhere]"
+    >{rich(insert_line_break_hints(to_attr(e(@movie, "title", ""))))}</LinkLive>
     {#if @movie["director"]}
       <div class="">
         {#for director <- List.wrap(@movie["director"]) |> Enum.filter(&is_binary/1)}

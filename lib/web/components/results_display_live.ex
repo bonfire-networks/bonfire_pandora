@@ -1,5 +1,6 @@
 defmodule Bonfire.PanDoRa.Components.ResultsDisplay do
   use Bonfire.UI.Common.Web, :stateless_component
+  alias Bonfire.PanDoRa.Utils
 
   prop results, :map, required: true
   prop search_term, :string, required: true
@@ -10,7 +11,9 @@ defmodule Bonfire.PanDoRa.Components.ResultsDisplay do
       <h2 class="text-xl font-bold mb-2">{l("Results")}</h2>
       {#if is_map(@results) and map_size(@results) > 0}
         <div class="border rounded-lg overflow-hidden">
-          <p :for={r <- e(@results, "items", nil)} class="p-4 overflow-x-auto">{e(r, "title", nil)}</p>
+          <p :for={r <- e(@results, "items", nil)} class="p-4 min-w-0 max-w-full break-all [overflow-wrap:anywhere]">
+            {Utils.insert_line_break_hints(to_string(e(r, "title", "") || ""))}
+          </p>
         </div>
       {#else}
         <p class="">{l("No results found")}</p>

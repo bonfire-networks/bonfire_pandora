@@ -8,6 +8,31 @@ defmodule Bonfire.PanDoRa.Utils do
   def to_attr(v), do: to_string(v)
 
   @doc """
+  Path-like Pandora titles often have no spaces, so the browser does not wrap them.
+
+  Inserts U+200B (zero-width space) after `/`, `_`, and `-` so lines can break at those
+  characters. Still combine with CSS `break-all` on the container for segments that remain
+  a single long token (e.g. a trailing id).
+
+  ## Examples
+
+      iex> Bonfire.PanDoRa.Utils.insert_line_break_hints("a/b_c-d")
+      "a/\u200Bb_\u200Bc-\u200Bd"
+
+      iex> Bonfire.PanDoRa.Utils.insert_line_break_hints("")
+      ""
+
+  """
+  def insert_line_break_hints(title) when is_binary(title) and title != "" do
+    title
+    |> String.replace("/", "/\u200B")
+    |> String.replace("_", "_\u200B")
+    |> String.replace("-", "-\u200B")
+  end
+
+  def insert_line_break_hints(_), do: ""
+
+  @doc """
   Structural/technical fields handled explicitly in templates.
   Instance-specific keys (sezione, edizione, genre, etc.) are intentionally excluded
   so they appear dynamically via extra_metadata/1.

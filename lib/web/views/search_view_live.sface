@@ -14,7 +14,7 @@
     pandora_base_url={@pandora_base_url}
   />
 
-  <div class="overflow-x-auto relative flex-1">
+  <div class="min-w-0 max-w-full flex-1 overflow-x-auto relative">
     {#if @loading && @page == 0}
       <div class="bg-base-200/50 p-20 flex items-center justify-center z-10">
         <div class="loading loading-spinner loading-lg text-primary" />
@@ -26,7 +26,7 @@
         phx-update="stream"
         data-page={@page}
         data-loading={@loading}
-        class="list"
+        class="list min-w-0 max-w-full"
       >
         {#for {id, result} <- @streams.search_results}
           <Bonfire.PanDoRa.Components.MoviePreviewLive
