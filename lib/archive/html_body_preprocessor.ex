@@ -3,8 +3,13 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
   Expands trusted embed markers in html_body to video preview markup.
 
   Markers are links `<a href="/archive/movies/{id}#t={in},{out}"></a>` that pass
-  the HTML sanitizer. At render time, this module replaces them with trusted
+  the HTML sanitizer.   At render time, this module replaces them with trusted
   `<video>` markup generated server-side. See PIANO_VIDEO_PREVIEW_TRUSTED_EMBED.md.
+
+  The expanded `<video>` has **no `src` initially**: `data-pandora-video-src` holds the mp4 URL
+  and is applied in the browser when the element nears the viewport (`PlyrInit` hook), with
+  `preload="none"`. A **poster** image uses Pandora's embed convention `96p{in}.jpg` via
+  `/archive/media/...` (frame at selection in-point), matching `embedPlayer.js` poster logic.
   """
 
   alias PanDoRa.API.Client
@@ -60,8 +65,12 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
           Client.video_url(movie_id, "480p.mp4", Keyword.put(opts, :clip_t, clip_t))
       end
 
+    # Same convention as Pandora embed (embedPlayer.js): poster = frame JPEG at in-point,
+    # path `/{item}/96p{timecode}.jpg` via our media proxy (small vs full mp4).
+    poster_src = Client.media_proxy_url(movie_id, "96p#{in_s}.jpg")
+
     video_tag =
-      ~s(<video class="pandora-video-preview plyr rounded" src="#{escape_attr(video_src)}" preload="none" width="320" height="180" playsinline controls></video>)
+      ~s(<video class="pandora-video-preview plyr rounded" preload="none" width="320" height="180" playsinline controls poster="#{escape_attr(poster_src)}" data-pandora-video-src="#{escape_attr(video_src)}"></video>)
 
     # Archives.build_annotation_html_body already adds "View full movie" link after the marker - do not duplicate
     ~s(<div class="pandora-video-preview-wrapper" data-pandora-selection-url="#{escape_attr(selection_url)}">#{video_tag}</div>)
