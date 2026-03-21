@@ -6,6 +6,16 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
   @behaviour Bonfire.UI.Common.LiveHandler
 
+  # Pandora `edit` often returns a large item blob; merge only fields we edited so the widget
+  # does not gain technical keys (videoRatio, posterFrame, …) into `extra_metadata/1`.
+  @pandora_edit_merge_allowlist MapSet.new(
+    ~w(
+      title director summary year featuring country language sezione
+      keyword keywords selezionato editable
+    ),
+    &String.downcase/1
+  )
+
   on_mount {LivePlugs, [Bonfire.UI.Me.LivePlugs.UserRequired]}
 
   def mount(_params, _session, socket) do
@@ -305,6 +315,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       |> process_director_field()
       |> process_featuring_field()
       |> process_keywords_field()
+      |> acknowledge_live_select_keywords_field()
       |> process_section_field()
 
     # Build edit_data from whitelisted fields (avoids String.to_existing_atom on dynamic keys)
@@ -323,7 +334,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
     case Client.edit_movie(edit_data, opts) do
       {:ok, updated_fields} ->
-        updated_movie = Map.merge(socket.assigns.movie, updated_fields)
+        updated_movie = merge_pandora_edit_response(socket.assigns.movie, updated_fields)
 
         {final_movie, socket_after_kw} =
           if Map.has_key?(movie_data, "keywords") do
@@ -394,7 +405,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       case Client.edit_movie(edit_data, socket) do
         {:ok, updated_fields} ->
           # Update the movie in the socket with the updated fields
-          updated_movie = Map.merge(socket.assigns.movie, updated_fields)
+          updated_movie = merge_pandora_edit_response(socket.assigns.movie, updated_fields)
 
           socket =
             socket
@@ -478,6 +489,34 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     case Map.fetch(movie_data, str_key) do
       :error -> acc
       {:ok, value} -> Map.put(acc, key, value)
+    end
+  end
+
+  defp merge_pandora_edit_response(movie, updated_fields) when is_map(movie) and is_map(updated_fields) do
+    Enum.reduce(updated_fields, movie, fn {k, v}, acc ->
+      sk = String.downcase(to_string(k))
+
+      if MapSet.member?(@pandora_edit_merge_allowlist, sk) do
+        Map.put(acc, to_string(k), v)
+      else
+        acc
+      end
+    end)
+  end
+
+  # LiveSelect tags mode: with zero tags it sends `movie[keywords_empty_selection]` and no `keywords` key.
+  defp acknowledge_live_select_keywords_field(data) when is_map(data) do
+    cond do
+      Map.has_key?(data, "keywords") ->
+        Map.delete(data, "keywords_empty_selection")
+
+      Map.has_key?(data, "keywords_empty_selection") ->
+        data
+        |> Map.delete("keywords_empty_selection")
+        |> Map.put("keywords", [])
+
+      true ->
+        data
     end
   end
 

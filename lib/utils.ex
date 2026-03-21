@@ -41,17 +41,34 @@ defmodule Bonfire.PanDoRa.Utils do
   @known_fields ~w(id title item_id public_id stable_id order duration director image
                    year summary hue saturation lightness volume cutsperminute rightslevel stream
                    streams bitrate editable featuring country language keywords keyword
-                   aspectRatio aspect_ratio ratio resolution keywordLayerAnnotations)
+                   aspectRatio aspect_ratio ratio resolution keywordLayerAnnotations runtime)
 
   def known_fields, do: @known_fields
 
+  # Pandora item payloads include many technical keys; hide them from the movie widget “extra” list.
+  @extra_metadata_suppress MapSet.new(
+    ~w(
+      videoratio posterratio numberofcuts rendered size numberoffiles posterframe pixels
+      created parts aspectratio random modified user mimetype codec framerate fps
+      width height filesize filesizebytes filepath filename bitratekbps durationms
+      durationframe startframe endframe md5 sha checksum hash uuid revision version
+      imported exported indexed transcoded proxy thumbnail thumb posteruri streamuri
+      itemtype mediatype container format profile level rotation flip mirror
+    ),
+    &String.downcase/1
+  )
+
   defp known_movie_field?(k), do: to_string(k) in @known_fields
+
+  defp extra_metadata_suppressed?(k),
+    do: MapSet.member?(@extra_metadata_suppress, String.downcase(to_string(k)))
 
   @doc "Returns extra metadata fields (not in known_fields) with non-empty values."
   def extra_metadata(movie) when is_map(movie) do
     movie
     |> Enum.reject(fn {k, v} ->
-      known_movie_field?(k) or is_nil(v) or v == "" or v == [] or is_map(v)
+      known_movie_field?(k) or extra_metadata_suppressed?(k) or is_nil(v) or v == "" or v == [] or
+        is_map(v)
     end)
     |> Enum.map(fn {k, v} -> {k, to_attr(v)} end)
     |> Enum.reject(fn {_k, v} -> v == "" end)
