@@ -76,6 +76,16 @@
                     class="input w-full"
                   />
                 </fieldset>
+                <fieldset class="fieldset w-full">
+                  <legend class="fieldset-legend">{l("Keywords")}</legend>
+                  <input
+                    type="text"
+                    name="movie[keywords]"
+                    value={to_attr(@movie["keywords"] || @movie["keyword"])}
+                    placeholder={l("Enter keywords separated by commas")}
+                    class="input w-full"
+                  />
+                </fieldset>
                 <div class="mt-4 flex justify-end">
                   <button type="submit" class="btn btn-primary">{l("Save Changes")}</button>
                 </div>
@@ -146,6 +156,17 @@
             <li class="items-center flex justify-between gap-2 min-w-0">
               <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Language")}</span>
               <a href={"/archive?language=#{URI.encode(to_attr(@movie["language"]))}"} class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1">{to_attr(@movie["language"])}</a>
+            </li>
+          {/if}
+          {!-- Keywords (search facet: keywords) --}
+          {#if Enum.any?(keywords_list(@movie))}
+            <li class="items-center flex justify-between gap-2 min-w-0">
+              <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Keywords")}</span>
+              <div class="flex flex-wrap gap-1.5 justify-end min-w-0">
+                {#for kw <- keywords_list(@movie)}
+                  <a href={"/archive?keywords=#{URI.encode(kw)}"} class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1">{kw}</a>
+                {/for}
+              </div>
             </li>
           {/if}
           {!-- Dynamic extra fields from this Pandora instance --}

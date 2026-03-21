@@ -302,6 +302,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       movie_data
       |> process_director_field()
       |> process_featuring_field()
+      |> process_keywords_field()
       |> process_section_field()
 
     # Build edit_data from whitelisted fields (avoids String.to_existing_atom on dynamic keys)
@@ -314,6 +315,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       |> put_edit_field(:featuring, movie_data)
       |> put_edit_field(:country, movie_data)
       |> put_edit_field(:language, movie_data)
+      |> put_edit_field(:keywords, movie_data)
       |> put_edit_field(:sezione, movie_data)
 
     case Client.edit_movie(edit_data, current_user: current_user(socket)) do
@@ -482,6 +484,32 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> Enum.filter(&(&1 != ""))
 
       Map.put(movie_data, "featuring", featuring_list)
+    else
+      movie_data
+    end
+  end
+
+  # Keywords: same shape as director/featuring for Pandora edit API
+  defp process_keywords_field(movie_data) do
+    if Map.has_key?(movie_data, "keywords") do
+      kw_list =
+        case movie_data["keywords"] do
+          list when is_list(list) ->
+            list
+            |> Enum.flat_map(&List.wrap/1)
+            |> Enum.map(&to_string/1)
+            |> Enum.map(&String.trim/1)
+            |> Enum.filter(&(&1 != ""))
+
+          s ->
+            s
+            |> to_string()
+            |> String.split(",")
+            |> Enum.map(&String.trim/1)
+            |> Enum.filter(&(&1 != ""))
+        end
+
+      Map.put(movie_data, "keywords", kw_list)
     else
       movie_data
     end

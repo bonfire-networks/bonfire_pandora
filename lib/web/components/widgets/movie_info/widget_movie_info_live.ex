@@ -133,4 +133,29 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
   end
 
   def featuring_list(_), do: []
+
+  @doc "Keywords from API as `keywords` or `keyword` (list or comma-separated string)."
+  def keywords_list(movie) when is_map(movie) do
+    raw = Map.get(movie, "keywords") || Map.get(movie, "keyword")
+
+    case raw do
+      list when is_list(list) ->
+        list
+        |> Enum.flat_map(&List.wrap/1)
+        |> Enum.map(&to_string/1)
+        |> Enum.map(&String.trim/1)
+        |> Enum.reject(&(&1 == ""))
+
+      s when is_binary(s) and s != "" ->
+        s
+        |> String.split(",")
+        |> Enum.map(&String.trim/1)
+        |> Enum.reject(&(&1 == ""))
+
+      _ ->
+        []
+    end
+  end
+
+  def keywords_list(_), do: []
 end
