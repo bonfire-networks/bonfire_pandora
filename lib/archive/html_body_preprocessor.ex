@@ -10,7 +10,7 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
   and is applied in the browser when the element nears the viewport (`PlyrInit` hook), with
   `preload="none"`. A **poster** image uses a frame JPEG at in-point, `512p{in}.jpg` via
   `/archive/media/...`. Attributes **`data-pandora-in`** / **`data-pandora-out`** (seconds) drive
-  feed-only Plyr: no progress bar, loop in→out while playing until the user pauses (`PlyrInit`).
+  feed-only Plyr: no progress bar; segment [in,out] loops in playback via seek near `out`, with seek to `in` on pause/ended at end (`PlyrInit`).
   """
 
   alias PanDoRa.API.Client
