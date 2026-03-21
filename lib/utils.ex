@@ -1,10 +1,11 @@
 defmodule Bonfire.PanDoRa.Utils do
   @doc """
   Converts any Pandora field value to a safe string for HTML attributes.
-  Nil becomes "", lists are joined, anything else is to_string'd.
+  Nil becomes "", lists are joined (binaries only), maps become "" (avoid `to_string` on maps).
   """
   def to_attr(nil), do: ""
   def to_attr(list) when is_list(list), do: list |> Enum.filter(&is_binary/1) |> Enum.join(", ")
+  def to_attr(m) when is_map(m), do: ""
   def to_attr(v), do: to_string(v)
 
   @doc """
@@ -40,14 +41,18 @@ defmodule Bonfire.PanDoRa.Utils do
   @known_fields ~w(id title item_id public_id stable_id order duration director image
                    year summary hue saturation lightness volume cutsperminute rightslevel stream
                    streams bitrate editable featuring country language keywords keyword
-                   aspectRatio aspect_ratio ratio resolution)
+                   aspectRatio aspect_ratio ratio resolution keywordLayerAnnotations)
 
   def known_fields, do: @known_fields
+
+  defp known_movie_field?(k), do: to_string(k) in @known_fields
 
   @doc "Returns extra metadata fields (not in known_fields) with non-empty values."
   def extra_metadata(movie) when is_map(movie) do
     movie
-    |> Enum.reject(fn {k, v} -> k in @known_fields or is_nil(v) or v == "" or v == [] end)
+    |> Enum.reject(fn {k, v} ->
+      known_movie_field?(k) or is_nil(v) or v == "" or v == [] or is_map(v)
+    end)
     |> Enum.map(fn {k, v} -> {k, to_attr(v)} end)
     |> Enum.reject(fn {_k, v} -> v == "" end)
   end
