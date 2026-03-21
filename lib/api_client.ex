@@ -248,11 +248,11 @@ defmodule PanDoRa.API.Client do
   end
 
   @doc """
-  Atom to use in the Pandora `edit` payload for keyword lists.
+  Which single atom some callers use for Pandora `edit` keyword lists.
 
-  Instances store facets under `keyword` or `keywords` in item data; search/grouping uses the same
-  key returned by `fetch_grouped_metadata` in `api_keys["keywords"]`. Sending the wrong key updates
-  a field that is not used for archive search.
+  Movie keyword tags shown and edited in Bonfire are synced to Pandora via the **`keywords` annotation layer**
+  (`findAnnotations` / `addAnnotation` / `removeAnnotation`), not only item JSON fields. This helper remains
+  for metadata / grouping (`fetch_grouped_metadata`) and any code that must pick one API `group` key for `find` conditions.
   """
   def keywords_edit_field_atom(opts) do
     opts =
@@ -1792,6 +1792,56 @@ defmodule PanDoRa.API.Client do
   end
 
   def best_video_filename(_), do: "480p.mp4"
+
+  @pandora_keyword_layer "keywords"
+
+  @doc "Pandora annotation layer id used for searchable keyword facets (see `list_keyword_layer_annotations/2`)."
+  def pandora_keyword_layer, do: @pandora_keyword_layer
+
+  @doc """
+  Lists annotations on the `keywords` layer for a single item.
+
+  Pandora returns matching rows under `data.items` when `keys` is present in the request body.
+  """
+  def list_keyword_layer_annotations(item_id, opts) when is_binary(item_id) do
+    data = %{
+      itemsQuery: %{
+        operator: "&",
+        conditions: [
+          %{
+            key: "id",
+            operator: "==",
+            value: item_id
+          }
+        ]
+      },
+      query: %{
+        operator: "&",
+        conditions: [
+          %{
+            key: "layer",
+            operator: "==",
+            value: @pandora_keyword_layer
+          }
+        ]
+      },
+      keys: ["id", "layer", "value", "in", "out"],
+      range: [0, 2000],
+      sort: [%{key: "in", operator: "+"}]
+    }
+
+    case make_request("findAnnotations", data, opts) do
+      {:ok, %{"items" => items}} when is_list(items) ->
+        {:ok, items}
+
+      {:ok, other} when is_map(other) ->
+        debug(other, "list_keyword_layer_annotations: unexpected shape")
+        {:ok, []}
+
+      {:error, _} = err ->
+        err
+    end
+  end
 
   @doc """
   Basic test function for annotations following API structure

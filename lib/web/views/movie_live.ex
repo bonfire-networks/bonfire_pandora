@@ -38,11 +38,25 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
     movie_task = Task.async(fn -> Client.get_movie(id, opts) end)
     notes_task = Task.async(fn -> Client.fetch_annotations(id, opts) end)
+    kw_task = Task.async(fn -> Client.list_keyword_layer_annotations(id, opts) end)
     movie_result = Task.await(movie_task)
     notes_result = Task.await(notes_task)
+    kw_result = Task.await(kw_task)
 
     with {:ok, movie} <- movie_result,
          {:ok, public_notes} <- notes_result do
+      keyword_layer_ann =
+        case kw_result do
+          {:ok, list} when is_list(list) ->
+            list
+
+          other ->
+            debug(other, "Keyword layer annotations fetch failed; using empty list")
+            []
+        end
+
+      movie = Map.put(movie, "keywordLayerAnnotations", keyword_layer_ann)
+
       video_url =
         Client.video_url(
           to_string(movie["id"] || ""),
@@ -72,19 +86,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> assign(:editing_annotation, nil)
         # Initialize editing mode
         |> assign(:editing_mode, false)
-        |> assign(:sidebar_widgets,
-          users: [
-            secondary: [
-              {Bonfire.PanDoRa.Web.WidgetMovieInfoLive,
-               [
-                 type: Surface.LiveComponent,
-                 id: "movie_info",
-                 movie: movie,
-                 widget_title: "Movie Info"
-               ]}
-            ]
-          ]
-        )
+        |> assign_movie_info_sidebar(movie)
 
       {:noreply, socket}
     else
@@ -315,17 +317,40 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       |> put_edit_field(:featuring, movie_data)
       |> put_edit_field(:country, movie_data)
       |> put_edit_field(:language, movie_data)
-      |> put_keywords_edit_field(movie_data, socket)
       |> put_edit_field(:sezione, movie_data)
 
-    case Client.edit_movie(edit_data, current_user: current_user(socket)) do
+    opts = [current_user: current_user(socket)]
+
+    case Client.edit_movie(edit_data, opts) do
       {:ok, updated_fields} ->
-        # Update the movie in the socket with the updated fields
         updated_movie = Map.merge(socket.assigns.movie, updated_fields)
 
+        {final_movie, socket_after_kw} =
+          if Map.has_key?(movie_data, "keywords") do
+            desired = movie_data["keywords"]
+            desired = if is_list(desired), do: desired, else: []
+
+            case sync_keyword_layer_annotations(to_string(movie_id), desired, updated_movie, opts) do
+              {:ok, kw_ann} ->
+                m = Map.put(updated_movie, "keywordLayerAnnotations", kw_ann)
+                {m, socket}
+
+              {:error, reason} ->
+                {updated_movie,
+                 assign_flash(
+                   socket,
+                   :error,
+                   l("Keywords could not be synced to Pandora: %{reason}", reason: inspect(reason))
+                 )}
+            end
+          else
+            {updated_movie, socket}
+          end
+
         socket =
-          socket
-          |> assign(:movie, updated_movie)
+          socket_after_kw
+          |> assign(:movie, final_movie)
+          |> assign_movie_info_sidebar(final_movie)
           |> assign_flash(:info, l("Movie updated successfully"))
 
         {:noreply, socket}
@@ -374,6 +399,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
           socket =
             socket
             |> assign(:movie, updated_movie)
+            |> assign_movie_info_sidebar(updated_movie)
             |> assign_flash(:info, l("Selection status updated"))
 
           {:noreply, socket}
@@ -455,27 +481,115 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     end
   end
 
-  # Form field is always `movie[keywords]`; Pandora item key is instance-dependent (`keyword` vs `keywords`).
-  defp put_keywords_edit_field(edit_data, movie_data, socket) do
-    case Map.fetch(movie_data, "keywords") do
-      {:ok, kw_list} when is_list(kw_list) ->
-        atom = Client.keywords_edit_field_atom(current_user: current_user(socket))
-        Map.put(edit_data, atom, kw_list)
+  defp assign_movie_info_sidebar(socket, movie) do
+    assign(socket, :sidebar_widgets,
+      users: [
+        secondary: [
+          {Bonfire.PanDoRa.Web.WidgetMovieInfoLive,
+           [
+             type: Surface.LiveComponent,
+             id: "movie_info",
+             movie: movie,
+             widget_title: "Movie Info"
+           ]}
+        ]
+      ]
+    )
+  end
 
-      {:ok, kw} when is_binary(kw) ->
-        atom = Client.keywords_edit_field_atom(current_user: current_user(socket))
-        list =
-          kw
-          |> String.split(",")
-          |> Enum.map(&String.trim/1)
-          |> Enum.filter(&(&1 != ""))
+  defp sync_keyword_layer_annotations(movie_id, desired_list, movie_base, opts)
+       when is_binary(movie_id) and is_list(desired_list) and is_map(movie_base) do
+    desired =
+      desired_list
+      |> Enum.map(&to_string/1)
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
 
-        Map.put(edit_data, atom, list)
+    desired_freq = Enum.frequencies(desired)
 
-      _ ->
-        edit_data
+    with {:ok, current} <- Client.list_keyword_layer_annotations(movie_id, opts) do
+      current_vals =
+        current
+        |> Enum.map(&annotation_value_string/1)
+        |> Enum.map(&String.trim/1)
+        |> Enum.reject(&(&1 == ""))
+
+      if Enum.frequencies(current_vals) == desired_freq do
+        {:ok, current}
+      else
+        {in_f, out_f} = keyword_annotation_time_range(movie_base)
+
+        case reduce_keyword_removals(current, opts) do
+          :ok ->
+            case reduce_keyword_adds(movie_id, desired, in_f, out_f, opts) do
+              :ok -> Client.list_keyword_layer_annotations(movie_id, opts)
+              {:error, _} = err -> err
+            end
+
+          {:error, _} = err ->
+            err
+        end
+      end
     end
   end
+
+  defp reduce_keyword_adds(movie_id, desired, in_f, out_f, opts) do
+    layer = Client.pandora_keyword_layer()
+
+    Enum.reduce_while(desired, :ok, fn value, :ok ->
+      case Client.add_annotation(
+             %{item: movie_id, layer: layer, in: in_f, out: out_f, value: value},
+             opts
+           ) do
+        {:ok, _} -> {:cont, :ok}
+        {:error, e} -> {:halt, {:error, e}}
+      end
+    end)
+  end
+
+  defp reduce_keyword_removals(annotations, opts) do
+    Enum.reduce_while(annotations, :ok, fn ann, :ok ->
+      id = annotation_id_string(ann)
+
+      if id == "" do
+        {:cont, :ok}
+      else
+        case Client.remove_annotation(id, opts) do
+          {:ok, _} -> {:cont, :ok}
+          {:error, e} -> {:halt, {:error, e}}
+        end
+      end
+    end)
+  end
+
+  defp keyword_annotation_time_range(movie) when is_map(movie) do
+    raw = Bonfire.PanDoRa.Web.WidgetMovieInfoLive.api_duration(movie)
+
+    out =
+      cond do
+        is_number(raw) and raw > 0 ->
+          raw * 1.0
+
+        is_binary(raw) ->
+          case Float.parse(String.trim(raw)) do
+            {n, _} when n > 0 -> n
+            _ -> 1.0
+          end
+
+        true ->
+          1.0
+      end
+
+    {0.0, out}
+  end
+
+  defp annotation_value_string(%{"value" => v}), do: to_string(v)
+  defp annotation_value_string(%{value: v}), do: to_string(v)
+  defp annotation_value_string(_), do: ""
+
+  defp annotation_id_string(%{"id" => id}), do: to_string(id)
+  defp annotation_id_string(%{id: id}), do: to_string(id)
+  defp annotation_id_string(_), do: ""
 
   # Process the director field to ensure it's a list
   defp process_director_field(movie_data) do

@@ -201,8 +201,34 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
 
   def featuring_list(_), do: []
 
-  @doc "Keywords from API as `keywords` or `keyword` (list or comma-separated string)."
+  @doc """
+  Keywords for display and the edit form.
+
+  When `keywordLayerAnnotations` is present (after `MovieLive` load), values come from the Pandora
+  **`keywords` annotation layer** (facets / archive). Otherwise falls back to item `keywords` / `keyword`.
+  """
   def keywords_list(movie) when is_map(movie) do
+    if Map.has_key?(movie, "keywordLayerAnnotations") do
+      movie
+      |> Map.get("keywordLayerAnnotations", [])
+      |> List.wrap()
+      |> Enum.map(&layer_keyword_value/1)
+      |> Enum.map(&String.trim/1)
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.uniq()
+      |> Enum.sort()
+    else
+      item_json_keywords(movie)
+    end
+  end
+
+  def keywords_list(_), do: []
+
+  defp layer_keyword_value(%{"value" => v}), do: to_string(v)
+  defp layer_keyword_value(%{value: v}), do: to_string(v)
+  defp layer_keyword_value(_), do: ""
+
+  defp item_json_keywords(movie) when is_map(movie) do
     raw = Map.get(movie, "keywords") || Map.get(movie, "keyword")
 
     case raw do
@@ -224,7 +250,7 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
     end
   end
 
-  def keywords_list(_), do: []
+  defp item_json_keywords(_), do: []
 
   # Rebuild the keywords form only when server-side movie identity or keyword list changes.
   # Rebuilding on every parent re-render (e.g. form phx-change) resets LiveSelect selection and drops new tags.
