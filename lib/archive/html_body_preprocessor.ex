@@ -8,8 +8,8 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
 
   The expanded `<video>` has **no `src` initially**: `data-pandora-video-src` holds the mp4 URL
   and is applied in the browser when the element nears the viewport (`PlyrInit` hook), with
-  `preload="none"`. A **poster** image uses Pandora's embed convention `96p{in}.jpg` via
-  `/archive/media/...` (frame at selection in-point), matching `embedPlayer.js` poster logic.
+  `preload="none"`. A **poster** image uses a frame JPEG at in-point, `512p{in}.jpg` via
+  `/archive/media/...` (Pandora-style width prefix, same family as `poster512` / embed `96p` stills).
   """
 
   alias PanDoRa.API.Client
@@ -65,9 +65,8 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
           Client.video_url(movie_id, "480p.mp4", Keyword.put(opts, :clip_t, clip_t))
       end
 
-    # Same convention as Pandora embed (embedPlayer.js): poster = frame JPEG at in-point,
-    # path `/{item}/96p{timecode}.jpg` via our media proxy (small vs full mp4).
-    poster_src = Client.media_proxy_url(movie_id, "96p#{in_s}.jpg")
+    # Frame JPEG at in-point: `512p{timecode}.jpg` (Pandora still naming; sharper than 96p embed poster).
+    poster_src = Client.media_proxy_url(movie_id, "512p#{in_s}.jpg")
 
     video_tag =
       ~s(<video class="pandora-video-preview plyr rounded" preload="none" width="320" height="180" playsinline controls poster="#{escape_attr(poster_src)}" data-pandora-video-src="#{escape_attr(video_src)}"></video>)
