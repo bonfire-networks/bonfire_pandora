@@ -314,8 +314,9 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       movie_data
       |> process_director_field()
       |> process_featuring_field()
-      |> process_keywords_field()
       |> acknowledge_live_select_keywords_field()
+      |> merge_pending_keywords_text_input()
+      |> process_keywords_field()
       |> process_section_field()
 
     # Build edit_data from whitelisted fields (avoids String.to_existing_atom on dynamic keys)
@@ -517,6 +518,37 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
       true ->
         data
+    end
+  end
+
+  # LiveSelect leaves typed text in `keywords_text_input` until Enter; merge it on submit.
+  defp merge_pending_keywords_text_input(data) when is_map(data) do
+    pending =
+      case Map.get(data, "keywords_text_input") do
+        nil -> ""
+        v -> v |> to_string() |> String.trim()
+      end
+
+    data = Map.delete(data, "keywords_text_input")
+
+    if pending == "" do
+      data
+    else
+      existing =
+        case Map.get(data, "keywords") do
+          list when is_list(list) ->
+            list
+            |> Enum.flat_map(&List.wrap/1)
+            |> Enum.map(&to_string/1)
+            |> Enum.map(&String.trim/1)
+            |> Enum.reject(&(&1 == ""))
+
+          _ ->
+            []
+        end
+
+      merged = if pending in existing, do: existing, else: existing ++ [pending]
+      Map.put(data, "keywords", merged)
     end
   end
 

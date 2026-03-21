@@ -83,7 +83,6 @@
                     field={:keywords}
                     event_target={@myself}
                     options={[]}
-                    value={keywords_list(@movie)}
                     placeholder={l("Type to search or add keywords")}
                     disabled={false}
                     update_min_len={1}

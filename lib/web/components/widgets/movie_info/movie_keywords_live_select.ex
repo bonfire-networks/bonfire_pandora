@@ -2,6 +2,10 @@ defmodule Bonfire.PanDoRa.Web.MovieKeywordsLiveSelect do
   @moduledoc """
   LiveSelect for Pandora movie keywords: string options, free-text tags (`user_defined_options`),
   and option/tag slots that never call `Map` APIs on binary values (unlike the generic Bonfire integration).
+
+  Initial tags come **only** from `form[field]` (see `WidgetMovieInfoLive` / `keywords_form`).
+  Do **not** pass a separate `value` assign: parent re-renders (e.g. after `live_select_change`)
+  would reset LiveSelect’s local selection and submitted forms would lose `movie[keywords][]`.
   """
   use Bonfire.UI.Common.Web, :function_component
 
@@ -19,7 +23,6 @@ defmodule Bonfire.PanDoRa.Web.MovieKeywordsLiveSelect do
       mode={:tags}
       phx-target={@event_target}
       options={@options}
-      value={@value}
       user_defined_options={true}
       allow_clear={true}
       keep_options_on_select={true}

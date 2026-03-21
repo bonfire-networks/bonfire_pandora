@@ -53,7 +53,7 @@ defmodule Bonfire.PanDoRa.Utils do
       width height filesize filesizebytes filepath filename bitratekbps durationms
       durationframe startframe endframe md5 sha checksum hash uuid revision version
       imported exported indexed transcoded proxy thumbnail thumb posteruri streamuri
-      itemtype mediatype container format profile level rotation flip mirror
+      itemtype mediatype container format profile level rotation flip mirror cuts cutlist
     ),
     &String.downcase/1
   )
