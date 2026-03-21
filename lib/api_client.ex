@@ -1619,6 +1619,40 @@ defmodule PanDoRa.API.Client do
   end
 
   @doc """
+  Pandora "link selection" style timeline URL: `/{item_id}/{in},{out}` (no filename).
+
+  Opens the native Pandora viewer for that time range (SPA + `findClips` / Ox player),
+  **not** a raw `video/mp4`. Optional `?token=` when a token is available (same opts as
+  `video_url/3`).
+
+  Example: `https://archivio.example.org/EQR/2716.723468,3585.082568?token=…`
+  """
+  def selection_timeline_url(item_id, in_str, out_str, opts \\ [])
+      when is_binary(item_id) and is_binary(in_str) and is_binary(out_str) do
+    opts = Utils.to_options(opts)
+
+    token =
+      case {opts[:pandora_token], opts[:pandora_base_url]} do
+        {t, base} when is_binary(t) and t != "" and is_binary(base) and base != "" ->
+          t
+
+        _ ->
+          Auth.pandora_token(opts)
+      end
+
+    base = opts[:pandora_base_url] || String.trim_trailing(get_pandora_url() || "", "/")
+    path = "#{String.trim_trailing(base, "/")}/#{item_id}/#{in_str},#{out_str}"
+
+    case token do
+      t when is_binary(t) and t != "" ->
+        path <> "?" <> URI.encode_query(%{"token" => t})
+
+      _ ->
+        path
+    end
+  end
+
+  @doc """
   Returns the best URL for a Pandora video: direct URL with `?token=` when a token
   exists (faster playback), otherwise the proxy URL.
 

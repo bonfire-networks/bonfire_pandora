@@ -13,6 +13,10 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
   # Matches: <a href="/archive/movies/MOVIE_ID#t=IN,OUT">optional content</a>
   @marker_regex ~r|<a\s+href="/archive/movies/([^"#]+)#t=([\d.]+),([\d.]+)"([^>]*)>(.*?)</a>|s
 
+  # :clip_query — `480p.mp4?…&t=in,out` (server-generated clip; heavy on Pandora)
+  # :full_mp4_fragment — full `480p.mp4?token=…#t=in,out` (Media Fragment; no ?t= on server)
+  @pandora_marker_video_src_mode :full_mp4_fragment
+
   @doc """
   Replaces Pandora video preview markers with trusted video markup.
 
@@ -40,20 +44,27 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
     build_poster_html(movie_id, in_s, out_s, opts)
   end
 
-  # Video: preload="none" initially — JS (PlyrInit) loads metadata when near viewport to paint
-  # the first frame of the clip (same instant as ?t=in,out), no separate Pandora poster image.
-  # Clip: ?t=in,out (query) so Pandora serves only the segment — not #t= (fragment, no server savings).
   # Wrapped in div so PreviewActivity ignores clicks (see shouldHandlePreviewClick: .pandora-video-preview-wrapper).
+  # `data-pandora-selection-url` = Pandora "link selection" path `/{id}/{in},{out}` (viewer page, not mp4).
   defp build_poster_html(movie_id, in_s, out_s, opts) do
-    clip_t = "#{in_s},#{out_s}"
-    opts_with_clip = Keyword.put(opts, :clip_t, clip_t)
-    video_src = Client.video_url(movie_id, "480p.mp4", opts_with_clip)
+    selection_url = Client.selection_timeline_url(movie_id, in_s, out_s, opts)
+
+    video_src =
+      case @pandora_marker_video_src_mode do
+        :full_mp4_fragment ->
+          base_src = Client.video_url(movie_id, "480p.mp4", opts)
+          "#{base_src}#t=#{in_s},#{out_s}"
+
+        :clip_query ->
+          clip_t = "#{in_s},#{out_s}"
+          Client.video_url(movie_id, "480p.mp4", Keyword.put(opts, :clip_t, clip_t))
+      end
 
     video_tag =
       ~s(<video class="pandora-video-preview plyr rounded" src="#{escape_attr(video_src)}" preload="none" width="320" height="180" playsinline controls></video>)
 
     # Archives.build_annotation_html_body already adds "View full movie" link after the marker - do not duplicate
-    ~s(<div class="pandora-video-preview-wrapper">#{video_tag}</div>)
+    ~s(<div class="pandora-video-preview-wrapper" data-pandora-selection-url="#{escape_attr(selection_url)}">#{video_tag}</div>)
   end
 
   defp escape_attr(str), do: Plug.HTML.html_escape_to_iodata(str) |> IO.iodata_to_binary()
