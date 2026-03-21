@@ -15,15 +15,26 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
     {:ok,
      socket
      |> assign(:show_more, false)
-     |> assign(:keywords_form, to_form(%{keywords: []}, as: :movie))}
+     |> assign(:keywords_form, to_form(%{keywords: []}, as: :movie))
+     |> assign(:kw_form_digest, nil)}
   end
 
   def update(assigns, socket) do
     socket = assign(socket, assigns)
     movie = socket.assigns[:movie]
     kws = if movie, do: keywords_list(movie), else: []
-    form = to_form(%{keywords: kws}, as: :movie)
-    {:ok, assign(socket, :keywords_form, form)}
+    digest = keywords_form_digest(movie, kws)
+
+    socket =
+      if digest != socket.assigns[:kw_form_digest] do
+        socket
+        |> assign(:kw_form_digest, digest)
+        |> assign(:keywords_form, to_form(%{keywords: kws}, as: :movie))
+      else
+        socket
+      end
+
+    {:ok, socket}
   end
 
   def handle_event("toggle_more", _params, socket) do
@@ -62,6 +73,7 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
           {:noreply, socket}
 
         _ ->
+          maybe_send_update(LiveSelect.Component, live_select_id, options: [])
           {:noreply, socket}
       end
     end
@@ -213,4 +225,12 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
   end
 
   def keywords_list(_), do: []
+
+  # Rebuild the keywords form only when server-side movie identity or keyword list changes.
+  # Rebuilding on every parent re-render (e.g. form phx-change) resets LiveSelect selection and drops new tags.
+  defp keywords_form_digest(nil, _kws), do: {:none, nil}
+
+  defp keywords_form_digest(movie, kws) when is_map(movie) do
+    {Map.get(movie, "id"), :erlang.phash2(kws)}
+  end
 end

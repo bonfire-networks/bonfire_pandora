@@ -462,6 +462,16 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         atom = Client.keywords_edit_field_atom(current_user: current_user(socket))
         Map.put(edit_data, atom, kw_list)
 
+      {:ok, kw} when is_binary(kw) ->
+        atom = Client.keywords_edit_field_atom(current_user: current_user(socket))
+        list =
+          kw
+          |> String.split(",")
+          |> Enum.map(&String.trim/1)
+          |> Enum.filter(&(&1 != ""))
+
+        Map.put(edit_data, atom, list)
+
       _ ->
         edit_data
     end

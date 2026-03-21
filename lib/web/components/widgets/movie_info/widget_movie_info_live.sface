@@ -11,7 +11,7 @@
             open_btn_wrapper_class="w-[24px] min-w-[24px] cursor-pointer btn-circle btn btn-soft btn-xs btn-ghost"
           >
             <div>
-              <form phx-submit="edit_movie" id="edit_movie" phx-change="validate" class="flex flex-col gap-4">
+              <form phx-submit="edit_movie" id="edit_movie" class="flex flex-col gap-4">
                 <fieldset class="fieldset w-full">
                   <legend class="fieldset-legend">{l("Title")}</legend>
                   <input
