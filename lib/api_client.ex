@@ -1619,12 +1619,18 @@ defmodule PanDoRa.API.Client do
   end
 
   @doc """
-  Returns the best URL for a Pandora video: direct URL with ?token= when a token
+  Returns the best URL for a Pandora video: direct URL with `?token=` when a token
   exists (faster playback), otherwise the proxy URL.
-  Accepts optional :pandora_token and :pandora_base_url in opts to avoid repeated lookups.
+
+  Accepts optional `:pandora_token` and `:pandora_base_url` in opts.
+
+  When `:clip_t` is set to `"in,out"` (seconds), appends Pandora clip query `?t=in,out`
+  so the server serves only that segment (bandwidth). Example:
+  `video_url(id, "480p.mp4", clip_t: "10.5,120", current_user: u)`
   """
   def video_url(item_id, filename, opts \\ []) when is_binary(item_id) and is_binary(filename) do
     opts = Utils.to_options(opts)
+    clip_t = opts[:clip_t]
 
     token =
       case {opts[:pandora_token], opts[:pandora_base_url]} do
@@ -1638,10 +1644,22 @@ defmodule PanDoRa.API.Client do
     case token do
       t when is_binary(t) and t != "" ->
         base = opts[:pandora_base_url] || String.trim_trailing(get_pandora_url() || "", "/")
-        "#{String.trim_trailing(base, "/")}/#{item_id}/#{filename}?token=#{t}"
+        path = "#{String.trim_trailing(base, "/")}/#{item_id}/#{filename}"
+
+        if is_binary(clip_t) and clip_t != "" do
+          "#{path}?#{URI.encode_query(%{"t" => clip_t, "token" => t})}"
+        else
+          "#{path}?token=#{t}"
+        end
 
       _ ->
-        video_proxy_url(item_id, filename)
+        proxy = video_proxy_url(item_id, filename)
+
+        if is_binary(clip_t) and clip_t != "" do
+          "#{proxy}?#{URI.encode_query(%{"t" => clip_t})}"
+        else
+          proxy
+        end
     end
   end
 

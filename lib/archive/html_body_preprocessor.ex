@@ -41,11 +41,13 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
   end
 
   # Video: preload="none" = no load until user clicks play. No autoplay.
-  # Poster: icon512 (512px) adapted to player 320x180 via object-fit.
+  # Clip: ?t=in,out (query) so Pandora serves only the segment — not #t= (fragment, no server savings).
+  # Poster: icon512 for now; TODO refine frame-at-in when clip URL is stable.
   # Wrapped in div so PreviewActivity ignores clicks (see shouldHandlePreviewClick: .pandora-video-preview-wrapper).
   defp build_poster_html(movie_id, in_s, out_s, opts) do
-    video_base = Client.video_url(movie_id, "480p.mp4", opts)
-    video_src = "#{video_base}#t=#{in_s},#{out_s}"
+    clip_t = "#{in_s},#{out_s}"
+    opts_with_clip = Keyword.put(opts, :clip_t, clip_t)
+    video_src = Client.video_url(movie_id, "480p.mp4", opts_with_clip)
     poster_url = Client.media_url(movie_id, "icon512.jpg", opts)
 
     video_tag =

@@ -46,14 +46,22 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
       conn |> put_status(400) |> text("Invalid path")
     else
       path_string = Enum.join(path, "/")
-      proxy_video_buffered(conn, path_string)
+      query = conn.query_string |> to_string() |> String.trim()
+      proxy_video_buffered(conn, path_string, query)
     end
   end
 
   # ── internals ────────────────────────────────────────────────────────────────
 
   # Builds the full Pandora URL for a given path segment.
-  defp pandora_url(path) do
+  defp pandora_url(path, query \\ "")
+
+  defp pandora_url(path, query) when is_binary(query) and query != "" do
+    base = String.trim_trailing(Client.get_pandora_url() || "", "/")
+    "#{base}/#{path}?#{query}"
+  end
+
+  defp pandora_url(path, _) do
     base = String.trim_trailing(Client.get_pandora_url() || "", "/")
     "#{base}/#{path}"
   end
@@ -91,21 +99,36 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
     end
   end
 
-  defp proxy_video_buffered(conn, path_string) do
+  defp proxy_video_buffered(conn, path_string, query_string \\ "")
+
+  defp proxy_video_buffered(conn, path_string, query_string) do
     case get_auth_headers(conn) do
       nil ->
         conn |> put_status(403) |> text("Not connected to Pandora")
 
       req_headers ->
-        url = pandora_url(path_string)
-        range_header =
-          case get_req_header(conn, "range") do
-            [range] -> range
-            _ -> "bytes=0-#{@initial_video_range_end}"
-          end
-          |> normalize_range_header()
+        url = pandora_url(path_string, query_string)
+        # Clip requests (?t=in,out): let Pandora return the segment; avoid default Range that can confuse short responses.
+        clip? = String.contains?(query_string, "t=")
 
-        req_headers = auth_headers_with_range(req_headers, range_header)
+        range_header =
+          cond do
+            clip? and match?([], get_req_header(conn, "range")) ->
+              nil
+
+            match?([_ | _], get_req_header(conn, "range")) ->
+              get_req_header(conn, "range") |> hd() |> normalize_range_header()
+
+            true ->
+              "bytes=0-#{@initial_video_range_end}" |> normalize_range_header()
+          end
+
+        req_headers =
+          if range_header do
+            auth_headers_with_range(req_headers, range_header)
+          else
+            req_headers
+          end
 
         case Req.get(url, headers: req_headers, decode_body: false, receive_timeout: 60_000) do
           {:ok, %Req.Response{status: status, body: body, headers: resp_headers}}
