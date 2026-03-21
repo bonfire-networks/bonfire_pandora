@@ -9,7 +9,8 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
   The expanded `<video>` has **no `src` initially**: `data-pandora-video-src` holds the mp4 URL
   and is applied in the browser when the element nears the viewport (`PlyrInit` hook), with
   `preload="none"`. A **poster** image uses a frame JPEG at in-point, `512p{in}.jpg` via
-  `/archive/media/...` (Pandora-style width prefix, same family as `poster512` / embed `96p` stills).
+  `/archive/media/...`. Attributes **`data-pandora-in`** / **`data-pandora-out`** (seconds) drive
+  feed-only Plyr: no progress bar, loop in→out while playing until the user pauses (`PlyrInit`).
   """
 
   alias PanDoRa.API.Client
@@ -69,7 +70,7 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
     poster_src = Client.media_proxy_url(movie_id, "512p#{in_s}.jpg")
 
     video_tag =
-      ~s(<video class="pandora-video-preview plyr rounded" preload="none" width="320" height="180" playsinline controls poster="#{escape_attr(poster_src)}" data-pandora-video-src="#{escape_attr(video_src)}"></video>)
+      ~s(<video class="pandora-video-preview plyr rounded" preload="none" width="320" height="180" playsinline controls poster="#{escape_attr(poster_src)}" data-pandora-video-src="#{escape_attr(video_src)}" data-pandora-in="#{escape_attr(in_s)}" data-pandora-out="#{escape_attr(out_s)}"></video>)
 
     # Archives.build_annotation_html_body already adds "View full movie" link after the marker - do not duplicate
     ~s(<div class="pandora-video-preview-wrapper" data-pandora-selection-url="#{escape_attr(selection_url)}">#{video_tag}</div>)
