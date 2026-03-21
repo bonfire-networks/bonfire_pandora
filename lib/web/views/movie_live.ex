@@ -49,9 +49,11 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     movie_task = Task.async(fn -> Client.get_movie(id, opts) end)
     notes_task = Task.async(fn -> Client.fetch_annotations(id, opts) end)
     kw_task = Task.async(fn -> Client.list_keyword_layer_annotations(id, opts) end)
+    facet_task = Task.async(fn -> fetch_keyword_facet_names(opts) end)
     movie_result = Task.await(movie_task)
     notes_result = Task.await(notes_task)
     kw_result = Task.await(kw_task)
+    facet_result = Task.await(facet_task)
 
     with {:ok, movie} <- movie_result,
          {:ok, public_notes} <- notes_result do
@@ -65,7 +67,18 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
             []
         end
 
-      movie = Map.put(movie, "keywordLayerAnnotations", keyword_layer_ann)
+      keyword_facet_names =
+        if is_list(facet_result) do
+          facet_result
+        else
+          debug(facet_result, "Keyword facet names fetch failed; using empty list")
+          []
+        end
+
+      movie =
+        movie
+        |> Map.put("keywordLayerAnnotations", keyword_layer_ann)
+        |> Map.put("keywordFacetNames", keyword_facet_names)
 
       video_url =
         Client.video_url(
@@ -775,6 +788,44 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       movie_data
     end
   end
+
+  @keyword_facet_fetch_per_page 500
+
+  defp fetch_keyword_facet_names(opts) when is_list(opts) do
+    merged =
+      Keyword.merge(opts,
+        field: "keywords",
+        page: 0,
+        per_page: @keyword_facet_fetch_per_page
+      )
+
+    case Client.fetch_grouped_metadata([], merged) do
+      {:ok, %{filters: filters}} ->
+        filters
+        |> Map.get("keywords", [])
+        |> Enum.map(&facet_item_display_name/1)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.uniq()
+        |> Enum.sort(:string)
+
+      other ->
+        debug(other, "fetch_keyword_facet_names: grouped metadata failed")
+        []
+    end
+  end
+
+  defp facet_item_display_name(item) when is_map(item) do
+    case Map.get(item, "name") || Map.get(item, :name) do
+      n when is_binary(n) ->
+        t = String.trim(n)
+        if t != "", do: t, else: nil
+
+      _ ->
+        nil
+    end
+  end
+
+  defp facet_item_display_name(_), do: nil
 
   # Add a private function to fetch movies
   # def fetch_movies(id, opts) do

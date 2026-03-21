@@ -29,6 +29,31 @@ defmodule Bonfire.PanDoRa.Web.WidgetMovieInfoLive do
     movie |> keywords_list() |> Enum.join(", ")
   end
 
+  @doc "Stable HTML id for the keywords `<datalist>` (must match input `list=`)."
+  def keyword_datalist_id(movie) when is_map(movie) do
+    "edit_movie_keywords_dl_" <> to_string(movie["id"] || movie[:id] || "")
+  end
+
+  def keyword_datalist_id(_), do: "edit_movie_keywords_dl"
+
+  @doc "Preloaded archive keyword facet names for `<datalist>` autocomplete (see MovieLive)."
+  def keyword_datalist_options(movie) when is_map(movie) do
+    case Map.get(movie, "keywordFacetNames") do
+      list when is_list(list) ->
+        list
+        |> Enum.map(&to_string/1)
+        |> Enum.map(&String.trim/1)
+        |> Enum.filter(&(&1 != ""))
+        |> Enum.uniq()
+        |> Enum.sort(:string)
+
+      _ ->
+        []
+    end
+  end
+
+  def keyword_datalist_options(_), do: []
+
   @doc "True if movie has non-empty summary to display."
   def summary_present?(nil), do: false
   def summary_present?(movie) when is_map(movie) do

@@ -81,10 +81,18 @@
                   <input
                     type="text"
                     name="movie[keywords]"
+                    id={"edit_movie_keywords_" <> to_attr(e(@movie, "id", ""))}
+                    list={keyword_datalist_id(@movie)}
                     value={to_attr(keywords_csv_for_input(@movie))}
                     placeholder={l("Comma-separated, same as archive facets")}
                     class="input w-full"
+                    autocomplete="off"
                   />
+                  <datalist id={keyword_datalist_id(@movie)}>
+                    {#for kw <- keyword_datalist_options(@movie)}
+                      <option value={kw} />
+                    {/for}
+                  </datalist>
                 </fieldset>
                 <div class="mt-4 flex justify-end">
                   <button type="submit" class="btn btn-primary">{l("Save Changes")}</button>

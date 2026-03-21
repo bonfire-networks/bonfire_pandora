@@ -41,7 +41,8 @@ defmodule Bonfire.PanDoRa.Utils do
   @known_fields ~w(id title item_id public_id stable_id order duration director image
                    year summary hue saturation lightness volume cutsperminute rightslevel stream
                    streams bitrate editable featuring country language keywords keyword
-                   aspectRatio aspect_ratio ratio resolution keywordLayerAnnotations runtime)
+                   aspectRatio aspect_ratio ratio resolution keywordLayerAnnotations runtime
+                   keywordFacetNames)
 
   def known_fields, do: @known_fields
 
