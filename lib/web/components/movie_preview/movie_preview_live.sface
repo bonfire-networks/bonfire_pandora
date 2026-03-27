@@ -53,13 +53,13 @@
     </div>
   </div>
   <Bonfire.UI.Common.OpenModalLive
-    id={"add_to_list_#{to_attr(e(@movie, "id", ""))}"}
+    id={"add_to_list_#{@movie_id}"}
     title_text={l("Add movie to list")}
     no_actions
     open_btn_wrapper_class="text-left cursor-pointer text-error"
   >
     <Bonfire.PanDoRa.Components.AddToListLive
-      id={to_attr(e(@movie, "id", ""))}
+      id={"add_to_list_form_#{@movie_id}"}
       movie_id={to_attr(e(@movie, "id", ""))}
     />
     <:open_btn>
