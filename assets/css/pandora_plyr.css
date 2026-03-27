@@ -2,11 +2,11 @@
  * Plyr base styles + PanDoRa html_body video preview sizing.
  * Bundled from the app via `assets/css/app.css` → @import this file.
  *
- * `plyr` is an npm dependency of this extension (`assets/package.json` next to
- * `node_modules/`). Run `yarn install` in `extensions/bonfire_pandora/assets` (or
- * `deps/bonfire_pandora/assets` if you use deps.path).
+ * `plyr` is installed at the extension root (`../package.json` → `../node_modules/`)
+ * so esbuild resolves `import "plyr"` from `lib/web/hooks/` and Tailwind can import CSS.
+ * Run `yarn install` in `extensions/bonfire_pandora` (see root `package.json`).
  */
-@import "../node_modules/plyr/dist/plyr.css";
+@import "../../node_modules/plyr/dist/plyr.css";
 
 .pandora-video-preview-wrapper video,
 video.pandora-video-preview {

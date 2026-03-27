@@ -1,0 +1,8 @@
+{
+  "name": "bonfire_pandora",
+  "private": true,
+  "description": "Root JS deps resolved by esbuild from lib/ (e.g. plyr in hooks). assets/package.json holds vidstack/split for assets/.",
+  "dependencies": {
+    "plyr": "^3.7.8"
+  }
+}
