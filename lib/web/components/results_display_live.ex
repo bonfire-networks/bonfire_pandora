@@ -11,7 +11,10 @@ defmodule Bonfire.PanDoRa.Components.ResultsDisplay do
       <h2 class="text-xl font-bold mb-2">{l("Results")}</h2>
       {#if is_map(@results) and map_size(@results) > 0}
         <div class="border rounded-lg overflow-hidden">
-          <p :for={r <- e(@results, "items", nil)} class="p-4 min-w-0 max-w-full break-all [overflow-wrap:anywhere]">
+          <p
+            :for={r <- e(@results, "items", nil)}
+            class="p-4 min-w-0 max-w-full break-all [overflow-wrap:anywhere]"
+          >
             {Utils.insert_line_break_hints(to_string(e(r, "title", "") || ""))}
           </p>
         </div>

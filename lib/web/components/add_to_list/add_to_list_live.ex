@@ -153,7 +153,11 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
         {list["id"], Enum.any?(list["items"], &(&1["id"] == movie_id))}
       end)
 
-    %{lists_with_items: lists_with_items, existing_lists: existing_lists, movie_in_lists: movie_in_lists}
+    %{
+      lists_with_items: lists_with_items,
+      existing_lists: existing_lists,
+      movie_in_lists: movie_in_lists
+    }
   end
 
   defp add_icon_url(list, opts), do: Map.put(list, "icon_url", Client.list_icon_url(list, opts))
@@ -186,7 +190,7 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
   # Check if movie exists in a specific list.
   # Third arg: keyword opts or socket (converted to opts).
   def movie_in_list?(list_id, movie_id, %{assigns: _} = socket) do
-    movie_in_list?(list_id, movie_id, [current_user: current_user(socket), per_page: 1000])
+    movie_in_list?(list_id, movie_id, current_user: current_user(socket), per_page: 1000)
   end
 
   def movie_in_list?(list_id, movie_id, opts) when is_list(opts) do

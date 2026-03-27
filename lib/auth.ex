@@ -49,9 +49,7 @@ defmodule Bonfire.PanDoRa.Auth do
   def session_cookie(user, opts) when is_map(user) do
     user = repo().maybe_preload(user, :settings)
 
-    Settings.get([:bonfire_pandora, Client, :my_session_cookie], nil,
-      current_user: user
-    )
+    Settings.get([:bonfire_pandora, Client, :my_session_cookie], nil, current_user: user)
   end
 
   def session_cookie(username, opts) when is_binary(username) do
@@ -88,9 +86,7 @@ defmodule Bonfire.PanDoRa.Auth do
   def put_session_cookie(user, cookie, opts) when is_map(user) do
     user = repo().maybe_preload(user, :settings)
 
-    Settings.put([:bonfire_pandora, Client, :my_session_cookie], cookie,
-      current_user: user
-    )
+    Settings.put([:bonfire_pandora, Client, :my_session_cookie], cookie, current_user: user)
   end
 
   def put_session_cookie(username, cookie, opts) when is_binary(username) do
@@ -141,9 +137,7 @@ defmodule Bonfire.PanDoRa.Auth do
   def pandora_token(user, opts) when is_map(user) do
     user = repo().maybe_preload(user, :settings)
 
-    Settings.get([:bonfire_pandora, Client, :my_pandora_token], nil,
-      current_user: user
-    )
+    Settings.get([:bonfire_pandora, Client, :my_pandora_token], nil, current_user: user)
   end
 
   def pandora_token(username, opts) when is_binary(username) do
@@ -180,9 +174,7 @@ defmodule Bonfire.PanDoRa.Auth do
   def put_pandora_token(user, token, opts) when is_map(user) do
     user = repo().maybe_preload(user, :settings)
 
-    Settings.put([:bonfire_pandora, Client, :my_pandora_token], token,
-      current_user: user
-    )
+    Settings.put([:bonfire_pandora, Client, :my_pandora_token], token, current_user: user)
   end
 
   def put_pandora_token(username, token, opts) when is_binary(username) do
@@ -337,7 +329,8 @@ defmodule Bonfire.PanDoRa.Auth do
   @doc """
   Adds Pandora auth headers to an outgoing Req request when needed.
   """
-  def attach_request_auth(req, _username, action, _opts) when action in ["signup", "signin"], do: req
+  def attach_request_auth(req, _username, action, _opts) when action in ["signup", "signin"],
+    do: req
 
   def attach_request_auth(req, username, action, opts) when is_binary(action) do
     auth_opts =

@@ -4,6 +4,7 @@ defmodule Bonfire.PanDoRa.Components.MoviePreviewLive do
   alias Bonfire.PanDoRa.Utils
 
   prop movie_id, :string, required: true
+
   # nil when used inside a LiveView (events routed to LV); pass @myself when inside a LiveComponent
   prop event_target, :any, default: nil
   prop movie, :map, required: true

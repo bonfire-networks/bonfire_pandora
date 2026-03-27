@@ -43,6 +43,7 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
       [movie_id, in_s, out_s | _] = Regex.run(@marker_regex, full_match, capture: :all_but_first)
       replace_marker(movie_id, in_s, out_s, opts)
     end
+
     Regex.replace(@marker_regex, html_body, replace_fn)
   end
 

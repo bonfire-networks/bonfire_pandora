@@ -229,7 +229,10 @@ defmodule PanDoRa.API.Client do
       |> Enum.reduce({%{}, %{}}, fn {field, task}, {filters_acc, keys_acc} ->
         case Enum.find(results, fn {t, _} -> t.ref == task.ref end) do
           {_, {:ok, {^field, {effective_key, items}}}} ->
-            debug("Successfully got #{length(items)} items for #{field} (api_key=#{effective_key})")
+            debug(
+              "Successfully got #{length(items)} items for #{field} (api_key=#{effective_key})"
+            )
+
             {
               Map.put(filters_acc, field, items),
               Map.put(keys_acc, field, effective_key)
@@ -237,6 +240,7 @@ defmodule PanDoRa.API.Client do
 
           _ ->
             debug("Failed or timeout getting items for #{field}")
+
             {
               Map.put(filters_acc, field, []),
               Map.put(keys_acc, field, filter_type_to_api_key(field))
@@ -1152,8 +1156,10 @@ defmodule PanDoRa.API.Client do
   def sync_new_user_to_pandora(user, password)
       when is_binary(password) and password != "" do
     username = e(user, :character, :username, nil)
+
     account =
       repo().maybe_preload(e(user, :account, nil) || e(user, :accounted, :account, nil), :email)
+
     email = e(account, :email, :email_address, nil)
 
     if is_binary(username) and is_binary(email) do
@@ -1242,7 +1248,9 @@ defmodule PanDoRa.API.Client do
       # Email already exists on Pandora: try sign_in with saved credentials from the Sync Pandora tool.
       {:error, %{"email" => _} = err} ->
         case sign_in(opts) do
-          {:ok, data} -> {:ok, data}
+          {:ok, data} ->
+            {:ok, data}
+
           _ ->
             error(
               err,
@@ -1477,10 +1485,10 @@ defmodule PanDoRa.API.Client do
         path =
           Map.get(frame, "path") ||
             Map.get(frame, "0") ||
-            (frame |> Map.keys() |> Enum.find(&(is_binary(&1) and String.contains?(&1, "/"))))
+            frame |> Map.keys() |> Enum.find(&(is_binary(&1) and String.contains?(&1, "/")))
 
         item_id = Map.get(frame, "item_id") || Map.get(frame, "item")
-        item_id_from_path(path) || (if is_binary(item_id) and item_id != "", do: item_id, else: nil)
+        item_id_from_path(path) || if is_binary(item_id) and item_id != "", do: item_id, else: nil
 
       [elem | _] when is_list(elem) ->
         path = Enum.at(elem, 0) || Enum.at(elem, 1)
@@ -1504,7 +1512,9 @@ defmodule PanDoRa.API.Client do
 
   defp item_id_from_path(path) when is_binary(path) and path != "" do
     case extract_item_id_from_path(path) do
-      {item_id, _filename} -> item_id
+      {item_id, _filename} ->
+        item_id
+
       nil ->
         # Simple format "item_id/icon128.jpg"
         case String.split(path, "/", parts: 2) do
@@ -1525,10 +1535,12 @@ defmodule PanDoRa.API.Client do
         path =
           Map.get(frame, "path") ||
             Map.get(frame, "0") ||
-            (frame |> Map.keys() |> Enum.find(&(is_binary(&1) and String.contains?(&1, "/"))))
+            frame |> Map.keys() |> Enum.find(&(is_binary(&1) and String.contains?(&1, "/")))
 
         item_id = Map.get(frame, "item_id") || Map.get(frame, "item")
-        resolve_list_icon_path(path, opts) || (item_id && media_url_or_proxy(item_id, "icon128.jpg", opts))
+
+        resolve_list_icon_path(path, opts) ||
+          (item_id && media_url_or_proxy(item_id, "icon128.jpg", opts))
 
       [elem | _] when is_list(elem) ->
         path = Enum.at(elem, 0) || Enum.at(elem, 1)
@@ -1543,7 +1555,10 @@ defmodule PanDoRa.API.Client do
     case list["items"] do
       [first | _] when is_map(first) ->
         item_id = first["id"] || first["item_id"]
-        if is_binary(item_id) and item_id != "", do: media_url_or_proxy(item_id, "icon128.jpg", opts), else: nil
+
+        if is_binary(item_id) and item_id != "",
+          do: media_url_or_proxy(item_id, "icon128.jpg", opts),
+          else: nil
 
       _ ->
         nil

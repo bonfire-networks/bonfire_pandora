@@ -122,7 +122,10 @@
               <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Director")}</span>
               <div class="flex flex-wrap gap-1.5 justify-end min-w-0">
                 {#for name <- director_list(@movie)}
-                  <a href={"/archive?director=#{URI.encode(name)}"} class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1">{name}</a>
+                  <a
+                    href={"/archive?director=#{URI.encode(name)}"}
+                    class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1"
+                  >{name}</a>
                 {/for}
               </div>
             </li>
@@ -131,7 +134,10 @@
           {#if @movie["year"]}
             <li class="items-center flex justify-between gap-2">
               <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Year")}</span>
-              <a href={"/archive?year=#{URI.encode(to_attr(@movie["year"]))}"} class="btn btn-xs btn-soft btn-accent">{to_attr(@movie["year"])}</a>
+              <a
+                href={"/archive?year=#{URI.encode(to_attr(@movie["year"]))}"}
+                class="btn btn-xs btn-soft btn-accent"
+              >{to_attr(@movie["year"])}</a>
             </li>
           {/if}
           {!-- Duration --}
@@ -147,7 +153,10 @@
               <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Featuring")}</span>
               <div class="flex flex-wrap gap-1.5 justify-end min-w-0">
                 {#for name <- featuring_list(@movie)}
-                  <a href={"/archive?featuring=#{URI.encode(name)}"} class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1">{name}</a>
+                  <a
+                    href={"/archive?featuring=#{URI.encode(name)}"}
+                    class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1"
+                  >{name}</a>
                 {/for}
               </div>
             </li>
@@ -156,14 +165,20 @@
           {#if to_attr(@movie["country"]) != ""}
             <li class="items-center flex justify-between gap-2 min-w-0">
               <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Country")}</span>
-              <a href={"/archive?country=#{URI.encode(to_attr(@movie["country"]))}"} class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1">{to_attr(@movie["country"])}</a>
+              <a
+                href={"/archive?country=#{URI.encode(to_attr(@movie["country"]))}"}
+                class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1"
+              >{to_attr(@movie["country"])}</a>
             </li>
           {/if}
           {!-- Language --}
           {#if to_attr(@movie["language"]) != ""}
             <li class="items-center flex justify-between gap-2 min-w-0">
               <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Language")}</span>
-              <a href={"/archive?language=#{URI.encode(to_attr(@movie["language"]))}"} class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1">{to_attr(@movie["language"])}</a>
+              <a
+                href={"/archive?language=#{URI.encode(to_attr(@movie["language"]))}"}
+                class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1"
+              >{to_attr(@movie["language"])}</a>
             </li>
           {/if}
           {!-- Keywords (search facet: keywords) --}
@@ -172,7 +187,10 @@
               <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Keywords")}</span>
               <div class="flex flex-wrap gap-1.5 justify-end min-w-0">
                 {#for kw <- keywords_list(@movie)}
-                  <a href={"/archive?keywords=#{URI.encode(kw)}"} class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1">{kw}</a>
+                  <a
+                    href={"/archive?keywords=#{URI.encode(kw)}"}
+                    class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1"
+                  >{kw}</a>
                 {/for}
               </div>
             </li>
@@ -181,68 +199,66 @@
           {#for {field, value} <- extra_metadata(@movie)}
             <li class="items-center flex justify-between gap-2 min-w-0">
               <span class="text-sm text-base-content/50 font-medium capitalize shrink-0">{field}</span>
-              <a href={"/archive?#{URI.encode(field)}=#{URI.encode(value)}"} class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1">{value}</a>
+              <a
+                href={"/archive?#{URI.encode(field)}=#{URI.encode(value)}"}
+                class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-8 py-1"
+              >{value}</a>
             </li>
           {/for}
         </ul>
 
-          {!-- More: technical fields (Hue, Aspect Ratio, etc.) --}
-          {#if @show_more}
-            <ul class="flex flex-col gap-3 w-full mt-3 pt-3 border-t border-base-content/10">
-              {#if @movie["hue"]}
-                <li class="items-center flex justify-between">
-                  <span class="text-sm text-base-content/50 font-medium">{l("Hue")}</span>
-                  <span class="text-sm">{format_decimal(@movie["hue"])}</span>
-                </li>
-              {/if}
-              {#if api_aspect_ratio(@movie)}
-                <li class="items-center flex justify-between">
-                  <span class="text-sm text-base-content/50 font-medium">{l("Aspect ratio")}</span>
-                  <span class="text-sm">{to_attr(api_aspect_ratio(@movie))}</span>
-                </li>
-              {/if}
-              {#if @movie["saturation"] != nil}
-                <li class="items-center flex justify-between">
-                  <span class="text-sm text-base-content/50 font-medium">{l("Saturation")}</span>
-                  <span class="text-sm">{format_decimal(@movie["saturation"])}</span>
-                </li>
-              {/if}
-              {#if @movie["lightness"] != nil}
-                <li class="items-center flex justify-between">
-                  <span class="text-sm text-base-content/50 font-medium">{l("Lightness")}</span>
-                  <span class="text-sm">{format_decimal(@movie["lightness"])}</span>
-                </li>
-              {/if}
-              {#if @movie["volume"] != nil}
-                <li class="items-center flex justify-between">
-                  <span class="text-sm text-base-content/50 font-medium">{l("Volume")}</span>
-                  <span class="text-sm">{format_decimal(@movie["volume"])}</span>
-                </li>
-              {/if}
-              {#if @movie["cutsperminute"] != nil and @movie["cutsperminute"] != ""}
-                <li class="items-center flex justify-between">
-                  <span class="text-sm text-base-content/50 font-medium">{l("Cuts per minute")}</span>
-                  <span class="text-sm">{format_decimal(@movie["cutsperminute"])}</span>
-                </li>
-              {/if}
-              {#if @movie["rightslevel"] || @movie["rights"]}
-                <li class="items-center flex justify-between">
-                  <span class="text-sm text-base-content/50 font-medium">{l("Rights levels")}</span>
-                  <span class="text-sm">{to_attr(@movie["rightslevel"] || @movie["rights"])}</span>
-                </li>
-              {/if}
-            </ul>
-          {/if}
+        {!-- More: technical fields (Hue, Aspect Ratio, etc.) --}
+        {#if @show_more}
+          <ul class="flex flex-col gap-3 w-full mt-3 pt-3 border-t border-base-content/10">
+            {#if @movie["hue"]}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Hue")}</span>
+                <span class="text-sm">{format_decimal(@movie["hue"])}</span>
+              </li>
+            {/if}
+            {#if api_aspect_ratio(@movie)}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Aspect ratio")}</span>
+                <span class="text-sm">{to_attr(api_aspect_ratio(@movie))}</span>
+              </li>
+            {/if}
+            {#if @movie["saturation"] != nil}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Saturation")}</span>
+                <span class="text-sm">{format_decimal(@movie["saturation"])}</span>
+              </li>
+            {/if}
+            {#if @movie["lightness"] != nil}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Lightness")}</span>
+                <span class="text-sm">{format_decimal(@movie["lightness"])}</span>
+              </li>
+            {/if}
+            {#if @movie["volume"] != nil}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Volume")}</span>
+                <span class="text-sm">{format_decimal(@movie["volume"])}</span>
+              </li>
+            {/if}
+            {#if @movie["cutsperminute"] != nil and @movie["cutsperminute"] != ""}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Cuts per minute")}</span>
+                <span class="text-sm">{format_decimal(@movie["cutsperminute"])}</span>
+              </li>
+            {/if}
+            {#if @movie["rightslevel"] || @movie["rights"]}
+              <li class="items-center flex justify-between">
+                <span class="text-sm text-base-content/50 font-medium">{l("Rights levels")}</span>
+                <span class="text-sm">{to_attr(@movie["rightslevel"] || @movie["rights"])}</span>
+              </li>
+            {/if}
+          </ul>
+        {/if}
 
-          <div class="flex justify-center mt-3">
-            <button
-              type="button"
-              phx-click="toggle_more"
-              phx-target={@myself}
-              class="btn btn-sm btn-ghost"
-            >{if @show_more, do: l("Less"), else: l("More")}</button>
-          </div>
+        <div class="flex justify-center mt-3">
+          <button type="button" phx-click="toggle_more" phx-target={@myself} class="btn btn-sm btn-ghost">{if @show_more, do: l("Less"), else: l("More")}</button>
         </div>
       </div>
+    </div>
   </Bonfire.UI.Common.WidgetBlockLive>
 </div>

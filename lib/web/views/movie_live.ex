@@ -9,12 +9,12 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   # Pandora `edit` often returns a large item blob; merge only fields we edited so the widget
   # does not gain technical keys (videoRatio, posterFrame, …) into `extra_metadata/1`.
   @pandora_edit_merge_allowlist MapSet.new(
-    ~w(
+                                  ~w(
       title director summary year featuring country language sezione
       keyword keywords selezionato editable
     ),
-    &String.downcase/1
-  )
+                                  &String.downcase/1
+                                )
 
   on_mount {LivePlugs, [Bonfire.UI.Me.LivePlugs.UserRequired]}
 
@@ -167,7 +167,9 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
   defp parse_seek_params(uri) when is_binary(uri) do
     case URI.parse(uri) do
-      %{query: nil} -> {nil, nil}
+      %{query: nil} ->
+        {nil, nil}
+
       %{query: query} ->
         params = URI.decode_query(query)
         in_ts = parse_float_param(params["in"])
@@ -179,6 +181,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   defp parse_seek_params(_), do: {nil, nil}
 
   defp parse_float_param(nil), do: nil
+
   defp parse_float_param(s) when is_binary(s) do
     case Float.parse(String.trim(s)) do
       {n, _} when n >= 0 -> n
@@ -381,7 +384,9 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
                  assign_flash(
                    socket,
                    :error,
-                   l("Keywords could not be synced to Pandora: %{reason}", reason: inspect(reason))
+                   l("Keywords could not be synced to Pandora: %{reason}",
+                     reason: inspect(reason)
+                   )
                  )}
             end
           else
@@ -519,13 +524,15 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
   defp put_edit_field(acc, key, movie_data) when is_atom(key) do
     str_key = to_string(key)
+
     case Map.fetch(movie_data, str_key) do
       :error -> acc
       {:ok, value} -> Map.put(acc, key, value)
     end
   end
 
-  defp merge_pandora_edit_response(movie, updated_fields) when is_map(movie) and is_map(updated_fields) do
+  defp merge_pandora_edit_response(movie, updated_fields)
+       when is_map(movie) and is_map(updated_fields) do
     Enum.reduce(updated_fields, movie, fn {k, v}, acc ->
       sk = String.downcase(to_string(k))
 

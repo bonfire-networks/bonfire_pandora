@@ -93,7 +93,8 @@ defmodule Bonfire.PanDoRa.Archives do
              opts
            ),
          # resolve media for metadata (ExtraInfo, congruenza)
-         {:ok, %{id: _media_id} = _media} <- resolve_media_for_annotation(current_user, movie, opts),
+         {:ok, %{id: _media_id} = _media} <-
+           resolve_media_for_annotation(current_user, movie, opts),
          # publish Post standalone (no thread_id, no uploaded_media); NoteLive renders html_body
          {:ok, %{id: post_id} = _post} <-
            maybe_apply(Bonfire.Posts, :publish, [
@@ -135,7 +136,8 @@ defmodule Bonfire.PanDoRa.Archives do
     movie_url = "/archive/movies/#{movie_id}"
 
     # Marker: empty link with #t=in,out. Survives sanitizer; preprocessor expands to <video>
-    marker = ~s(<a href="#{movie_url}#t=#{Float.to_string(in_s, decimals: 2)},#{Float.to_string(out_s, decimals: 2)}"></a>)
+    marker =
+      ~s(<a href="#{movie_url}#t=#{Float.to_string(in_s, decimals: 2)},#{Float.to_string(out_s, decimals: 2)}"></a>)
 
     parts = [
       ~s(<p>#{marker} ) <> ~s(<a href="#{movie_url}">View full movie</a></p>)
@@ -178,9 +180,11 @@ defmodule Bonfire.PanDoRa.Archives do
 
   defp to_absolute_url("http" <> _ = url), do: url
   defp to_absolute_url("https" <> _ = url), do: url
+
   defp to_absolute_url("/" <> rest) when is_binary(rest) do
     Bonfire.Common.URIs.based_url("/" <> rest, nil)
   end
+
   defp to_absolute_url(url) when is_binary(url), do: url
 
   defp to_seconds(n) when is_number(n) and n >= 0, do: n * 1.0
@@ -191,6 +195,7 @@ defmodule Bonfire.PanDoRa.Archives do
     if String.contains?(s, ":") do
       # HH:MM:SS or MM:SS
       parts = String.split(s, ":", parts: 3)
+
       case Enum.map(parts, &String.to_float/1) do
         [{h, _}, {m, _}, {s, _}] -> h * 3600 + m * 60 + s
         [{m, _}, {s, _}] -> m * 60 + s
@@ -221,6 +226,7 @@ defmodule Bonfire.PanDoRa.Archives do
 
   def movie_get_media(movie_id, _opts) when is_binary(movie_id) do
     url = "#{Client.get_pandora_url()}/#{movie_id}"
+
     case Bonfire.Files.Media.get_by_path(url) do
       {:ok, media} -> {:ok, media}
       # path is nil for Pandora URLs (remote_url returns http; Media avoids storing presigned URLs)
@@ -234,7 +240,12 @@ defmodule Bonfire.PanDoRa.Archives do
 
   defp movie_get_media_by_canonical(movie_id) when is_binary(movie_id) do
     canonical = "/archive/movies/#{movie_id}"
-    from(m in Bonfire.Files.Media, where: fragment("metadata->>'canonical_media' = ?", ^canonical), limit: 1, order_by: [desc: m.id])
+
+    from(m in Bonfire.Files.Media,
+      where: fragment("metadata->>'canonical_media' = ?", ^canonical),
+      limit: 1,
+      order_by: [desc: m.id]
+    )
     |> repo().single()
   end
 
@@ -258,7 +269,9 @@ defmodule Bonfire.PanDoRa.Archives do
 
   defp resolve_media_for_annotation(current_user, movie, opts) do
     case Keyword.get(opts, :media) do
-      %{id: _} = media -> {:ok, media}
+      %{id: _} = media ->
+        {:ok, media}
+
       _ ->
         movie_id = Keyword.get(opts, :movie_id) || e(movie, "id", nil)
         movie = if movie_id, do: Map.put(movie, "id", movie_id), else: movie
@@ -269,6 +282,7 @@ defmodule Bonfire.PanDoRa.Archives do
   defp movie_get_or_save_media(current_user, %{"id" => movie_id} = movie, opts) do
     url = "#{Client.get_pandora_url()}/#{movie_id}"
     file_attrs = %{media_type: "video/film", size: 0}
+
     # Use proxy URLs for icon/image so preview works in feed without auth (MediaLive.preview_img reads metadata.icon)
     attrs = %{
       metadata:

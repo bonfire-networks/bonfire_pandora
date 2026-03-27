@@ -48,7 +48,7 @@ defmodule Bonfire.PanDoRa.Utils do
 
   # Pandora item payloads include many technical keys; hide them from the movie widget “extra” list.
   @extra_metadata_suppress MapSet.new(
-    ~w(
+                             ~w(
       videoratio posterratio numberofcuts rendered size numberoffiles posterframe pixels
       created parts aspectratio random modified user mimetype codec framerate fps
       width height filesize filesizebytes filepath filename bitratekbps durationms
@@ -56,8 +56,8 @@ defmodule Bonfire.PanDoRa.Utils do
       imported exported indexed transcoded proxy thumbnail thumb posteruri streamuri
       itemtype mediatype container format profile level rotation flip mirror cuts cutlist
     ),
-    &String.downcase/1
-  )
+                             &String.downcase/1
+                           )
 
   defp known_movie_field?(k), do: to_string(k) in @known_fields
 

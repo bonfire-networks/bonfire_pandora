@@ -117,7 +117,11 @@
         <div class="loading loading-spinner loading-lg text-primary" />
       </div>
     {#else}
-      <ul id="search_results" phx-update="stream" class="list min-w-0 max-w-full bg-base-100 rounded-box shadow-md">
+      <ul
+        id="search_results"
+        phx-update="stream"
+        class="list min-w-0 max-w-full bg-base-100 rounded-box shadow-md"
+      >
         <li
           id="list-empty"
           class="only:flex flex-col hidden bg-base-200/50 p-20 flex items-center place-content-center justify-center z-10"
@@ -129,7 +133,9 @@
           <Bonfire.PanDoRa.Components.MoviePreviewLive
             movie={result}
             movie_id={e(result, "id", "")}
-            media_url={if @pandora_token, do: "#{@pandora_base_url}/#{e(result, "id", "")}/icon128.jpg?token=#{@pandora_token}", else: Client.media_proxy_url(e(result, "id", ""), "icon128.jpg")}
+            media_url={if @pandora_token,
+              do: "#{@pandora_base_url}/#{e(result, "id", "")}/icon128.jpg?token=#{@pandora_token}",
+              else: Client.media_proxy_url(e(result, "id", ""), "icon128.jpg")}
           />
         {/for}
       </ul>

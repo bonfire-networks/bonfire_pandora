@@ -33,12 +33,12 @@ defmodule Bonfire.PanDoRa.Web.DiscussionRedirectLive do
        threaded_replies: nil,
        include_path_ids: nil,
        thread_mode:
-         (maybe_to_atom(e(params, "mode", nil)) ||
-            Bonfire.Common.Settings.get(
-              [Bonfire.UI.Social.ThreadLive, :thread_mode],
-              nil,
-              assigns(socket)[:__context__]
-            ) || :nested),
+         maybe_to_atom(e(params, "mode", nil)) ||
+           Bonfire.Common.Settings.get(
+             [Bonfire.UI.Social.ThreadLive, :thread_mode],
+             nil,
+             assigns(socket)[:__context__]
+           ) || :nested,
        search_placeholder: nil,
        loading: false
      )}
@@ -64,6 +64,7 @@ defmodule Bonfire.PanDoRa.Web.DiscussionRedirectLive do
         reply_id = e(params, "reply_id", nil)
         level = e(params, "level", nil)
         base = "/discussion/#{id}"
+
         path =
           cond do
             reply_id && level -> "#{base}/reply/#{level}/#{reply_id}?skip_pandora=1"

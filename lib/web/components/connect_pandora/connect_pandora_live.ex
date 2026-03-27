@@ -9,9 +9,8 @@ defmodule Bonfire.PanDoRa.Components.ConnectPandoraLive do
   use Bonfire.UI.Common.Web, :stateful_component
 
   declare_settings_component("Sync Pandora access",
-    description: l(
-      "Manual sync/recovery tool for the Pandora shadow account used by this Bonfire user."
-    ),
+    description:
+      l("Manual sync/recovery tool for the Pandora shadow account used by this Bonfire user."),
     scope: :user
   )
 

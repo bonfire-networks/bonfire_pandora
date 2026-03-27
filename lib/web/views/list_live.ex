@@ -47,7 +47,12 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
   end
 
   def list_icon_src(pandora_token, pandora_base_url, current_user, list) do
-    Bonfire.PanDoRa.Web.MyListsLive.list_icon_src(pandora_token, pandora_base_url, current_user, list)
+    Bonfire.PanDoRa.Web.MyListsLive.list_icon_src(
+      pandora_token,
+      pandora_base_url,
+      current_user,
+      list
+    )
   end
 
   def handle_info(:load_initial_data, socket) do
@@ -73,6 +78,7 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
     %{list_id: list_id, page: page, per_page: per_page} = socket.assigns
 
     next_page = page + 1
+
     items_result =
       fetch_list_items(list_id,
         page: next_page,
@@ -163,11 +169,13 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
 
     # Conservative: show Load More when we got a full page (might be more). Hide only when we got fewer.
     per_page = socket.assigns.per_page
+
     has_more =
       case result do
         %{has_more: h} when is_boolean(h) -> h
         _ -> length(items) >= per_page
       end
+
     # If API says no more but we got a full page, show button anyway (API may not report total)
     has_more = has_more or length(items) >= per_page
 

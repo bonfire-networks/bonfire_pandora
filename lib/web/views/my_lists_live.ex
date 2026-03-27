@@ -36,8 +36,9 @@ defmodule Bonfire.PanDoRa.Web.MyListsLive do
     item_id = Client.list_icon_item_id(list)
 
     case {pandora_token, pandora_base_url, item_id} do
-      {t, b, id} when is_binary(t) and t != "" and is_binary(b) and b != "" and
-                       is_binary(id) and id != "" ->
+      {t, b, id}
+      when is_binary(t) and t != "" and is_binary(b) and b != "" and
+             is_binary(id) and id != "" ->
         "#{String.trim_trailing(b, "/")}/#{id}/icon128.jpg?token=#{t}"
 
       _ ->

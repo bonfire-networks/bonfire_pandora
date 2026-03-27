@@ -16,7 +16,10 @@ defmodule Bonfire.PanDoRa.Web.SearchLogic do
 
   def load_filter_types(opts) do
     filter_types = Client.get_filter_keys(opts)
-    if is_list(filter_types) and filter_types != [], do: filter_types, else: @filter_types_fallback
+
+    if is_list(filter_types) and filter_types != [],
+      do: filter_types,
+      else: @filter_types_fallback
   end
 
   def build_request_keys(filter_types) do
@@ -24,25 +27,48 @@ defmodule Bonfire.PanDoRa.Web.SearchLogic do
     (@essential_keys ++ api_keys) |> Enum.uniq()
   end
 
-  def build_search_conditions(%{term: term, current_filters: current_filters, effective_api_keys: effective_api_keys}) do
+  def build_search_conditions(%{
+        term: term,
+        current_filters: current_filters,
+        effective_api_keys: effective_api_keys
+      }) do
     filter_conditions =
       (current_filters || %{})
       |> Enum.flat_map(fn {type, values} ->
         api_key = Map.get(effective_api_keys || %{}, type) || Client.filter_type_to_api_key(type)
 
         case values do
-          [] -> []
-          [single] -> [normalize_condition_value(api_key, single, type)]
-          multiple -> [%{conditions: Enum.map(multiple, &normalize_condition_value(api_key, &1, type)), operator: "|"}]
+          [] ->
+            []
+
+          [single] ->
+            [normalize_condition_value(api_key, single, type)]
+
+          multiple ->
+            [
+              %{
+                conditions: Enum.map(multiple, &normalize_condition_value(api_key, &1, type)),
+                operator: "|"
+              }
+            ]
         end
       end)
 
     case {term, filter_conditions} do
-      {nil, []} -> []
-      {t, []} when is_binary(t) and t != "" -> [%{key: "*", operator: "=", value: t}]
-      {nil, [single]} -> [single]
-      {nil, multiple} when multiple != [] -> multiple
-      {t, filters} when is_binary(t) and t != "" -> [%{key: "*", operator: "=", value: t} | filters]
+      {nil, []} ->
+        []
+
+      {t, []} when is_binary(t) and t != "" ->
+        [%{key: "*", operator: "=", value: t}]
+
+      {nil, [single]} ->
+        [single]
+
+      {nil, multiple} when multiple != [] ->
+        multiple
+
+      {t, filters} when is_binary(t) and t != "" ->
+        [%{key: "*", operator: "=", value: t} | filters]
     end
   end
 
@@ -69,19 +95,32 @@ defmodule Bonfire.PanDoRa.Web.SearchLogic do
     %{key: api_key, operator: op, value: value}
   end
 
-  def build_filter_sections(filter_types, available_filters, current_filters, filter_pages, filter_loading) do
+  def build_filter_sections(
+        filter_types,
+        available_filters,
+        current_filters,
+        filter_pages,
+        filter_loading
+      ) do
     Enum.map(filter_types, fn type ->
       list = Map.get(available_filters, type, [])
+
       available =
         Enum.map(list, fn
-          %{"name" => n, "items" => c} -> %{name: to_string(n), items: c}
-          %{name: n, items: c} -> %{name: to_string(n), items: c}
+          %{"name" => n, "items" => c} ->
+            %{name: to_string(n), items: c}
+
+          %{name: n, items: c} ->
+            %{name: to_string(n), items: c}
+
           %{} = other ->
             %{
               name: to_string(Map.get(other, "name") || Map.get(other, :name) || "Unknown"),
               items: Map.get(other, "items") || Map.get(other, :items) || 0
             }
-          other -> %{name: to_string(other), items: 0}
+
+          other ->
+            %{name: to_string(other), items: 0}
         end)
 
       %{

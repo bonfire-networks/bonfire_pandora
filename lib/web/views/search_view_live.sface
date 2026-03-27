@@ -20,7 +20,12 @@
         <div class="loading loading-spinner loading-lg text-primary" />
       </div>
     {/if}
-    <div class="search-results-container" id="search-results-container" phx-hook="InfiniteScroll" data-type="results">
+    <div
+      class="search-results-container"
+      id="search-results-container"
+      phx-hook="InfiniteScroll"
+      data-type="results"
+    >
       <ul
         id="search_results"
         phx-update="stream"
@@ -33,7 +38,9 @@
             event_target={nil}
             movie={result}
             movie_id={id}
-            media_url={if @pandora_token, do: "#{@pandora_base_url}/#{e(result, "id", "")}/icon128.jpg?token=#{@pandora_token}", else: Client.media_proxy_url(e(result, "id", ""), "icon128.jpg")}
+            media_url={if @pandora_token,
+              do: "#{@pandora_base_url}/#{e(result, "id", "")}/icon128.jpg?token=#{@pandora_token}",
+              else: Client.media_proxy_url(e(result, "id", ""), "icon128.jpg")}
           />
         {/for}
       </ul>

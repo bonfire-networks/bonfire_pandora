@@ -33,7 +33,14 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
 
       case Bonfire.Common.Cache.get!(cache_key) do
         {media_data, content_type} when is_binary(media_data) ->
-          serve_buffered(conn, 200, media_data, content_type, "image/jpeg", @browser_image_max_age)
+          serve_buffered(
+            conn,
+            200,
+            media_data,
+            content_type,
+            "image/jpeg",
+            @browser_image_max_age
+          )
 
         _ ->
           proxy_buffered(conn, path_string, "image/jpeg", cache_key)
@@ -108,6 +115,7 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
 
       req_headers ->
         url = pandora_url(path_string, query_string)
+
         # Clip requests (?t=in,out): let Pandora return the segment; avoid default Range that can confuse short responses.
         clip? = String.contains?(query_string, "t=")
 
@@ -135,13 +143,16 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
           when status in [200, 206] and is_binary(body) ->
             ct = upstream_content_type(resp_headers, guess_content_type(path_string, "video/mp4"))
 
-            debug(%{
-              path: path_string,
-              requested_range: range_header,
-              upstream_status: status,
-              content_type: ct,
-              body_size: byte_size(body)
-            }, "[PanDoRa] proxy_video_buffered success")
+            debug(
+              %{
+                path: path_string,
+                requested_range: range_header,
+                upstream_status: status,
+                content_type: ct,
+                body_size: byte_size(body)
+              },
+              "[PanDoRa] proxy_video_buffered success"
+            )
 
             conn
             |> put_cache_headers(@browser_video_max_age)
@@ -151,7 +162,8 @@ defmodule Bonfire.PanDoRa.Web.ProxyController do
             |> send_resp(status, body)
 
           {:ok, %Req.Response{status: status}} ->
-            warn(%{path: path_string, requested_range: range_header, upstream_status: status},
+            warn(
+              %{path: path_string, requested_range: range_header, upstream_status: status},
               "[PanDoRa] proxy_video_buffered upstream status"
             )
 

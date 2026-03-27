@@ -180,7 +180,8 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
            current_user: current_user(socket)
          ) do
       {:ok, %{items: items} = data} when is_list(items) ->
-        {items_to_show, has_more} = SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
+        {items_to_show, has_more} =
+          SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
 
         socket
         |> Bonfire.UI.Common.maybe_assign_context(data)
@@ -211,7 +212,9 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
     pages = socket.assigns[:filter_pages] || %{}
     loading = socket.assigns[:filter_loading] || %{}
 
-    filter_sections = logic.build_filter_sections(filter_types, available, current, pages, loading)
+    filter_sections =
+      logic.build_filter_sections(filter_types, available, current, pages, loading)
+
     active_filter_badges = logic.build_active_filter_badges(filter_types, current)
     selected_by_field = Map.new(filter_types, fn type -> {type, Map.get(current, type, [])} end)
 
@@ -267,7 +270,14 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
 
   defp fetch_initial_data(socket) do
     socket = track_loading(socket, :initial_load, true)
-    socket = assign(socket, :filter_types, SearchLogic.load_filter_types(current_user: current_user(socket)))
+
+    socket =
+      assign(
+        socket,
+        :filter_types,
+        SearchLogic.load_filter_types(current_user: current_user(socket))
+      )
+
     keys = SearchLogic.build_request_keys(socket.assigns[:filter_types])
 
     case Client.find(
@@ -278,7 +288,8 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
            current_user: current_user(socket)
          ) do
       {:ok, %{items: items} = data} when is_list(items) ->
-        {items_to_show, has_more} = SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
+        {items_to_show, has_more} =
+          SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
 
         socket
         |> Bonfire.UI.Common.maybe_assign_context(data)
@@ -301,7 +312,14 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
 
   defp do_initial_search(socket, term) do
     socket = track_loading(socket, :search_load, true)
-    socket = assign(socket, :filter_types, SearchLogic.load_filter_types(current_user: current_user(socket)))
+
+    socket =
+      assign(
+        socket,
+        :filter_types,
+        SearchLogic.load_filter_types(current_user: current_user(socket))
+      )
+
     conditions = SearchLogic.build_search_conditions(Map.merge(socket.assigns, %{term: term}))
     keys = SearchLogic.build_request_keys(socket.assigns[:filter_types])
 
@@ -313,7 +331,8 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
            current_user: current_user(socket)
          ) do
       {:ok, %{items: items} = data} when is_list(items) ->
-        {items_to_show, has_more} = SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
+        {items_to_show, has_more} =
+          SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
 
         socket
         |> Bonfire.UI.Common.maybe_assign_context(data)
@@ -351,7 +370,8 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
            current_user: current_user(socket)
          ) do
       {:ok, %{items: items}} when is_list(items) ->
-        {items_to_show, has_more} = SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
+        {items_to_show, has_more} =
+          SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
 
         socket
         |> stream(:search_results, prepare_items(items_to_show), reset: true)
@@ -388,7 +408,8 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
            current_user: current_user(socket)
          ) do
       {:ok, %{items: items}} when is_list(items) ->
-        {items_to_show, has_more} = SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
+        {items_to_show, has_more} =
+          SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
 
         socket
         |> stream(:search_results, prepare_items(items_to_show))
@@ -405,7 +426,14 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
 
   defp do_clear_search(socket) do
     socket
-    |> assign(term: nil, current_filters: %{}, page: 0, filter_sections: [], active_filter_badges: [], selected_by_field: %{})
+    |> assign(
+      term: nil,
+      current_filters: %{},
+      page: 0,
+      filter_sections: [],
+      active_filter_badges: [],
+      selected_by_field: %{}
+    )
     |> stream(:search_results, [], reset: true)
     |> assign(:filter_types, SearchLogic.load_filter_types(current_user: current_user(socket)))
     |> fetch_initial_data()
@@ -422,7 +450,11 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
     new_filters = Map.put(current, filter_type, updated_values)
     socket = socket |> assign(:current_filters, new_filters) |> track_loading(:global_load, true)
 
-    conditions = SearchLogic.build_search_conditions(Map.merge(socket.assigns, %{current_filters: new_filters}))
+    conditions =
+      SearchLogic.build_search_conditions(
+        Map.merge(socket.assigns, %{current_filters: new_filters})
+      )
+
     keys = SearchLogic.build_request_keys(socket.assigns[:filter_types])
 
     case Client.find(
@@ -433,7 +465,8 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
            current_user: current_user(socket)
          ) do
       {:ok, %{items: items}} when is_list(items) ->
-        {items_to_show, has_more} = SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
+        {items_to_show, has_more} =
+          SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
 
         socket
         |> stream(:search_results, prepare_items(items_to_show), reset: true)
@@ -463,7 +496,8 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
            current_user: current_user(socket)
          ) do
       {:ok, %{items: items}} when is_list(items) ->
-        {items_to_show, has_more} = SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
+        {items_to_show, has_more} =
+          SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
 
         socket
         |> stream(:search_results, prepare_items(items_to_show))
@@ -505,6 +539,7 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
         new_items =
           Enum.filter(items, fn item ->
             name = Map.get(item, "name") || Map.get(item, :name)
+
             if is_nil(name) do
               false
             else
@@ -520,7 +555,10 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
         |> update(:filter_loading, &Map.put(&1, filter_type, false))
         |> update(:filter_has_more, &Map.put(&1, filter_type, has_more))
         |> update(:filter_pages, &Map.put(&1, filter_type, current_page + 1))
-        |> update(:available_filters, &Map.update(&1, filter_type, new_items, fn cur -> cur ++ new_items end))
+        |> update(
+          :available_filters,
+          &Map.update(&1, filter_type, new_items, fn cur -> cur ++ new_items end)
+        )
         |> update(:effective_api_keys, &Map.merge(&1 || %{}, api_keys))
         |> track_loading(String.to_atom("#{filter_type}_load"), false)
 
@@ -549,7 +587,11 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
 
         filter_has_more =
           Enum.reduce(filter_types, %{}, fn type, acc ->
-            Map.put(acc, type, length(Map.get(available, type, [])) >= SearchLogic.filter_per_page())
+            Map.put(
+              acc,
+              type,
+              length(Map.get(available, type, [])) >= SearchLogic.filter_per_page()
+            )
           end)
 
         {:ok,
@@ -579,7 +621,10 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
 
         socket
         |> assign(:available_filters, new_available)
-        |> assign(:effective_api_keys, Map.merge(socket.assigns[:effective_api_keys] || %{}, api_keys))
+        |> assign(
+          :effective_api_keys,
+          Map.merge(socket.assigns[:effective_api_keys] || %{}, api_keys)
+        )
 
       _ ->
         put_flash(socket, :error, l("Error updating filters"))
@@ -588,7 +633,10 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
 
   defp track_loading(socket, state, is_loading) do
     current = Map.get(socket.assigns, :loading_states, MapSet.new())
-    new_loading = if is_loading, do: MapSet.put(current, state), else: MapSet.delete(current, state)
+
+    new_loading =
+      if is_loading, do: MapSet.put(current, state), else: MapSet.delete(current, state)
+
     socket
     |> assign(:loading_states, new_loading)
     |> assign(:loading, MapSet.size(new_loading) > 0)
