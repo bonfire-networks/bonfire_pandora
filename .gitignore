@@ -45,6 +45,9 @@ npm-debug.log
 # Cursor IDE
 .cursor/
 
+# Umbrella sync/build output (do not commit; hooks live under the app config/current_flavour)
+/config/current_flavour/
+
 # user-local overrides for mess
 deps.path
 /libs/

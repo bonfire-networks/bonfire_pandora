@@ -1,0 +1,15 @@
+/**
+ * Plyr base styles + PanDoRa html_body video preview sizing.
+ * Bundled from the app via `assets/css/app.css` → @import this file.
+ *
+ * `plyr` is an npm dependency of this extension (`assets/package.json` next to
+ * `node_modules/`). Run `yarn install` in `extensions/bonfire_pandora/assets` (or
+ * `deps/bonfire_pandora/assets` if you use deps.path).
+ */
+@import "../node_modules/plyr/dist/plyr.css";
+
+.pandora-video-preview-wrapper video,
+video.pandora-video-preview {
+  max-width: 100%;
+  height: auto;
+}
