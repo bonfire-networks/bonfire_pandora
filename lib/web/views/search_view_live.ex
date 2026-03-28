@@ -235,8 +235,7 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
            [
              type: Surface.Component,
              filter_sections: filter_sections,
-             loading: loading,
-             widget_title: "Filters"
+             loading: loading
            ]}
         ]
       ],
@@ -246,8 +245,7 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
            [
              type: Surface.Component,
              filter_sections: filter_sections,
-             loading: loading,
-             widget_title: "Filters"
+             loading: loading
            ]}
         ]
       ]

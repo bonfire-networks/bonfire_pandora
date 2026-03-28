@@ -1,58 +1,62 @@
-<div>
-  <Bonfire.UI.Common.WidgetBlockLive
-    class="w-full p-0 border-0 bg-transparent shadow-none"
-    widget_title={l("Filters")}
-    title_class="text-xs font-medium uppercase tracking-wider text-base-content/40 pb-2"
-  >
-    <div class="flex flex-col gap-4">
-      {#for section <- @filter_sections}
-        <section
-          class="flex flex-col min-w-0 flex-shrink-0 border-b border-base-content/5 last:border-b-0 pb-4 last:pb-0"
-          aria-label={section.label}
-        >
-          <h2 class="text-xs font-medium uppercase tracking-wider text-base-content/40 mb-2">{section.label}</h2>
-          <div
-            phx-hook="InfiniteScroll"
-            id={"#{section.id}-container"}
-            data-page={section.page}
-            data-type="filter"
-            data-loading={section.loading}
-            phx-update="append"
+{#if not filters_disabled?(@__context__)}
+  {!-- Settings-driven widget: see WidgetSearchFiltersLive ([:ui, :archive_search_filters, …]) --}
+  <div data-bonfire-widget="archive-search-filters" data-filters-list-height={filters_list_height_px(@__context__)}>
+    <Bonfire.UI.Common.WidgetBlockLive
+      class={filters_block_class(@__context__)}
+      widget_title={filters_widget_title(@widget_title, @__context__)}
+      title_class={filters_title_class(@__context__)}
+    >
+      <div class="flex flex-col gap-4">
+        {#for section <- @filter_sections}
+          <section
+            class="flex flex-col min-w-0 flex-shrink-0 border-b border-base-content/5 last:border-b-0 pb-4 last:pb-0"
+            aria-label={section.label}
           >
-            <ul
-              class="flex flex-col gap-0.5 h-[140px] max-h-[140px] overflow-y-auto w-full overscroll-contain"
-              id={"#{section.id}-list"}
+            <h2 class="text-xs font-medium uppercase tracking-wider text-base-content/40 mb-2">{section.label}</h2>
+            <div
+              phx-hook="InfiniteScroll"
+              id={"#{section.id}-container"}
+              data-page={section.page}
+              data-type="filter"
+              data-loading={section.loading}
+              phx-update="append"
             >
-              {#for %{name: name, items: count} <- section.available}
-                <li class="w-full" id={"#{section.id}-#{name}"}>
-                  <a
-                    phx-click={"filter_by_#{section.id}"}
-                    phx-value-id={name}
-                    phx-throttle="300"
-                    class={"flex items-center gap-2 py-1.5 px-2 rounded-md text-sm transition-colors " <>
-                      if(name in section.selected,
-                        do: "bg-primary/10 text-primary font-medium",
-                        else: "text-base-content/80 hover:bg-base-content/5 hover:text-base-content"
-                      )}
-                    disabled={@loading}
-                  >
-                    <span class="flex-1 truncate">{name}</span>
-                    <span class="text-xs opacity-60 shrink-0">({count})</span>
-                    {#if name in section.selected}
-                      <span class="text-primary shrink-0">✓</span>
-                    {/if}
-                  </a>
-                </li>
-              {/for}
-            </ul>
-            {#if section.loading}
-              <div class="flex justify-center py-2">
-                <div class="loading loading-spinner loading-sm" />
-              </div>
-            {/if}
-          </div>
-        </section>
-      {/for}
-    </div>
-  </Bonfire.UI.Common.WidgetBlockLive>
-</div>
+              <ul
+                class="flex flex-col gap-0.5 overflow-y-auto w-full overscroll-contain"
+                style={filters_list_style(@__context__)}
+                id={"#{section.id}-list"}
+              >
+                {#for %{name: name, items: count} <- section.available}
+                  <li class="w-full" id={"#{section.id}-#{name}"}>
+                    <a
+                      phx-click={"filter_by_#{section.id}"}
+                      phx-value-id={name}
+                      phx-throttle="300"
+                      class={"flex items-center gap-2 py-1.5 px-2 rounded-md text-sm transition-colors " <>
+                        if(name in section.selected,
+                          do: "bg-primary/10 text-primary font-medium",
+                          else: "text-base-content/80 hover:bg-base-content/5 hover:text-base-content"
+                        )}
+                      disabled={@loading}
+                    >
+                      <span class="flex-1 truncate">{name}</span>
+                      <span class="text-xs opacity-60 shrink-0">({count})</span>
+                      {#if name in section.selected}
+                        <span class="text-primary shrink-0">✓</span>
+                      {/if}
+                    </a>
+                  </li>
+                {/for}
+              </ul>
+              {#if section.loading}
+                <div class="flex justify-center py-2">
+                  <div class="loading loading-spinner loading-sm" />
+                </div>
+              {/if}
+            </div>
+          </section>
+        {/for}
+      </div>
+    </Bonfire.UI.Common.WidgetBlockLive>
+  </div>
+{/if}
