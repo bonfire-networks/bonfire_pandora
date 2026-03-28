@@ -10,7 +10,7 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
   and is applied in the browser when the element nears the viewport (`PlyrInit` hook), with
   `preload="none"`. A **poster** image uses a frame JPEG at in-point, `512p{in}.jpg` via
   `/archive/media/...`. Attributes **`data-pandora-in`** / **`data-pandora-out`** (seconds) drive
-  feed-only Plyr: no progress bar; segment [in,out] loops in playback via seek near `out`, with seek to `in` on pause/ended at end (`PlyrInit`).
+  segment [in,out] looping in `PlyrInit` (no native `controls` — Plyr UI only).
   """
 
   alias PanDoRa.API.Client
@@ -43,7 +43,6 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
       [movie_id, in_s, out_s | _] = Regex.run(@marker_regex, full_match, capture: :all_but_first)
       replace_marker(movie_id, in_s, out_s, opts)
     end
-
     Regex.replace(@marker_regex, html_body, replace_fn)
   end
 
@@ -70,8 +69,10 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
     # Frame JPEG at in-point: `512p{timecode}.jpg` (Pandora still naming; sharper than 96p embed poster).
     poster_src = Client.media_proxy_url(movie_id, "512p#{in_s}.jpg")
 
+    # Feed preview: no native `controls` — PlyrInit adds UI; native controls + `.prose` break layout (huge icons).
+    # Hook sets `src` lazily from `data-pandora-video-src`.
     video_tag =
-      ~s(<video class="pandora-video-preview plyr rounded" preload="none" width="320" height="180" playsinline controls poster="#{escape_attr(poster_src)}" data-pandora-video-src="#{escape_attr(video_src)}" data-pandora-in="#{escape_attr(in_s)}" data-pandora-out="#{escape_attr(out_s)}"></video>)
+      ~s(<video class="pandora-video-preview rounded" preload="none" width="320" height="180" playsinline poster="#{escape_attr(poster_src)}" data-pandora-video-src="#{escape_attr(video_src)}" data-pandora-in="#{escape_attr(in_s)}" data-pandora-out="#{escape_attr(out_s)}"></video>)
 
     # Archives.build_annotation_html_body already adds "View full movie" link after the marker - do not duplicate
     ~s(<div class="pandora-video-preview-wrapper" data-pandora-selection-url="#{escape_attr(selection_url)}">#{video_tag}</div>)

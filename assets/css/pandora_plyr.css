@@ -1,10 +1,69 @@
 /**
- * PanDoRa html_body video preview sizing. Plyr base CSS is imported before this file from
- * `federated_archives/assets/css/federated_archives_plyr.css` (FA flavour bundle).
+ * PanDoRa html_body video preview sizing (source file).
+ * Federated Archives concatenates this after `plyr/dist/plyr.css` via
+ * `federated_archives/assets/css/build-federated_archives_plyr.sh` into the flat
+ * `federated_archives_plyr.css` bundle (no nested @import).
  */
 
-.pandora-video-preview-wrapper video,
-video.pandora-video-preview {
+/*
+ * Feed body uses `.prose` / `.prose-bonfire` (html_body_live). Typography applies
+ * `video { max-width: 100%; height: auto }` and can affect `svg`, which blows up
+ * Plyr toolbar icons and collapses the video frame so the poster disappears behind
+ * oversized controls. Scope fixes under this wrapper only.
+ */
+.pandora-video-preview-wrapper {
+  width: 100%;
   max-width: 100%;
-  height: auto;
+  aspect-ratio: 16 / 9;
+  min-height: 0;
+  position: relative;
+  background: var(--color-base-300, #1a1a1a);
+}
+
+/* Before Plyr wraps: video is direct child */
+.pandora-video-preview-wrapper > video.pandora-video-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+}
+
+/* After Plyr mounts: .plyr replaces the bare video */
+.pandora-video-preview-wrapper > .plyr {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0 !important;
+}
+
+.pandora-video-preview-wrapper .plyr__video-wrapper {
+  height: 100%;
+  min-height: 0;
+}
+
+.pandora-video-preview-wrapper .plyr video {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: cover;
+}
+
+/* Undo prose / global rules that stretch every svg in the article body */
+.pandora-video-preview-wrapper .plyr svg {
+  max-width: none;
+  display: block;
+}
+
+.pandora-video-preview-wrapper .plyr .plyr__control svg {
+  width: var(--plyr-control-icon-size, 18px);
+  height: var(--plyr-control-icon-size, 18px);
+}
+
+.pandora-video-preview-wrapper .plyr__control--overlaid svg {
+  width: var(--plyr-video-control-icon-size, 64px);
+  height: var(--plyr-video-control-icon-size, 64px);
 }
