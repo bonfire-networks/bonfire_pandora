@@ -27,6 +27,8 @@ defmodule PanDoRa.API.Client do
   @filter_type_to_api_key %{}
   @api_key_to_filter_type %{"keyword" => "keywords"}
   # Pandora parseCondition uses "==" for facet fields (director, featuring, year, keyword).
+  # Single `find`+`group` request: ask for enough buckets that typical archives need no second page.
+  @default_grouped_metadata_buckets 50_000
 
   @doc """
   Basic find function that matches the API's find endpoint functionality with pagination support
@@ -156,21 +158,26 @@ defmodule PanDoRa.API.Client do
 
   @doc """
   Fetches grouped metadata for filters using the find endpoint with group parameter.
-  Accepts optional page and per_page parameters for pagination.
+  Accepts optional `:page` and `:per_page` (defaults to `default_grouped_metadata_per_page/0` — one shot).
   """
+  def default_grouped_metadata_per_page, do: @default_grouped_metadata_buckets
+
   @decorate time()
   def fetch_grouped_metadata(conditions, opts) do
     debug("Starting grouped metadata fetch")
 
     page = Keyword.get(opts, :page, 0)
-    per_page = Keyword.get(opts, :per_page, 10)
+    per_page = Keyword.get(opts, :per_page, @default_grouped_metadata_buckets)
     field = Keyword.get(opts, :field)
 
-    start_idx = page * per_page
-    end_idx = start_idx + per_page - 1
+    # Same range encoding as `find/1`: `calculate_range` then send `[first, last + 1]` to the API.
+    # A plain [start, start + per_page - 1] omits the +1 and the server returns one fewer bucket
+    # (e.g. 9 facets when per_page is 10) for the same `find` endpoint semantics.
+    range = calculate_range(Keyword.merge(opts, page: page, per_page: per_page))
+    api_range = [List.first(range), List.last(range) + 1]
 
     debug(
-      "fetching grouped metadata for field #{field} with page #{page} and per_page #{per_page}"
+      "fetching grouped metadata for field #{field} with page #{page} and per_page #{per_page}, api_range #{inspect(api_range)}"
     )
 
     # Prefer explicit `fields:` opt, then single `field:`, then fallback to get_filter_keys
@@ -199,7 +206,7 @@ defmodule PanDoRa.API.Client do
                 },
                 group: api_key,
                 sort: [%{key: "items", operator: "-"}],
-                range: [start_idx, end_idx]
+                range: api_range
               }
 
               debug("Making request for field #{field} (api_key=#{api_key})")
@@ -221,8 +228,8 @@ defmodule PanDoRa.API.Client do
         end)
       end)
 
-    # Wait for all requests with a reasonable timeout
-    results = Task.yield_many(tasks, 5000)
+    # Large facet lists can exceed a few seconds on slow instances
+    results = Task.yield_many(tasks, 30_000)
 
     {filters, api_keys} =
       Enum.zip(fields, tasks)

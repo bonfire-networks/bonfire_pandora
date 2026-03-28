@@ -104,8 +104,9 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
     end
   end
 
-  def handle_event("load_more_" <> filter_type, _, socket) do
-    {:noreply, assign_sidebar_and_filter_assigns(do_load_more_filter(socket, filter_type))}
+  def handle_event("load_more_" <> _filter_type, _, socket) do
+    # Facets load in one request (`filter_group_fetch_limit`); kept for old cached JS.
+    {:noreply, socket}
   end
 
   def handle_event("search", %{"term" => term}, socket) do
@@ -515,66 +516,14 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
     end
   end
 
-  defp do_load_more_filter(socket, filter_type) do
-    current_page = get_in(socket.assigns, [:filter_pages, filter_type]) || 0
-    conditions = SearchLogic.build_search_conditions(socket.assigns)
-
-    socket =
-      socket
-      |> update(:filter_loading, &Map.put(&1, filter_type, true))
-      |> track_loading(String.to_atom("#{filter_type}_load"), true)
-
-    case Client.fetch_grouped_metadata(conditions,
-           field: filter_type,
-           page: current_page + 1,
-           per_page: SearchLogic.filter_per_page(),
-           current_user: current_user(socket)
-         ) do
-      {:ok, %{filters: filters, api_keys: api_keys}} ->
-        items = Map.get(filters, filter_type, [])
-        current_items = get_in(socket.assigns, [:available_filters, filter_type]) || []
-
-        new_items =
-          Enum.filter(items, fn item ->
-            name = Map.get(item, "name") || Map.get(item, :name)
-
-            if is_nil(name) do
-              false
-            else
-              not Enum.any?(current_items, fn existing ->
-                (Map.get(existing, "name") || Map.get(existing, :name)) == name
-              end)
-            end
-          end)
-
-        has_more = length(items) >= SearchLogic.filter_per_page()
-
-        socket
-        |> update(:filter_loading, &Map.put(&1, filter_type, false))
-        |> update(:filter_has_more, &Map.put(&1, filter_type, has_more))
-        |> update(:filter_pages, &Map.put(&1, filter_type, current_page + 1))
-        |> update(
-          :available_filters,
-          &Map.update(&1, filter_type, new_items, fn cur -> cur ++ new_items end)
-        )
-        |> update(:effective_api_keys, &Map.merge(&1 || %{}, api_keys))
-        |> track_loading(String.to_atom("#{filter_type}_load"), false)
-
-      {:error, _} ->
-        socket
-        |> update(:filter_loading, &Map.put(&1, filter_type, false))
-        |> update(:filter_has_more, &Map.put(&1, filter_type, false))
-        |> track_loading(String.to_atom("#{filter_type}_load"), false)
-    end
-  end
-
   defp fetch_metadata(socket, conditions) do
     socket = track_loading(socket, :metadata_load, true)
     filter_types = socket.assigns[:filter_types] || SearchLogic.filter_types_fallback()
 
     case Client.fetch_grouped_metadata(conditions,
            fields: filter_types,
-           per_page: SearchLogic.filter_per_page(),
+           per_page: SearchLogic.filter_group_fetch_limit(),
+           page: 0,
            current_user: current_user(socket)
          ) do
       {:ok, %{filters: filters, api_keys: api_keys}} ->
@@ -583,14 +532,7 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
             Map.put(acc, type, Map.get(filters, type, []))
           end)
 
-        filter_has_more =
-          Enum.reduce(filter_types, %{}, fn type, acc ->
-            Map.put(
-              acc,
-              type,
-              length(Map.get(available, type, [])) >= SearchLogic.filter_per_page()
-            )
-          end)
+        filter_has_more = Map.new(filter_types, fn type -> {type, false} end)
 
         {:ok,
          socket
@@ -609,6 +551,8 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
 
     case Client.fetch_grouped_metadata(conditions,
            fields: filter_types,
+           per_page: SearchLogic.filter_group_fetch_limit(),
+           page: 0,
            current_user: current_user(socket)
          ) do
       {:ok, %{filters: filters, api_keys: api_keys}} ->
@@ -619,6 +563,7 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
 
         socket
         |> assign(:available_filters, new_available)
+        |> assign(:filter_has_more, Map.new(filter_types, fn t -> {t, false} end))
         |> assign(
           :effective_api_keys,
           Map.merge(socket.assigns[:effective_api_keys] || %{}, api_keys)

@@ -8,11 +8,12 @@ defmodule Bonfire.PanDoRa.Web.SearchLogic do
   @filter_types_fallback ~w(director featuring language country year keywords)
   @essential_keys ~w(title id item_id public_id duration)
   @default_per_page 20
-  @filter_per_page 10
 
   def filter_types_fallback, do: @filter_types_fallback
   def default_per_page, do: @default_per_page
-  def filter_per_page, do: @filter_per_page
+
+  @doc "Max facet buckets per archive filter request (see `PanDoRa.API.Client.fetch_grouped_metadata/2`)."
+  def filter_group_fetch_limit, do: Client.default_grouped_metadata_per_page()
 
   def load_filter_types(opts) do
     filter_types = Client.get_filter_keys(opts)

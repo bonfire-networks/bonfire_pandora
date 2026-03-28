@@ -13,14 +13,7 @@
             aria-label={section.label}
           >
             <h2 class="text-xs font-medium uppercase tracking-wider text-base-content/40 mb-2">{section.label}</h2>
-            <div
-              phx-hook="InfiniteScroll"
-              id={"#{section.id}-container"}
-              data-page={section.page}
-              data-type="filter"
-              data-loading={section.loading}
-              phx-update="append"
-            >
+            <div id={"#{section.id}-container"} data-loading={section.loading}>
               <ul
                 class="flex flex-col gap-0.5 overflow-y-auto w-full overscroll-contain"
                 style={filters_list_style(@__context__)}
