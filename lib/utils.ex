@@ -1,4 +1,6 @@
 defmodule Bonfire.PanDoRa.Utils do
+  alias PanDoRa.API.Client
+
   @doc """
   Converts any Pandora field value to a safe string for HTML attributes.
   Nil becomes "", lists are joined (binaries only), maps become "" (avoid `to_string` on maps).
@@ -76,6 +78,158 @@ defmodule Bonfire.PanDoRa.Utils do
   end
 
   def extra_metadata(_), do: []
+
+  @doc """
+  Like `extra_metadata/1` but omits keys that are already rendered as archive filter facets
+  (same types as the Filters widget).
+  """
+  def extra_metadata_excluding_filters(movie, filter_types, effective_api_keys) when is_map(movie) do
+    exclude =
+      (filter_types || [])
+      |> Enum.flat_map(fn t ->
+        ak = Map.get(effective_api_keys || %{}, t) || Client.filter_type_to_api_key(t)
+        [String.downcase(to_string(ak)), String.downcase(to_string(t))]
+      end)
+      |> MapSet.new()
+
+    movie
+    |> extra_metadata()
+    |> Enum.reject(fn {k, _v} -> MapSet.member?(exclude, String.downcase(to_string(k))) end)
+  end
+
+  def extra_metadata_excluding_filters(_, _, _), do: []
+
+  @doc "Iconify icon name for a filter type (archive card facet row)."
+  def filter_field_icon("year"), do: "carbon:calendar"
+  def filter_field_icon("featuring"), do: "carbon:user-multiple"
+  def filter_field_icon("keywords"), do: "carbon:tag"
+  def filter_field_icon("keyword"), do: "carbon:tag"
+  def filter_field_icon(_), do: "carbon:information"
+
+  @facet_btn_base "btn btn-xs btn-soft h-auto min-h-7 py-0.5 px-1.5 gap-1 font-normal max-w-[min(100%,14rem)]"
+
+  @doc "DaisyUI button classes for a facet chip (archive card, filter links on)."
+  def filter_field_button_class(type) when is_binary(type) do
+    variant = type |> normalize_filter_type() |> facet_btn_variant()
+    "#{@facet_btn_base} #{variant}"
+  end
+
+  def filter_field_button_class(_), do: "#{@facet_btn_base} btn-neutral"
+
+  @doc "DaisyUI badge classes for a facet chip (archive card, filter links off)."
+  def filter_field_badge_class(type) when is_binary(type) do
+    variant = type |> normalize_filter_type() |> facet_badge_variant()
+    "badge badge-sm #{variant} gap-1 max-w-[min(100%,14rem)]"
+  end
+
+  def filter_field_badge_class(_), do: "badge badge-sm badge-ghost gap-1 max-w-[min(100%,14rem)]"
+
+  @doc "Tailwind classes for the Iconify glyph on a facet row (semantic tint)."
+  def filter_field_icon_class(type) when is_binary(type) do
+    type |> normalize_filter_type() |> facet_icon_class()
+  end
+
+  def filter_field_icon_class(_), do: "w-3.5 h-3.5 shrink-0 opacity-90"
+
+  defp normalize_filter_type("keyword"), do: "keywords"
+  defp normalize_filter_type(t), do: t
+
+  defp facet_btn_variant("featuring"), do: "btn-success"
+  defp facet_btn_variant("keywords"), do: "btn-accent"
+  defp facet_btn_variant(_), do: "btn-neutral"
+
+  defp facet_badge_variant("featuring"), do: "badge-success"
+  defp facet_badge_variant("keywords"), do: "badge-accent"
+  defp facet_badge_variant(_), do: "badge-ghost"
+
+  defp facet_icon_class("featuring"), do: "w-3.5 h-3.5 shrink-0 opacity-95 text-success-content"
+  defp facet_icon_class("keywords"), do: "w-3.5 h-3.5 shrink-0 opacity-95 text-accent-content"
+  defp facet_icon_class(_), do: "w-3.5 h-3.5 shrink-0 opacity-90 text-current"
+
+  @card_facet_skip ~w(director country language year)
+
+  @doc """
+  Country values for the archive card header row (template uses inline SVG globe, not Iconify).
+  Country is not included in `filter_facets_for_card/3`.
+  """
+  def country_facets_for_card(movie, filter_types, effective_api_keys) when is_map(movie) do
+    if "country" in List.wrap(filter_types) do
+      api_key = Map.get(effective_api_keys || %{}, "country") || Client.filter_type_to_api_key("country")
+      raw = Map.get(movie, api_key) || Map.get(movie, "country")
+
+      raw
+      |> normalize_facet_values()
+      |> Enum.map(fn val -> %{api_key: api_key, value: val} end)
+    else
+      []
+    end
+  end
+
+  def country_facets_for_card(_, _, _), do: []
+
+  @doc """
+  Year values for the archive card header row (with title); not included in `filter_facets_for_card/3`.
+  """
+  def year_facets_for_card(movie, filter_types, effective_api_keys) when is_map(movie) do
+    if "year" in List.wrap(filter_types) do
+      api_key = Map.get(effective_api_keys || %{}, "year") || Client.filter_type_to_api_key("year")
+      raw = Map.get(movie, api_key) || Map.get(movie, "year")
+
+      raw
+      |> normalize_facet_values()
+      |> Enum.map(fn val -> %{api_key: api_key, value: val} end)
+    else
+      []
+    end
+  end
+
+  def year_facets_for_card(_, _, _), do: []
+
+  @doc """
+  Builds one row entry per facet value for filter types (excluding director, country, language, year).
+  Uses `effective_api_keys` from grouped-metadata so `keyword`/`keywords` matches the API.
+  """
+  def filter_facets_for_card(movie, filter_types, effective_api_keys) when is_map(movie) do
+    filter_types
+    |> List.wrap()
+    |> Enum.reject(&(&1 in @card_facet_skip))
+    |> Enum.flat_map(fn type ->
+      api_key = Map.get(effective_api_keys || %{}, type) || Client.filter_type_to_api_key(type)
+      raw = Map.get(movie, api_key) || Map.get(movie, type)
+      icon = filter_field_icon(type)
+
+      raw
+      |> normalize_facet_values()
+      |> Enum.map(fn val ->
+        %{
+          type: type,
+          api_key: api_key,
+          value: val,
+          icon: icon,
+          button_class: filter_field_button_class(type),
+          badge_class: filter_field_badge_class(type),
+          icon_class: filter_field_icon_class(type)
+        }
+      end)
+    end)
+  end
+
+  def filter_facets_for_card(_, _, _), do: []
+
+  defp normalize_facet_values(nil), do: []
+  defp normalize_facet_values(v) when v == "", do: []
+  defp normalize_facet_values(v) when is_integer(v), do: [Integer.to_string(v)]
+
+  defp normalize_facet_values(v) when is_binary(v) do
+    t = String.trim(v)
+    if t == "", do: [], else: [t]
+  end
+
+  defp normalize_facet_values(v) when is_list(v) do
+    Enum.flat_map(v, &normalize_facet_values/1)
+  end
+
+  defp normalize_facet_values(_), do: []
 
   def sort_years(years) do
     Enum.sort_by(years, fn %{"name" => year} ->

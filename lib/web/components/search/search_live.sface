@@ -1,4 +1,4 @@
-<div class="flex-1 min-w-0 flex flex-col">
+<div class="w-full max-w-full flex flex-col feed w-full max-w-full lg:rounded-xl lg:shadow bg-base-100">
   <div class="flex rounded-t-xl border-b border-base-content/10 flex-col gap-2 p-3">
     <form change="validate" phx-submit="search" action="?" autocomplete="off">
       <div class="flex gap-4">
@@ -18,43 +18,54 @@
       </div>
     </form>
 
-    <!-- Active filters and search term display -->
-    <div
-      :if={not is_nil(@term) or Enum.any?(Map.values(@selected_by_field || %{}), &(length(&1) > 0))}
-      class="p-3 bg-base-200 rounded-lg flex justify-between items-center"
-    >
-      <div class="flex flex-1 flex-wrap gap-2">
-        {#if @term}
-          <div class="badge badge-accent badge-soft">
-            <span>Search: {String.slice(@term, 0, 30)}{if String.length(@term) > 30, do: ~s(...)}</span>
-          </div>
-        {/if}
-
-        {#for badge <- @active_filter_badges}
-          {#for value <- badge.values}
-            <button
-              type="button"
-              phx-click={"filter_by_#{badge.id}"}
-              phx-value-id={to_string(value)}
-              class="badge badge-accent badge-soft gap-1 cursor-pointer hover:bg-primary/30 border-0"
-              disabled={@loading}
-              title={l("Remove filter")}
-            >
-              <span>{badge.label}: {value}</span>
-              <span class="ml-0.5 opacity-70 hover:opacity-100" aria-hidden="true">×</span>
-            </button>
+    {#if show_filter_bar?(@term, @active_filter_badges)}
+      <div class="p-3 bg-base-200 rounded-lg flex justify-between items-center gap-2 flex-wrap">
+        <div class="flex flex-1 flex-wrap gap-2">
+          {#if term_chip?(@term)}
+            <div class="badge badge-accent badge-soft inline-flex max-w-full items-center gap-1 pr-1">
+              <span class="min-w-0 truncate">{l("Search")}: {term_chip_text(@term)}</span>
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs btn-circle h-5 w-5 min-h-0 shrink-0 p-0 opacity-80 hover:opacity-100"
+                phx-click="remove_search_term"
+                phx-throttle="300"
+                disabled={@loading}
+                aria-label={l("Remove search term")}
+              >
+                <#Icon iconify="carbon:close" class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          {/if}
+          {#for badge <- @active_filter_badges}
+            {#for v <- badge.values}
+              <div class="badge badge-accent badge-soft inline-flex max-w-full items-center gap-1 pr-1">
+                <span class="min-w-0 truncate">{badge.label}: {v}</span>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs btn-circle h-5 w-5 min-h-0 shrink-0 p-0 opacity-80 hover:opacity-100"
+                  phx-click="filter_by_field"
+                  phx-value-field={filter_field_api_key_for_badge(badge, @effective_api_keys)}
+                  phx-value-id={filter_badge_value_attr(v)}
+                  phx-throttle="300"
+                  disabled={@loading}
+                  aria-label={l("Remove filter")}
+                >
+                  <#Icon iconify="carbon:close" class="w-3.5 h-3.5" />
+                </button>
+              </div>
+            {/for}
           {/for}
-        {/for}
+        </div>
+        <button
+          type="button"
+          phx-click="clear_filters"
+          class="btn btn-ghost btn-soft gap-2 shrink-0"
+          disabled={@loading}
+        >
+          <#Icon iconify="carbon:filter-remove" class="w-4 h-4" />
+          {l("Clear filters")}
+        </button>
       </div>
-      <button
-        type="button"
-        phx-click="clear_filters"
-        class="btn btn-ghost btn-soft gap-2"
-        disabled={@loading}
-      >
-        <#Icon iconify="carbon:filter-remove" class="w-4 h-4" />
-        {l("Clear filters")}
-      </button>
-    </div>
+    {/if}
   </div>
 </div>

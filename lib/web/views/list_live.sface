@@ -133,6 +133,9 @@
           <Bonfire.PanDoRa.Components.MoviePreviewLive
             movie={result}
             movie_id={e(result, "id", "")}
+            filter_types={[]}
+            effective_api_keys={%{}}
+            filter_links_enabled={false}
             media_url={if @pandora_token,
               do: "#{@pandora_base_url}/#{e(result, "id", "")}/icon128.jpg?token=#{@pandora_token}",
               else: Client.media_proxy_url(e(result, "id", ""), "icon128.jpg")}

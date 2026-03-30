@@ -121,6 +121,42 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
     {:noreply, assign_sidebar_and_filter_assigns(do_clear_search(socket))}
   end
 
+  def handle_event("remove_search_term", _, socket) do
+    socket =
+      socket
+      |> assign(:term, nil)
+      |> track_loading(:global_load, true)
+
+    conditions = SearchLogic.build_search_conditions(socket.assigns)
+    keys = SearchLogic.build_request_keys(socket.assigns[:filter_types])
+
+    socket =
+      case Client.find(
+             conditions: conditions,
+             range: [0, SearchLogic.default_per_page()],
+             keys: keys,
+             total: true,
+             current_user: current_user(socket)
+           ) do
+        {:ok, %{items: items}} when is_list(items) ->
+          {items_to_show, has_more} =
+            SearchLogic.handle_pagination_results(items, SearchLogic.default_per_page())
+
+          socket
+          |> stream(:search_results, prepare_items(items_to_show), reset: true)
+          |> assign(has_more_items: has_more, current_count: length(items_to_show), page: 0)
+          |> update_available_filters(conditions)
+          |> track_loading(:global_load, false)
+
+        _ ->
+          socket
+          |> put_flash(:error, l("Error updating results"))
+          |> track_loading(:global_load, false)
+      end
+
+    {:noreply, assign_sidebar_and_filter_assigns(socket)}
+  end
+
   def handle_event("validate", _, socket), do: {:noreply, socket}
 
   # ── Private ────────────────────────────────────────────────────────────────
@@ -438,13 +474,21 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
     |> fetch_initial_data()
   end
 
+  defp filter_value_matches?(v, value) when is_binary(value) do
+    v == value or to_string(v) == value
+  end
+
   defp toggle_filter(socket, filter_type, value)
        when is_binary(filter_type) and is_binary(value) do
     current = socket.assigns[:current_filters] || %{}
     values = Map.get(current, filter_type, [])
 
     updated_values =
-      if value in values, do: List.delete(values, value), else: [value | values]
+      if Enum.any?(values, &filter_value_matches?(&1, value)) do
+        Enum.reject(values, &filter_value_matches?(&1, value))
+      else
+        [value | values]
+      end
 
     new_filters = Map.put(current, filter_type, updated_values)
     socket = socket |> assign(:current_filters, new_filters) |> track_loading(:global_load, true)

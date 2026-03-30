@@ -3,6 +3,7 @@
     id="search-component"
     term={@term}
     current_user={@current_user}
+    effective_api_keys={@effective_api_keys}
     filter_sections={@filter_sections}
     active_filter_badges={@active_filter_badges}
     selected_by_field={@selected_by_field}
@@ -38,6 +39,9 @@
             event_target={nil}
             movie={result}
             movie_id={id}
+            filter_types={@filter_types}
+            effective_api_keys={@effective_api_keys}
+            filter_links_enabled
             media_url={if @pandora_token,
               do: "#{@pandora_base_url}/#{e(result, "id", "")}/icon128.jpg?token=#{@pandora_token}",
               else: Client.media_proxy_url(e(result, "id", ""), "icon128.jpg")}

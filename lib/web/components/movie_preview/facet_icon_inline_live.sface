@@ -1,0 +1,2 @@
+{!-- #Icon is a macro: iconify must be a compile-time literal. Iconify.iconify accepts runtime icon names. --}
+<Iconify.iconify icon={@iconify} class={@class} />

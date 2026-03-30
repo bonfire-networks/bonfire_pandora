@@ -6,7 +6,7 @@ defmodule Bonfire.PanDoRa.Web.SearchLogic do
   alias PanDoRa.API.Client
 
   @filter_types_fallback ~w(director featuring language country year keywords)
-  @essential_keys ~w(title id item_id public_id duration)
+  @essential_keys ~w(title id item_id public_id duration summary)
   @default_per_page 20
 
   def filter_types_fallback, do: @filter_types_fallback
