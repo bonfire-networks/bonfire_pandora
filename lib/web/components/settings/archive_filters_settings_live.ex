@@ -37,7 +37,10 @@ defmodule Bonfire.PanDoRa.Web.ArchiveFiltersSettingsLive do
       |> assign(assigns)
       |> assign(:scoped_opts, scoped_opts)
       |> assign(:can_edit?, scope == :instance && instance_admin?(ctx))
-      |> assign(:list_height_px, Settings.get([:ui, :archive_search_filters, :list_height_px], 140, scoped_opts))
+      |> assign(
+        :list_height_px,
+        Settings.get([:ui, :archive_search_filters, :list_height_px], 140, scoped_opts)
+      )
       |> assign(
         :title_style,
         style_for_form(
@@ -80,11 +83,17 @@ defmodule Bonfire.PanDoRa.Web.ArchiveFiltersSettingsLive do
 
       opts = [scope: :instance, current_user: user]
 
-      with {:ok, _} <- Settings.put([:ui, :archive_search_filters, :list_height_px], list_height, opts),
-           {:ok, _} <- Settings.put([:ui, :archive_search_filters, :title_style], title_style, opts),
+      with {:ok, _} <-
+             Settings.put([:ui, :archive_search_filters, :list_height_px], list_height, opts),
+           {:ok, _} <-
+             Settings.put([:ui, :archive_search_filters, :title_style], title_style, opts),
            {:ok, _} <- Settings.put([:ui, :archive_search_filters, :card_style], card_style, opts),
            {:ok, _} <-
-             Settings.put([:ui, :archive_search_filters, :disabled], if(disabled, do: true, else: nil), opts) do
+             Settings.put(
+               [:ui, :archive_search_filters, :disabled],
+               if(disabled, do: true, else: nil),
+               opts
+             ) do
         {:noreply,
          socket
          |> Bonfire.UI.Common.assign_flash(:info, l("Archive filter settings saved"))

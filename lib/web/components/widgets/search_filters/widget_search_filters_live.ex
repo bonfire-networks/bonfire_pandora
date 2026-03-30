@@ -18,7 +18,8 @@ defmodule Bonfire.PanDoRa.Web.WidgetSearchFiltersLive do
     Bonfire.Common.Settings.get([:ui, :archive_search_filters, :disabled], nil,
       context: context,
       name: l("Hide archive search filters"),
-      description: l("When enabled, the sidebar filters block is hidden on the archive search page.")
+      description:
+        l("When enabled, the sidebar filters block is hidden on the archive search page.")
     ) == true
   end
 

@@ -1,6 +1,11 @@
 <div class="archive-filters-settings space-y-4 max-w-lg">
   {#if @can_edit?}
-    <form phx-submit="save_archive_filters" phx-target={@myself} class="space-y-4" id="archive-filters-settings-form">
+    <form
+      phx-submit="save_archive_filters"
+      phx-target={@myself}
+      class="space-y-4"
+      id="archive-filters-settings-form"
+    >
       <fieldset class="fieldset">
         <legend class="fieldset-legend">{l("Facet list height (px)")}</legend>
         <input
@@ -31,7 +36,13 @@
       </fieldset>
 
       <label class="label cursor-pointer justify-start gap-3">
-        <input type="checkbox" name="filters_disabled" value="true" checked={@filters_disabled?} class="checkbox checkbox-sm" />
+        <input
+          type="checkbox"
+          name="filters_disabled"
+          value="true"
+          checked={@filters_disabled?}
+          class="checkbox checkbox-sm"
+        />
         <span class="label-text">{l("Hide archive filters sidebar entirely")}</span>
       </label>
 

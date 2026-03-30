@@ -1,6 +1,9 @@
 {#if not filters_disabled?(@__context__)}
   {!-- Settings-driven widget: see WidgetSearchFiltersLive ([:ui, :archive_search_filters, …]) --}
-  <div data-bonfire-widget="archive-search-filters" data-filters-list-height={filters_list_height_px(@__context__)}>
+  <div
+    data-bonfire-widget="archive-search-filters"
+    data-filters-list-height={filters_list_height_px(@__context__)}
+  >
     <Bonfire.UI.Common.WidgetBlockLive
       class={filters_block_class(@__context__)}
       widget_title={filters_widget_title(@widget_title, @__context__)}
