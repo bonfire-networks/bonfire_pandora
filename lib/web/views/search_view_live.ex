@@ -193,7 +193,7 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
 
       _ ->
         socket
-        |> put_flash(:error, l("Error loading results"))
+        |> assign_flash(:error, l("Error loading results"))
         |> track_loading(:global_load, false)
     end
   end
