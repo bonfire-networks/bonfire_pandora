@@ -25,10 +25,10 @@
         playsinline
       ></video>
 
-      <div class="custom-action-bar mt-2 flex min-w-0 max-w-full flex-wrap items-center gap-2">
+      <div class="custom-action-bar mt-2 flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
         <button
           type="button"
-          class="btn btn-sm btn-circle btn-soft btn-ghost"
+          class="btn btn-sm btn-circle btn-soft btn-ghost min-h-8 h-8"
           data-action="prev-frame"
           aria-label={l("Previous frame")}
           title={l("Previous frame")}
@@ -37,17 +37,17 @@
         </button>
         <button
           type="button"
-          class="btn btn-sm btn-circle btn-soft btn-ghost"
+          class="btn btn-sm btn-circle btn-soft btn-ghost min-h-8 h-8"
           data-action="play-pause"
           aria-label={l("Play / Pause")}
           title={l("Play / Pause")}
         >
-          <#Icon iconify="heroicons:play-solid" class="w-4 h-4 play-icon" />
-          <#Icon iconify="heroicons:pause-solid" class="w-4 h-4 pause-icon hidden" />
+          <#Icon iconify="ph:play-fill" class="w-4 h-4 play-icon" />
+          <#Icon iconify="ph:pause-fill" class="w-4 h-4 pause-icon hidden" />
         </button>
         <button
           type="button"
-          class="btn btn-sm btn-circle btn-soft btn-ghost"
+          class="btn btn-sm btn-circle btn-soft btn-ghost min-h-8 h-8"
           data-action="next-frame"
           aria-label={l("Next frame")}
           title={l("Next frame")}
@@ -55,11 +55,11 @@
           <#Icon iconify="heroicons:forward-16-solid" class="w-4 h-4" />
         </button>
 
-        <div class="w-px h-5 bg-base-content/20 mx-1 self-center"></div>
+        <div class="w-px h-6 bg-base-content/20 mx-1 self-center"></div>
 
         <button
           type="button"
-          class="btn btn-sm btn-soft btn-accent"
+          class="btn btn-sm btn-soft btn-accent min-h-8 h-8"
           data-action="mark-in"
           aria-label={l("Mark IN at current position")}
           title={l("Mark IN at current position")}
@@ -68,7 +68,7 @@
         </button>
         <button
           type="button"
-          class="btn btn-sm btn-soft btn-accent"
+          class="btn btn-sm btn-soft btn-accent min-h-8 h-8"
           data-action="mark-out"
           aria-label={l("Mark OUT at current position")}
           title={l("Mark OUT at current position")}
@@ -76,30 +76,30 @@
           {l("OUT")}
         </button>
 
-        <div class="w-px h-5 bg-base-content/20 mx-1 self-center"></div>
+        <div class="w-px h-6 bg-base-content/20 mx-1 self-center"></div>
 
         <span
           data-role="player-timecode"
-          class="font-mono text-xs tabular-nums text-base-content/60 select-none px-1"
+          class="font-mono text-xs tabular-nums text-base-content/60 select-none px-1 self-center leading-none"
           aria-live="off"
         >00:00:00 / --:--:--</span>
 
-        <div class="w-px h-5 bg-base-content/20 mx-1 self-center"></div>
+        <div class="w-px h-6 bg-base-content/20 mx-1 self-center"></div>
 
         <button
           type="button"
-          class="btn btn-sm btn-circle btn-soft btn-ghost"
+          class="btn btn-sm btn-circle btn-soft btn-ghost min-h-8 h-8"
           data-action="toggle-mute"
           aria-label={l("Toggle mute")}
           title={l("Toggle mute")}
         >
-          <#Icon iconify="heroicons:speaker-wave-solid" class="w-4 h-4 unmuted-icon" />
-          <#Icon iconify="heroicons:speaker-x-mark-solid" class="w-4 h-4 muted-icon hidden" />
+          <#Icon iconify="ph:speaker-high-fill" class="w-4 h-4 unmuted-icon" />
+          <#Icon iconify="ph:speaker-x-fill" class="w-4 h-4 muted-icon hidden" />
         </button>
 
         <select
           data-role="speed-select"
-          class="select select-xs select-ghost text-xs font-mono w-16"
+          class="select select-xs select-ghost text-xs font-mono w-16 h-8 min-h-8"
           aria-label={l("Playback speed")}
           title={l("Playback speed")}
         >
@@ -112,13 +112,13 @@
 
         <button
           type="button"
-          class="btn btn-sm btn-circle btn-soft btn-ghost"
+          class="btn btn-sm btn-circle btn-soft btn-ghost min-h-8 h-8"
           data-action="toggle-fullscreen"
           aria-label={l("Toggle fullscreen")}
           title={l("Toggle fullscreen")}
         >
-          <#Icon iconify="heroicons:arrows-pointing-out" class="w-4 h-4 fs-enter-icon" />
-          <#Icon iconify="heroicons:arrows-pointing-in" class="w-4 h-4 fs-exit-icon hidden" />
+          <#Icon iconify="ph:arrows-out-fill" class="w-4 h-4 fs-enter-icon" />
+          <#Icon iconify="ph:arrows-in-fill" class="w-4 h-4 fs-exit-icon hidden" />
         </button>
       </div>
     </div>
@@ -174,13 +174,13 @@
       <button
         id="timeline_expand_btn"
         type="button"
-        class="btn btn-sm btn-ghost btn-circle shrink-0 self-center opacity-60 hover:opacity-100"
+        class="btn btn-sm btn-ghost btn-circle shrink-0 self-center opacity-60 hover:opacity-100 min-h-8 h-8"
         data-role="timeline-expand"
         aria-expanded="false"
         aria-controls="timeline_strip_expanded"
         title={l("Expand timeline")}
       >
-        <#Icon iconify="heroicons:arrows-pointing-out" class="w-4 h-4" />
+        <#Icon iconify="ph:arrows-out-fill" class="w-4 h-4" />
       </button>
     </div>
 
@@ -214,147 +214,4 @@
       </div>
     </div>
   {/if}
-  <div class="bg-base-100 rounded-lg shadow">
-    <div class="border-b border-base-content/10 text-sm font-semibold p-3">{l("Public annotations")}</div>
-
-    <div class="flex flex-col gap-4">
-      <div class="p-3 bg-base-200 border-b border-base-content/10">
-        <form
-          phx-submit={if @editing_mode, do: "update_annotation", else: "add_annotation"}
-          id="create_annotation_form"
-          phx-change="validate_note"
-          class="flex flex-col gap-3 pb-3"
-        >
-          <textarea
-            name="note"
-            class="w-full textarea"
-            placeholder={l("Add a public annotation")}
-            value={@note_content}
-          >{@note_content}</textarea>
-          <div class="flex justify-between items-center">
-            <div class="flex items-center gap-2">
-              <div
-                data-role="annotation-checkpoint"
-                data-in={e(@in_timestamp, "")}
-                class="btn btn-xs btn-accent btn-soft"
-              >in: {e(@in_timestamp, "0000") || "00:00:00"}</div>
-              <div
-                data-role="annotation-checkpoint"
-                data-out={e(@out_timestamp, "")}
-                class="btn btn-xs btn-accent btn-soft"
-              >out: {e(@out_timestamp, "0000") || "00:00:00"}</div>
-            </div>
-            <div class="flex gap-2">
-              {#if @editing_mode}
-                <button type="button" phx-click="cancel_edit" class="btn btn-sm btn-outline">
-                  {l("Cancel")}
-                </button>
-                <button
-                  type="submit"
-                  class="btn btn-sm btn-primary"
-                  disabled={is_nil(@note_content) || @note_content == "" || is_nil(@in_timestamp) || is_nil(@out_timestamp)}
-                >
-                  {l("Update")}
-                </button>
-              {#else}
-                <a
-                  href="https://wiki.archivioperilcinemaindipendenteitaliano.it/"
-                  class="btn btn-sm btn-info btn-soft"
-                  target="_blank"
-                ><#Icon iconify="ph:info-fill" class="w-4 h-4" />{l("Learn")}</a>
-                <button
-                  type="submit"
-                  class="btn btn-sm btn-primary"
-                  disabled={is_nil(@note_content) || @note_content == "" || is_nil(@in_timestamp) || is_nil(@out_timestamp)}
-                >
-                  {l("Submit")}
-                </button>
-              {/if}
-            </div>
-          </div>
-        </form>
-      </div>
-
-      <div
-        :for={note <- @public_notes}
-        id={"note-#{note["id"]}"}
-        class="flex min-w-0 items-top gap-3 p-3 border-b border-base-content/10 pb-4"
-      >
-        <div class="flex min-w-0 flex-col flex-1">
-          <div class="flex min-w-0 items-center justify-between gap-2">
-            <div class="min-w-0 flex-1 truncate font-semibold text-lg">
-              {#if e(note, "user", "") != ""}
-                <a href={"/@#{e(note, "user", "")}"} class="link link-hover">{e(note, "user", "")}</a>
-              {#else}
-                {e(note, "user", "")}
-              {/if}
-            </div>
-            <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
-              <button
-                data-role="annotation-checkpoint"
-                data-in={e(note, "in", "")}
-                data-out={e(note, "out", "")}
-                class="btn btn-soft btn-accent btn-xs max-w-full whitespace-normal text-left"
-              >From {Bonfire.Common.DatesTimes.format_duration(e(note, "in", ""))} to {Bonfire.Common.DatesTimes.format_duration(e(note, "out", ""))}</button>
-              <div class="text-sm text-base-content/50">{DatesTimes.date_from_now(e(note, "created", ""))}</div>
-              <div
-                data-position="bottom"
-                phx-hook="Tooltip"
-                id={"my_note_#{e(note, "id", "")}"}
-                class="relative"
-              >
-                <label
-                  class="tooltip-button btn btn-sm btn-circle btn-ghost"
-                  tabindex="0"
-                  role="button"
-                  aria-haspopup="true"
-                  aria-expanded="true"
-                >
-                  <#Icon solid="DotsHorizontal" class="w-4 h-4 opacity/70" />
-                </label>
-                <ul
-                  tabindex="0"
-                  class="tooltip z-[99999999] menu shadow-sm bg-base-100 border border-base-content/10 w-52 absolute rounded-xl top-0 left-0 hidden"
-                  role="menu"
-                  aria-orientation="vertical"
-                >
-                  <li>
-                    <button
-                      type="button"
-                      phx-click="edit_annotation"
-                      phx-value-note-id={e(note, "id", "")}
-                      class="text-left cursor-pointer w-full"
-                    >
-                      {l("Edit annotation")}
-                    </button>
-                  </li>
-                  <li>
-                    <Bonfire.UI.Common.OpenModalLive
-                      id={"remove_annotation_for_#{e(note, "id", "")}"}
-                      title_text={l("Delete annotation")}
-                      no_actions
-                      open_btn_wrapper_class="text-left cursor-pointer text-error"
-                    >
-                      <div class="p-3 border-error/30 mt-3 border rounded-xl bg-error/10">
-                        <p class="text-error">{l("Are you sure you want to delete this annotation?")}</p>
-                        <button
-                          phx-click="delete_annotation"
-                          phx-value-note-id={e(note, "id", "")}
-                          class="btn btn-error w-full mt-3"
-                        >{l("Delete")}</button>
-                      </div>
-                      <:open_btn>
-                        {l("Delete annotation")}
-                      </:open_btn>
-                    </Bonfire.UI.Common.OpenModalLive>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          <div class="prose max-w-full min-w-0 break-words overflow-x-auto">{e(note, "value", "")}</div>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
