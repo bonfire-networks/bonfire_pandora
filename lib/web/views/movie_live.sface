@@ -38,12 +38,25 @@
         <button
           type="button"
           class="btn btn-sm btn-circle btn-soft btn-ghost"
+          data-action="play-pause"
+          aria-label={l("Play / Pause")}
+          title={l("Play / Pause")}
+        >
+          <#Icon iconify="heroicons:play-solid" class="w-4 h-4 play-icon" />
+          <#Icon iconify="heroicons:pause-solid" class="w-4 h-4 pause-icon hidden" />
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-circle btn-soft btn-ghost"
           data-action="next-frame"
           aria-label={l("Next frame")}
           title={l("Next frame")}
         >
           <#Icon iconify="heroicons:forward-16-solid" class="w-4 h-4" />
         </button>
+
+        <div class="w-px h-5 bg-base-content/20 mx-1 self-center"></div>
+
         <button
           type="button"
           class="btn btn-sm btn-soft btn-accent"
@@ -61,6 +74,51 @@
           title={l("Mark OUT at current position")}
         >
           {l("OUT")}
+        </button>
+
+        <div class="w-px h-5 bg-base-content/20 mx-1 self-center"></div>
+
+        <span
+          data-role="player-timecode"
+          class="font-mono text-xs tabular-nums text-base-content/60 select-none px-1"
+          aria-live="off"
+        >00:00:00 / --:--:--</span>
+
+        <div class="w-px h-5 bg-base-content/20 mx-1 self-center"></div>
+
+        <button
+          type="button"
+          class="btn btn-sm btn-circle btn-soft btn-ghost"
+          data-action="toggle-mute"
+          aria-label={l("Toggle mute")}
+          title={l("Toggle mute")}
+        >
+          <#Icon iconify="heroicons:speaker-wave-solid" class="w-4 h-4 unmuted-icon" />
+          <#Icon iconify="heroicons:speaker-x-mark-solid" class="w-4 h-4 muted-icon hidden" />
+        </button>
+
+        <select
+          data-role="speed-select"
+          class="select select-xs select-ghost text-xs font-mono w-16"
+          aria-label={l("Playback speed")}
+          title={l("Playback speed")}
+        >
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1×</option>
+          <option value="1.25">1.25×</option>
+          <option value="1.5">1.5×</option>
+          <option value="2">2×</option>
+        </select>
+
+        <button
+          type="button"
+          class="btn btn-sm btn-circle btn-soft btn-ghost"
+          data-action="toggle-fullscreen"
+          aria-label={l("Toggle fullscreen")}
+          title={l("Toggle fullscreen")}
+        >
+          <#Icon iconify="heroicons:arrows-pointing-out" class="w-4 h-4 fs-enter-icon" />
+          <#Icon iconify="heroicons:arrows-pointing-in" class="w-4 h-4 fs-exit-icon hidden" />
         </button>
       </div>
     </div>
