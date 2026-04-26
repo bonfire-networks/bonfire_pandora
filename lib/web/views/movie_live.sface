@@ -77,8 +77,8 @@
         data-target-player="movie_player_root"
         data-fallback-src={@timeline_strip_fallback_url || ""}
         data-frame-url-template={@frame_url_template || ""}
-        data-tile-url-template-16={@tile_url_template_16 || ""}
-        data-tile-url-template-64={@tile_url_template_64 || ""}
+        data-tile-url-template-small={@tile_url_template_16 || ""}
+        data-tile-url-template-large={@tile_url_template_64 || ""}
         data-expanded-strip-id="timeline_strip_expanded"
         role="slider"
         aria-label={l("Timeline strip — click to seek")}
