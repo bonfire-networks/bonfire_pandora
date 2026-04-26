@@ -66,49 +66,96 @@
     </div>
   </div>
 
-  <div
-    :if={@timeline_strip_url}
-    id="timeline_strip_root"
-    phx-hook="PandoraTimelineStrip"
-    class="timeline-strip-root"
-    data-mode={@timeline_mode}
-    data-duration={if is_number(@movie_duration) && @movie_duration > 0, do: :erlang.float_to_binary(@movie_duration * 1.0, decimals: 3), else: ""}
-    data-target-player="movie_player_root"
-    data-fallback-src={@timeline_strip_fallback_url || ""}
-    role="slider"
-    aria-label={l("Timeline strip — click to seek")}
-  >
-    <img
-      class="timeline-strip-img"
-      src={@timeline_strip_url}
-      alt={l("Movie timeline preview")}
-      loading="eager"
-      draggable="false"
-    />
-    <div
-      id="timeline_strip_position"
-      phx-update="ignore"
-      class="timeline-strip-position"
-      aria-hidden="true"
-    ></div>
-    <div
-      :if={is_number(@movie_duration) && @movie_duration > 0}
-      class="timeline-strip-markers"
-    >
+  {#if @timeline_strip_url}
+    <div class="flex items-start gap-1 w-full min-w-0">
+      <div
+        id="timeline_strip_root"
+        phx-hook="PandoraTimelineStrip"
+        class="timeline-strip-root flex-1 min-w-0"
+        data-mode={@timeline_mode}
+        data-duration={if is_number(@movie_duration) && @movie_duration > 0, do: :erlang.float_to_binary(@movie_duration * 1.0, decimals: 3), else: ""}
+        data-target-player="movie_player_root"
+        data-fallback-src={@timeline_strip_fallback_url || ""}
+        data-frame-url-template={@frame_url_template || ""}
+        data-tile-url-template-16={@tile_url_template_16 || ""}
+        data-tile-url-template-64={@tile_url_template_64 || ""}
+        data-expanded-strip-id="timeline_strip_expanded"
+        role="slider"
+        aria-label={l("Timeline strip — click to seek")}
+      >
+        <img
+          class="timeline-strip-img"
+          src={@timeline_strip_url}
+          alt={l("Movie timeline preview")}
+          loading="eager"
+          draggable="false"
+        />
+        <div
+          id="timeline_strip_position"
+          phx-update="ignore"
+          class="timeline-strip-position"
+          aria-hidden="true"
+        ></div>
+        <div
+          :if={is_number(@movie_duration) && @movie_duration > 0}
+          class="timeline-strip-markers"
+        >
+          <button
+            :for={note <- @public_notes}
+            type="button"
+            class="timeline-strip-marker"
+            data-role="annotation-checkpoint"
+            data-in={e(note, "in", "")}
+            data-out={e(note, "out", "")}
+            title={e(note, "value", "")}
+            aria-label={e(note, "value", "")}
+            style={Bonfire.PanDoRa.Utils.timeline_marker_style(note, @movie_duration)}
+          ></button>
+        </div>
+      </div>
       <button
-        :for={note <- @public_notes}
+        id="timeline_expand_btn"
         type="button"
-        class="timeline-strip-marker"
-        data-role="annotation-checkpoint"
-        data-in={e(note, "in", "")}
-        data-out={e(note, "out", "")}
-        title={e(note, "value", "")}
-        aria-label={e(note, "value", "")}
-        style={Bonfire.PanDoRa.Utils.timeline_marker_style(note, @movie_duration)}
-      ></button>
+        class="btn btn-sm btn-ghost btn-circle shrink-0 self-center opacity-60 hover:opacity-100"
+        data-role="timeline-expand"
+        aria-expanded="false"
+        aria-controls="timeline_strip_expanded"
+        title={l("Expand timeline")}
+      >
+        <#Icon iconify="heroicons:arrows-pointing-out" class="w-4 h-4" />
+      </button>
     </div>
-  </div>
 
+    <div id="timeline_strip_expanded" class="timeline-strip-expanded hidden" phx-update="ignore">
+      {!-- Tile rows built at runtime by PandoraTimelineStrip hook --}
+      <div id="timeline_strip_position_64" class="timeline-strip-position-64" aria-hidden="true"></div>
+      <div
+        :if={is_number(@movie_duration) && @movie_duration > 0}
+        class="timeline-strip-markers"
+      >
+        <button
+          :for={note <- @public_notes}
+          type="button"
+          class="timeline-strip-marker"
+          data-role="annotation-checkpoint"
+          data-in={e(note, "in", "")}
+          data-out={e(note, "out", "")}
+          title={e(note, "value", "")}
+          aria-label={e(note, "value", "")}
+          style={Bonfire.PanDoRa.Utils.timeline_marker_style(note, @movie_duration)}
+        ></button>
+      </div>
+      <div
+        id="timeline_frame_preview"
+        class="timeline-frame-preview hidden"
+        aria-hidden="true"
+        role="tooltip"
+      >
+        <img class="timeline-frame-img" src="" alt="" />
+        <span class="timeline-frame-timecode"></span>
+      </div>
+    </div>
+  {/if}
   <div class="bg-base-100 rounded-lg shadow">
     <div class="border-b border-base-content/10 text-sm font-semibold p-3">{l("Public annotations")}</div>
 
