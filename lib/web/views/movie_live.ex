@@ -167,7 +167,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> assign(:editing_annotation, nil)
         # Initialize editing mode
         |> assign(:editing_mode, false)
-        |> assign_movie_info_sidebar(movie)
+        |> assign_sidebar_widgets(movie)
 
       {:noreply, socket}
     else
@@ -487,7 +487,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
           socket_after_kw
           |> assign(:movie, final_movie)
           |> assign_movie_page_heading(final_movie, form_title)
-          |> assign_movie_info_sidebar(final_movie)
+          |> assign_sidebar_widgets(final_movie)
           |> assign_flash(:info, l("Movie updated successfully"))
 
         {:noreply, socket}
@@ -536,7 +536,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
           socket =
             socket
             |> assign(:movie, updated_movie)
-            |> assign_movie_info_sidebar(updated_movie)
+            |> assign_sidebar_widgets(updated_movie)
             |> assign_flash(:info, l("Selection status updated"))
 
           {:noreply, socket}
@@ -679,7 +679,9 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     end
   end
 
-  defp assign_movie_info_sidebar(socket, movie) do
+  defp assign_sidebar_widgets(socket, movie) do
+    assigns = socket.assigns
+
     assign(socket, :sidebar_widgets,
       users: [
         secondary: [
@@ -687,8 +689,19 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
            [
              type: Surface.LiveComponent,
              id: "movie_info",
+             movie: movie
+           ]},
+          {Bonfire.PanDoRa.Web.WidgetMovieAnnotationsLive,
+           [
+             type: Surface.LiveComponent,
+             id: "movie_annotations",
              movie: movie,
-             widget_title: "Movie Info"
+             public_notes: assigns[:public_notes] || [],
+             note_content: assigns[:note_content] || "",
+             in_timestamp: assigns[:in_timestamp],
+             out_timestamp: assigns[:out_timestamp],
+             editing_mode: assigns[:editing_mode] || false,
+             editing_annotation: assigns[:editing_annotation]
            ]}
         ]
       ]
