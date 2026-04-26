@@ -1662,6 +1662,47 @@ defmodule PanDoRa.API.Client do
   end
 
   @doc """
+  Returns the Pandora timeline image URL.
+
+  Pandora pre-generates timeline strips with `oxtimelines` and serves them at
+  `/{item_id}/timeline{mode}{size}p[{position}].jpg`. This helper builds that
+  filename and reuses `media_url/3` so the result is a token-direct URL when a
+  Pandora token is available, or the Bonfire `/archive/media/...` proxy URL as
+  fallback (same rule as every other Pandora media asset, see
+  `PANDORA_MEDIA_URLS_REGOLA.md`).
+
+  ## Parameters
+
+    * `item_id` — Pandora movie public id (e.g. `"EQR"`).
+    * `mode` — `"antialias"` (default), `"slitscan"`, `"keyframes"` or `"audio"`.
+    * `size` — `16` (small preview, default) or `64` (large tile).
+    * `opts` — `:position` (integer tile index, omit for the single full-strip
+      preview) plus the usual `:current_user` / `:pandora_token` /
+      `:pandora_base_url` options forwarded to `media_url/3`.
+
+  ## Examples
+
+      iex> Client.timeline_url("EQR")
+      "/archive/media/EQR/timelineantialias16p.jpg"
+
+      iex> Client.timeline_url("EQR", "keyframes", 64, position: 0)
+      "/archive/media/EQR/timelinekeyframes64p0.jpg"
+  """
+  def timeline_url(item_id, mode \\ "antialias", size \\ 16, opts \\ [])
+      when is_binary(item_id) and is_binary(mode) and is_integer(size) and is_list(opts) do
+    opts = Utils.to_options(opts)
+
+    position_suffix =
+      case opts[:position] do
+        n when is_integer(n) and n >= 0 -> Integer.to_string(n)
+        _ -> ""
+      end
+
+    filename = "timeline#{mode}#{size}p#{position_suffix}.jpg"
+    media_url(item_id, filename, opts)
+  end
+
+  @doc """
   Pandora "link selection" style timeline URL: `/{item_id}/{in},{out}` (no filename).
 
   Opens the native Pandora viewer for that time range (SPA + `findClips` / Ox player),

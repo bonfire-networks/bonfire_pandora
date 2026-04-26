@@ -67,3 +67,128 @@
   width: var(--plyr-video-control-icon-size, 64px);
   height: var(--plyr-video-control-icon-size, 64px);
 }
+
+/*
+ * MovieLive editor (full Plyr with seekbar + custom IN/OUT/frame buttons).
+ * Same `.prose` host fights as the feed preview, plus the editor lives inside
+ * a centred `flex-col` so we cap the Plyr width to the column without
+ * forcing it into the 16/9 frame the feed uses.
+ */
+.pandora-movie-player {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.pandora-movie-player > video.player {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.pandora-movie-player .plyr {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.pandora-movie-player .plyr svg {
+  max-width: none;
+  display: block;
+}
+
+.pandora-movie-player .plyr .plyr__control svg {
+  width: var(--plyr-control-icon-size, 18px);
+  height: var(--plyr-control-icon-size, 18px);
+}
+
+.pandora-movie-player .plyr__control--overlaid svg {
+  width: var(--plyr-video-control-icon-size, 64px);
+  height: var(--plyr-video-control-icon-size, 64px);
+}
+
+/*
+ * Timeline strip (Pandora `oxtimelines` antialias 16p preview rendered under
+ * the player). The native height of the JPEG is 16px; we scale it 2-3x to keep
+ * a useful click target, with `pixelated` rendering so the per-frame edges
+ * stay sharp on retina/HiDPI screens. Width matches the parent column.
+ */
+.timeline-strip-root {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 0.375rem;
+  background: var(--color-base-300, #1a1a1a);
+  user-select: none;
+  touch-action: none;
+  outline: none;
+  cursor: pointer;
+}
+
+.timeline-strip-root:focus-visible {
+  outline: 2px solid var(--color-primary, #2563eb);
+  outline-offset: 2px;
+}
+
+.timeline-strip-root--unavailable {
+  display: none;
+}
+
+.timeline-strip-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: fill;
+  pointer-events: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  -webkit-user-drag: none;
+}
+
+.timeline-strip-position {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0%;
+  width: 2px;
+  margin-left: -1px;
+  background: oklch(var(--er, 0.7176 0.221 22.18) / 0.95);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  transition: left 80ms linear;
+  z-index: 2;
+}
+
+.timeline-strip-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.timeline-strip-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 2px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid oklch(var(--a, 0.7146 0.1257 215.22) / 0.85);
+  border-radius: 1px;
+  background: oklch(var(--a, 0.7146 0.1257 215.22) / 0.35);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: background-color 100ms ease, border-color 100ms ease;
+}
+
+.timeline-strip-marker:hover,
+.timeline-strip-marker:focus-visible {
+  background: oklch(var(--a, 0.7146 0.1257 215.22) / 0.6);
+  border-color: oklch(var(--a, 0.7146 0.1257 215.22));
+  outline: none;
+}

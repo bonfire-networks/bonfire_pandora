@@ -16,6 +16,19 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
                                   &String.downcase/1
                                 )
 
+  # Default mode for the timeline strip rendered under the player. Pandora ships
+  # several modes (antialias, slitscan, keyframes, audio) but only generates the
+  # ones declared in its `config.timelines`. `keyframes` is the safest default
+  # because Pandora itself uses `timelinekeyframes16p0.jpg` as the marker that
+  # an item has any timeline at all (see `rebuild_timelines.py`), so it is
+  # available on every installation that has rendered timelines.
+  # Override per-deployment via `config :bonfire_pandora, :timeline_mode, "..."`.
+  @default_timeline_mode "keyframes"
+
+  defp default_timeline_mode do
+    Application.get_env(:bonfire_pandora, :timeline_mode, @default_timeline_mode)
+  end
+
   on_mount {LivePlugs, [Bonfire.UI.Me.LivePlugs.UserRequired]}
 
   def mount(_params, _session, socket) do
@@ -35,6 +48,10 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       |> assign(:editing_mode, false)
       |> assign(:movie, nil)
       |> assign(:video_url, nil)
+      |> assign(:timeline_strip_url, nil)
+      |> assign(:timeline_strip_fallback_url, nil)
+      |> assign(:timeline_mode, default_timeline_mode())
+      |> assign(:movie_duration, nil)
       |> assign(:movie_heading_full, nil)
       |> assign(:movie_heading_truncated, false)
 
@@ -80,12 +97,40 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> Map.put("keywordLayerAnnotations", keyword_layer_ann)
         |> Map.put("keywordFacetNames", keyword_facet_names)
 
+      movie_id_str = to_string(movie["id"] || "")
+
       video_url =
         Client.video_url(
-          to_string(movie["id"] || ""),
+          movie_id_str,
           Client.best_video_filename(movie),
           current_user: current_user(socket)
         )
+
+      # The full-strip "no position" file (`timeline{mode}{16|64}p.jpg`) is
+      # built only by `join_tiles` in `pandora/item/timelines.py`, which runs
+      # solely for multi-stream items. Single-stream items therefore only have
+      # the per-position tiles. The first tile (`...{mode}{16}p0.jpg`) is the
+      # one Pandora itself uses as the "timeline rendered" marker (see
+      # `rebuild_timelines.py:26`), so it is always present when an item has
+      # any timeline at all. We aim at it as the primary URL and fall back to
+      # the `64p0` first tile as a higher-resolution alternative.
+      #
+      # MVP limit: a single tile covers up to 3600 frames at 60s/px, so for
+      # movies longer than ~60 minutes the strip only represents the first
+      # hour. Concatenating tiles is out of scope for now.
+      mode = default_timeline_mode()
+
+      {timeline_strip_url, timeline_strip_fallback_url} =
+        if movie_id_str != "" do
+          opts_user = [current_user: current_user(socket), position: 0]
+
+          {
+            Client.timeline_url(movie_id_str, mode, 16, opts_user),
+            Client.timeline_url(movie_id_str, mode, 64, opts_user)
+          }
+        else
+          {nil, nil}
+        end
 
       socket =
         socket
@@ -94,6 +139,10 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> assign_movie_page_heading(movie)
         |> assign(:movie, movie)
         |> assign(:video_url, video_url)
+        |> assign(:timeline_strip_url, timeline_strip_url)
+        |> assign(:timeline_strip_fallback_url, timeline_strip_fallback_url)
+        |> assign(:timeline_mode, mode)
+        |> assign(:movie_duration, parse_movie_duration(movie))
         |> assign(:in_timestamp, in_ts)
         |> assign(:out_timestamp, out_ts)
         # Initialize note_content
@@ -114,6 +163,9 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
           socket
           |> assign(:movie, nil)
           |> assign(:video_url, nil)
+          |> assign(:timeline_strip_url, nil)
+          |> assign(:timeline_mode, @default_timeline_mode)
+          |> assign(:movie_duration, nil)
           |> assign(:public_notes, [])
           |> assign(:in_timestamp, nil)
           |> assign(:out_timestamp, nil)
@@ -128,6 +180,27 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         {:noreply, socket}
     end
   end
+
+  # Pandora returns `duration` either as a number or string depending on the
+  # endpoint; coerce to a positive float so the timeline strip can compute
+  # marker offsets and the position indicator.
+  defp parse_movie_duration(movie) when is_map(movie) do
+    case movie["duration"] do
+      n when is_number(n) and n > 0 ->
+        n * 1.0
+
+      s when is_binary(s) ->
+        case Float.parse(String.trim(s)) do
+          {n, _} when n > 0 -> n
+          _ -> nil
+        end
+
+      _ ->
+        nil
+    end
+  end
+
+  defp parse_movie_duration(_), do: nil
 
   # Short header label keeps PageHeaderLive flex row within viewport (bonfire_ui_common is unchanged).
   # Full title is shown in the template when truncated.

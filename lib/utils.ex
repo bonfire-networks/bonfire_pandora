@@ -36,6 +36,56 @@ defmodule Bonfire.PanDoRa.Utils do
   def insert_line_break_hints(_), do: ""
 
   @doc """
+  Inline CSS for a timeline-strip marker positioned over the antialias frame
+  preview. Computes `left%` and `width%` from the annotation `in`/`out`
+  timestamps (seconds) against the movie `duration` (seconds).
+
+  Returns `""` when `duration` is missing/non-positive or when the timestamps
+  are unusable, so the template can render the element without polluting the
+  layout.
+
+  ## Examples
+
+      iex> Bonfire.PanDoRa.Utils.timeline_marker_style(%{"in" => 30, "out" => 60}, 300)
+      "left: 10.0%; width: 10.0%;"
+
+      iex> Bonfire.PanDoRa.Utils.timeline_marker_style(%{"in" => 30, "out" => 60}, 0)
+      ""
+  """
+  def timeline_marker_style(note, duration)
+      when is_map(note) and is_number(duration) and duration > 0 do
+    with {:ok, t_in} <- timeline_marker_seconds(note["in"]),
+         {:ok, t_out} <- timeline_marker_seconds(note["out"]),
+         t_out when t_out > t_in <- t_out do
+      left_pct = clamp_pct(t_in / duration * 100)
+      width_pct = clamp_pct((t_out - t_in) / duration * 100)
+      "left: #{format_pct(left_pct)}%; width: #{format_pct(width_pct)}%;"
+    else
+      _ -> ""
+    end
+  end
+
+  def timeline_marker_style(_, _), do: ""
+
+  defp timeline_marker_seconds(n) when is_number(n) and n >= 0, do: {:ok, n * 1.0}
+
+  defp timeline_marker_seconds(s) when is_binary(s) do
+    case Float.parse(String.trim(s)) do
+      {n, _} when n >= 0 -> {:ok, n}
+      _ -> :error
+    end
+  end
+
+  defp timeline_marker_seconds(_), do: :error
+
+  defp clamp_pct(p) when p < 0, do: 0.0
+  defp clamp_pct(p) when p > 100, do: 100.0
+  defp clamp_pct(p), do: p * 1.0
+
+  # 2 decimals is enough for sub-pixel precision on a 16p strip rescaled to ~40px.
+  defp format_pct(p), do: :erlang.float_to_binary(p, decimals: 2)
+
+  @doc """
   Structural/technical fields handled explicitly in templates.
   Instance-specific keys (sezione, edizione, genre, etc.) are intentionally excluded
   so they appear dynamically via extra_metadata/1.

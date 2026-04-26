@@ -58,6 +58,9 @@ Gli stili sono in `assets/css/pandora_plyr.css` (import da `../node_modules/plyr
 
 **Installazione senza quel flavour:** puoi importare `pandora_plyr.css` una volta in `assets/css/app.css` (path adattato se l’estensione è sotto `deps/`).
 
+**Documentazione unificata** (feed, `.prose`, bundle flat, click vs preview, file in `config/current_flavour/`): vedi nel repo **bonfire_lab**  
+`docs_custom/bonfire_pandora/FEED_PLYR_CSS_E_INDIPENDENZA_UMBRELLA.md`.
+
 ### Nota su ambienti di lavoro (es. incus / recipe)
 
 Alcune tree copiano i file dell’estensione **senza** la directory `.git`: servono per compilare o per documentazione, ma **non** sostituiscono il clone su cui fai `git commit`. Sul container o sulla macchina di sviluppo usa sempre un vero clone in `extensions/bonfire_pandora`.

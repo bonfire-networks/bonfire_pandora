@@ -72,9 +72,12 @@ defmodule Bonfire.PanDoRa.Web.SearchLive do
   def term_chip_text(_), do: ""
 
   @doc false
-  def filter_field_api_key_for_badge(%{id: type}, effective_api_keys) when is_map(effective_api_keys) do
+  def filter_field_api_key_for_badge(%{id: type}, effective_api_keys)
+      when is_map(effective_api_keys) do
     t = to_string(type)
-    Map.get(effective_api_keys, type) || Map.get(effective_api_keys, t) || Client.filter_type_to_api_key(t)
+
+    Map.get(effective_api_keys, type) || Map.get(effective_api_keys, t) ||
+      Client.filter_type_to_api_key(t)
   end
 
   def filter_field_api_key_for_badge(%{id: type}, _) do
