@@ -1662,6 +1662,56 @@ defmodule PanDoRa.API.Client do
   end
 
   @doc """
+  Returns a URL template for fetching individual Pandora timeline tiles.
+
+  The literal string `{i}` is left as a placeholder for the tile position index.
+  The JS hook replaces `{i}` at runtime to load tiles `p0`, `p1`, `p2`… for movies
+  longer than 3600 seconds (one tile per hour at 1 px/s).
+
+  ## Examples
+
+      iex> Client.timeline_tile_url_template("EQR", "keyframes", 64)
+      "/archive/media/EQR/timelinekeyframes64p{i}.jpg"
+
+      iex> Client.timeline_tile_url_template("EQR", "keyframes", 16, current_user: u)
+      "https://host/EQR/timelinekeyframes16p{i}.jpg?token=…"
+  """
+  def timeline_tile_url_template(item_id, mode \\ "keyframes", size \\ 16, opts \\ [])
+      when is_binary(item_id) and is_binary(mode) and is_integer(size) do
+    media_url(item_id, "timeline#{mode}#{size}p{i}.jpg", opts)
+  end
+
+  @doc """
+  Returns a URL template for fetching a single Pandora frame image.
+
+  The literal string `{t}` is left in the URL as a placeholder for the position
+  in seconds (decimal). The JS hook (`PandoraTimelineStrip`) replaces `{t}` at
+  hover-time with the computed seek position.
+
+  Uses `media_url/3` so the result is a token-direct URL when a token exists,
+  or the `/archive/media/…` proxy URL as fallback — consistent with all other
+  Pandora media assets.
+
+  ## Parameters
+
+    * `item_id`   — Pandora movie public id (e.g. `"EQR"`).
+    * `resolution` — Video resolution in pixels (e.g. `480`, `720`). Defaults to `480`.
+    * `opts`       — The usual `:current_user` / `:pandora_token` / `:pandora_base_url` options.
+
+  ## Examples
+
+      iex> Client.frame_url_template("EQR")
+      "/archive/media/EQR/480p{t}.jpg"
+
+      iex> Client.frame_url_template("EQR", 720, current_user: u)
+      "https://host/EQR/720p{t}.jpg?token=…"
+  """
+  def frame_url_template(item_id, resolution \\ 480, opts \\ [])
+      when is_binary(item_id) and is_integer(resolution) do
+    media_url(item_id, "#{resolution}p{t}.jpg", opts)
+  end
+
+  @doc """
   Returns the Pandora timeline image URL.
 
   Pandora pre-generates timeline strips with `oxtimelines` and serves them at

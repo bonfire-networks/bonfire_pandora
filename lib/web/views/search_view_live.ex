@@ -41,6 +41,8 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
       |> assign(:filter_sections, [])
       |> assign(:active_filter_badges, [])
       |> assign(:selected_by_field, %{})
+      |> assign(:pandora_token, nil)
+      |> assign(:pandora_base_url, nil)
       |> assign(:error, nil)
       |> stream_configure(:search_results,
         dom_id: &"result-#{&1["stable_id"] || Utils.generate_stable_id(&1)}"
@@ -229,7 +231,7 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
 
       _ ->
         socket
-        |> assign_flash(:error, l("Error loading results"))
+        |> put_flash(:error, l("Error loading results"))
         |> track_loading(:global_load, false)
     end
   end

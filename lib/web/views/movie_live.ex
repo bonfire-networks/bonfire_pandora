@@ -51,6 +51,9 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       |> assign(:timeline_strip_url, nil)
       |> assign(:timeline_strip_fallback_url, nil)
       |> assign(:timeline_mode, default_timeline_mode())
+      |> assign(:frame_url_template, nil)
+      |> assign(:tile_url_template_16, nil)
+      |> assign(:tile_url_template_64, nil)
       |> assign(:movie_duration, nil)
       |> assign(:movie_heading_full, nil)
       |> assign(:movie_heading_truncated, false)
@@ -120,16 +123,25 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       # hour. Concatenating tiles is out of scope for now.
       mode = default_timeline_mode()
 
-      {timeline_strip_url, timeline_strip_fallback_url} =
+      {timeline_strip_url, timeline_strip_fallback_url, frame_url_template,
+       tile_url_template_16, tile_url_template_64} =
         if movie_id_str != "" do
           opts_user = [current_user: current_user(socket), position: 0]
 
+          resolution =
+            if is_integer(movie["stream"]) and movie["stream"] > 0, do: movie["stream"], else: 480
+
+          opts_tmpl = [current_user: current_user(socket)]
+
           {
             Client.timeline_url(movie_id_str, mode, 16, opts_user),
-            Client.timeline_url(movie_id_str, mode, 64, opts_user)
+            Client.timeline_url(movie_id_str, mode, 64, opts_user),
+            Client.frame_url_template(movie_id_str, resolution, opts_tmpl),
+            Client.timeline_tile_url_template(movie_id_str, mode, 16, opts_tmpl),
+            Client.timeline_tile_url_template(movie_id_str, mode, 64, opts_tmpl)
           }
         else
-          {nil, nil}
+          {nil, nil, nil, nil, nil}
         end
 
       socket =
@@ -141,6 +153,9 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> assign(:video_url, video_url)
         |> assign(:timeline_strip_url, timeline_strip_url)
         |> assign(:timeline_strip_fallback_url, timeline_strip_fallback_url)
+        |> assign(:frame_url_template, frame_url_template)
+        |> assign(:tile_url_template_16, tile_url_template_16)
+        |> assign(:tile_url_template_64, tile_url_template_64)
         |> assign(:timeline_mode, mode)
         |> assign(:movie_duration, parse_movie_duration(movie))
         |> assign(:in_timestamp, in_ts)
