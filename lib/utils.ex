@@ -133,7 +133,8 @@ defmodule Bonfire.PanDoRa.Utils do
   Like `extra_metadata/1` but omits keys that are already rendered as archive filter facets
   (same types as the Filters widget).
   """
-  def extra_metadata_excluding_filters(movie, filter_types, effective_api_keys) when is_map(movie) do
+  def extra_metadata_excluding_filters(movie, filter_types, effective_api_keys)
+      when is_map(movie) do
     exclude =
       (filter_types || [])
       |> Enum.flat_map(fn t ->
@@ -204,7 +205,9 @@ defmodule Bonfire.PanDoRa.Utils do
   """
   def country_facets_for_card(movie, filter_types, effective_api_keys) when is_map(movie) do
     if "country" in List.wrap(filter_types) do
-      api_key = Map.get(effective_api_keys || %{}, "country") || Client.filter_type_to_api_key("country")
+      api_key =
+        Map.get(effective_api_keys || %{}, "country") || Client.filter_type_to_api_key("country")
+
       raw = Map.get(movie, api_key) || Map.get(movie, "country")
 
       raw
@@ -222,7 +225,9 @@ defmodule Bonfire.PanDoRa.Utils do
   """
   def year_facets_for_card(movie, filter_types, effective_api_keys) when is_map(movie) do
     if "year" in List.wrap(filter_types) do
-      api_key = Map.get(effective_api_keys || %{}, "year") || Client.filter_type_to_api_key("year")
+      api_key =
+        Map.get(effective_api_keys || %{}, "year") || Client.filter_type_to_api_key("year")
+
       raw = Map.get(movie, api_key) || Map.get(movie, "year")
 
       raw

@@ -23,7 +23,7 @@
         src={@video_url}
         preload="auto"
         playsinline
-      ></video>
+      />
 
       <div class="custom-action-bar mt-2 flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
         <button
@@ -55,7 +55,7 @@
           <#Icon iconify="heroicons:forward-16-solid" class="w-4 h-4" />
         </button>
 
-        <div class="w-px h-6 bg-base-content/20 mx-1 self-center"></div>
+        <div class="w-px h-6 bg-base-content/20 mx-1 self-center" />
 
         <button
           type="button"
@@ -76,7 +76,7 @@
           {l("OUT")}
         </button>
 
-        <div class="w-px h-6 bg-base-content/20 mx-1 self-center"></div>
+        <div class="w-px h-6 bg-base-content/20 mx-1 self-center" />
 
         <span
           data-role="player-timecode"
@@ -84,7 +84,7 @@
           aria-live="off"
         >00:00:00 / --:--:--</span>
 
-        <div class="w-px h-6 bg-base-content/20 mx-1 self-center"></div>
+        <div class="w-px h-6 bg-base-content/20 mx-1 self-center" />
 
         <button
           type="button"
@@ -131,7 +131,9 @@
         phx-hook="PandoraTimelineStrip"
         class="timeline-strip-root flex-1 min-w-0"
         data-mode={@timeline_mode}
-        data-duration={if is_number(@movie_duration) && @movie_duration > 0, do: :erlang.float_to_binary(@movie_duration * 1.0, decimals: 3), else: ""}
+        data-duration={if is_number(@movie_duration) && @movie_duration > 0,
+          do: :erlang.float_to_binary(@movie_duration * 1.0, decimals: 3),
+          else: ""}
         data-target-player="movie_player_root"
         data-fallback-src={@timeline_strip_fallback_url || ""}
         data-frame-url-template={@frame_url_template || ""}
@@ -153,11 +155,8 @@
           phx-update="ignore"
           class="timeline-strip-position"
           aria-hidden="true"
-        ></div>
-        <div
-          :if={is_number(@movie_duration) && @movie_duration > 0}
-          class="timeline-strip-markers"
-        >
+        />
+        <div :if={is_number(@movie_duration) && @movie_duration > 0} class="timeline-strip-markers">
           <button
             :for={note <- @public_notes}
             type="button"
@@ -168,7 +167,7 @@
             title={e(note, "value", "")}
             aria-label={e(note, "value", "")}
             style={Bonfire.PanDoRa.Utils.timeline_marker_style(note, @movie_duration)}
-          ></button>
+          />
         </div>
       </div>
       <button
@@ -186,11 +185,8 @@
 
     <div id="timeline_strip_expanded" class="timeline-strip-expanded hidden" phx-update="ignore">
       {!-- Tile rows built at runtime by PandoraTimelineStrip hook --}
-      <div id="timeline_strip_position_64" class="timeline-strip-position-64" aria-hidden="true"></div>
-      <div
-        :if={is_number(@movie_duration) && @movie_duration > 0}
-        class="timeline-strip-markers"
-      >
+      <div id="timeline_strip_position_64" class="timeline-strip-position-64" aria-hidden="true" />
+      <div :if={is_number(@movie_duration) && @movie_duration > 0} class="timeline-strip-markers">
         <button
           :for={note <- @public_notes}
           type="button"
@@ -201,7 +197,7 @@
           title={e(note, "value", "")}
           aria-label={e(note, "value", "")}
           style={Bonfire.PanDoRa.Utils.timeline_marker_style(note, @movie_duration)}
-        ></button>
+        />
       </div>
       <div
         id="timeline_frame_preview"
@@ -209,8 +205,8 @@
         aria-hidden="true"
         role="tooltip"
       >
-        <img class="timeline-frame-img" src="" alt="" />
-        <span class="timeline-frame-timecode"></span>
+        <img class="timeline-frame-img" src="" alt="">
+        <span class="timeline-frame-timecode" />
       </div>
     </div>
   {/if}

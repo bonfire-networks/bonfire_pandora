@@ -1,6 +1,9 @@
 <details class="movie-annotations-widget">
   <summary class="font-bold uppercase text-xs text-base-content/50 cursor-pointer flex items-center gap-2 py-1">
-    <#Icon iconify="ph:caret-right-fill" class="w-3 h-3 transition-transform duration-150 details-caret" />
+    <#Icon
+      iconify="ph:caret-right-fill"
+      class="w-3 h-3 transition-transform duration-150 details-caret"
+    />
     {l("Public annotations")}
     <span :if={length(@public_notes) > 0} class="badge badge-soft badge-neutral badge-xs ml-auto">{length(@public_notes)}</span>
   </summary>
