@@ -22,6 +22,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   # available on every installation that has rendered timelines.
   # Override per-deployment via `config :bonfire_pandora, :timeline_mode, "..."`.
   @default_timeline_mode "keyframes"
+  @annotation_widget_id "movie_annotations"
 
   defp default_timeline_mode do
     Application.get_env(:bonfire_pandora, :timeline_mode, @default_timeline_mode)
@@ -121,8 +122,8 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       # hour. Concatenating tiles is out of scope for now.
       mode = default_timeline_mode()
 
-      {timeline_strip_url, timeline_strip_fallback_url, frame_url_template, tile_url_template_16,
-       tile_url_template_64} =
+      {timeline_strip_url, timeline_strip_fallback_url, frame_url_template,
+       tile_url_template_16, tile_url_template_64} =
         if movie_id_str != "" do
           opts_user = [current_user: current_user(socket), position: 0]
 
@@ -276,24 +277,31 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   end
 
   def handle_event("mark_in_timestamp", %{"timestamp" => timestamp} = _params, socket) do
-    # Handle the in timestamp - for example, store it in socket assigns
-    socket =
-      socket
-      |> assign(:in_timestamp, timestamp)
+    timestamp = normalize_mark_timestamp(timestamp)
 
-    {:noreply, socket}
+    {:noreply,
+     socket
+     |> assign(:in_timestamp, timestamp)
+     |> patch_annotation_widget_in_sidebar(in_timestamp: timestamp)}
   end
 
   def handle_event("mark_out_timestamp", %{"timestamp" => timestamp}, socket) do
-    # Handle the out timestamp - for example, store it in socket assigns
-    {:noreply, assign(socket, :out_timestamp, timestamp)}
+    timestamp = normalize_mark_timestamp(timestamp)
+
+    {:noreply,
+     socket
+     |> assign(:out_timestamp, timestamp)
+     |> patch_annotation_widget_in_sidebar(out_timestamp: timestamp)}
   end
 
   def handle_event("validate_note", %{"note" => note}, socket) do
-    # Simple validation - ensure note is not empty
     valid = String.trim(note) != ""
-    # Store the note content in socket assigns to preserve it
-    {:noreply, socket |> assign(:note_valid, valid) |> assign(:note_content, note)}
+
+    {:noreply,
+     socket
+     |> assign(:note_valid, valid)
+     |> assign(:note_content, note)
+     |> patch_annotation_widget_in_sidebar(note_content: note)}
   end
 
   def handle_event("add_annotation", %{"note" => note}, socket) do
@@ -314,9 +322,14 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       {:noreply,
        socket
        |> assign(:public_notes, updated_notes)
-       # Clear the note content after successful submission
        |> assign(:note_content, "")
-       |> assign_flash(:info, l("Annotation added successfully"))}
+       |> assign_flash(:info, l("Annotation added successfully"))
+       |> patch_annotation_widget_in_sidebar(
+         public_notes: updated_notes,
+         note_content: "",
+         in_timestamp: nil,
+         out_timestamp: nil
+       )}
     else
       error ->
         error(error, "Error creating note")
@@ -340,7 +353,8 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         {:noreply,
          socket
          |> assign(:public_notes, updated_notes)
-         |> assign_flash(:info, l("Annotation deleted successfully"))}
+         |> assign_flash(:info, l("Annotation deleted successfully"))
+         |> patch_annotation_widget_in_sidebar(public_notes: updated_notes)}
 
       error ->
         error(error, "Error deleting annotation")
@@ -358,15 +372,20 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
     if annotation_to_edit do
       # Set the form fields with the annotation data
-      socket =
-        socket
-        |> assign(:editing_mode, true)
-        |> assign(:editing_annotation, annotation_to_edit)
-        |> assign(:note_content, annotation_to_edit["value"])
-        |> assign(:in_timestamp, annotation_to_edit["in"])
-        |> assign(:out_timestamp, annotation_to_edit["out"])
-
-      {:noreply, socket}
+      {:noreply,
+       socket
+       |> assign(:editing_mode, true)
+       |> assign(:editing_annotation, annotation_to_edit)
+       |> assign(:note_content, annotation_to_edit["value"])
+       |> assign(:in_timestamp, annotation_to_edit["in"])
+       |> assign(:out_timestamp, annotation_to_edit["out"])
+       |> patch_annotation_widget_in_sidebar(
+         editing_mode: true,
+         editing_annotation: annotation_to_edit,
+         note_content: annotation_to_edit["value"],
+         in_timestamp: annotation_to_edit["in"],
+         out_timestamp: annotation_to_edit["out"]
+       )}
     else
       {:noreply, assign_flash(socket, :error, l("Could not find annotation to edit"))}
     end
@@ -374,15 +393,20 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
   # Handle canceling the edit
   def handle_event("cancel_edit", _params, socket) do
-    socket =
-      socket
-      |> assign(:editing_mode, false)
-      |> assign(:editing_annotation, nil)
-      |> assign(:note_content, "")
-      |> assign(:in_timestamp, nil)
-      |> assign(:out_timestamp, nil)
-
-    {:noreply, socket}
+    {:noreply,
+     socket
+     |> assign(:editing_mode, false)
+     |> assign(:editing_annotation, nil)
+     |> assign(:note_content, "")
+     |> assign(:in_timestamp, nil)
+     |> assign(:out_timestamp, nil)
+     |> patch_annotation_widget_in_sidebar(
+       editing_mode: false,
+       editing_annotation: nil,
+       note_content: "",
+       in_timestamp: nil,
+       out_timestamp: nil
+     )}
   end
 
   # Handle submitting the edit
@@ -405,17 +429,23 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
             if n["id"] == annotation_id, do: updated_annotation, else: n
           end)
 
-        socket =
-          socket
-          |> assign(:public_notes, updated_notes)
-          |> assign(:editing_mode, false)
-          |> assign(:editing_annotation, nil)
-          |> assign(:note_content, "")
-          |> assign(:in_timestamp, nil)
-          |> assign(:out_timestamp, nil)
-          |> assign_flash(:info, l("Annotation updated successfully"))
-
-        {:noreply, socket}
+        {:noreply,
+         socket
+         |> assign(:public_notes, updated_notes)
+         |> assign(:editing_mode, false)
+         |> assign(:editing_annotation, nil)
+         |> assign(:note_content, "")
+         |> assign(:in_timestamp, nil)
+         |> assign(:out_timestamp, nil)
+         |> assign_flash(:info, l("Annotation updated successfully"))
+         |> patch_annotation_widget_in_sidebar(
+           public_notes: updated_notes,
+           editing_mode: false,
+           editing_annotation: nil,
+           note_content: "",
+           in_timestamp: nil,
+           out_timestamp: nil
+         )}
 
       error ->
         error(error, "Error updating annotation")
@@ -677,6 +707,50 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
     end
   end
 
+  # Merge annotation form props into the existing sidebar widget entry without
+  # rebuilding the whole :sidebar_widgets tree (that re-mounts <details>).
+  defp patch_annotation_widget_in_sidebar(socket, props) when is_list(props) do
+    patch_annotation_widget_in_sidebar(socket, Map.new(props))
+  end
+
+  defp patch_annotation_widget_in_sidebar(socket, props) when is_map(props) do
+    widgets = socket.assigns[:sidebar_widgets]
+
+    if is_nil(widgets) do
+      socket
+    else
+      secondary = get_in(widgets, [:users, :secondary]) || []
+
+      patched_secondary =
+        Enum.map(secondary, fn
+          {Bonfire.PanDoRa.Web.WidgetMovieAnnotationsLive, kw} when is_list(kw) ->
+            merged =
+              Enum.reduce(props, kw, fn {key, val}, acc ->
+                Keyword.put(acc, key, val)
+              end)
+
+            {Bonfire.PanDoRa.Web.WidgetMovieAnnotationsLive, merged}
+
+          other ->
+            other
+        end)
+
+      assign(socket, :sidebar_widgets, put_in(widgets, [:users, :secondary], patched_secondary))
+    end
+  end
+
+  defp normalize_mark_timestamp(nil), do: nil
+  defp normalize_mark_timestamp(t) when is_number(t), do: t * 1.0
+
+  defp normalize_mark_timestamp(t) when is_binary(t) do
+    case Float.parse(String.trim(t)) do
+      {n, _} -> n
+      :error -> nil
+    end
+  end
+
+  defp normalize_mark_timestamp(_), do: nil
+
   defp assign_sidebar_widgets(socket, movie) do
     assigns = socket.assigns
 
@@ -692,12 +766,12 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
           {Bonfire.PanDoRa.Web.WidgetMovieAnnotationsLive,
            [
              type: Surface.LiveComponent,
-             id: "movie_annotations",
+             id: @annotation_widget_id,
              movie: movie,
              public_notes: assigns[:public_notes] || [],
              note_content: assigns[:note_content] || "",
-             in_timestamp: assigns[:in_timestamp],
-             out_timestamp: assigns[:out_timestamp],
+             in_timestamp: normalize_mark_timestamp(assigns[:in_timestamp]),
+             out_timestamp: normalize_mark_timestamp(assigns[:out_timestamp]),
              editing_mode: assigns[:editing_mode] || false,
              editing_annotation: assigns[:editing_annotation]
            ]}

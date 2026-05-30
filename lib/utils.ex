@@ -78,6 +78,29 @@ defmodule Bonfire.PanDoRa.Utils do
 
   defp timeline_marker_seconds(_), do: :error
 
+  @doc """
+  Formats a Pandora annotation timestamp (seconds) as `HH:MM:SS` for checkpoint badges.
+  """
+  def format_annotation_timecode(nil), do: "00:00:00"
+
+  def format_annotation_timecode(seconds) when is_number(seconds) do
+    seconds = max(0.0, seconds * 1.0)
+    h = trunc(seconds / 3600)
+    m = trunc(rem(trunc(seconds), 3600) / 60)
+    s = trunc(rem(trunc(seconds), 60))
+
+    Enum.map_join([h, m, s], ":", &String.pad_leading(Integer.to_string(&1), 2, "0"))
+  end
+
+  def format_annotation_timecode(value) when is_binary(value) do
+    case Float.parse(String.trim(value)) do
+      {n, _} -> format_annotation_timecode(n)
+      :error -> "00:00:00"
+    end
+  end
+
+  def format_annotation_timecode(_), do: "00:00:00"
+
   defp clamp_pct(p) when p < 0, do: 0.0
   defp clamp_pct(p) when p > 100, do: 100.0
   defp clamp_pct(p), do: p * 1.0

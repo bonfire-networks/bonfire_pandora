@@ -6,11 +6,13 @@
 import PlyrInit from "../../lib/web/hooks/plyr_init.hooks.js";
 import PandoraMoviePlayer from "../../lib/web/hooks/movie_live.hooks.js";
 import PandoraTimelineStrip from "../../lib/web/hooks/movie_live_timeline.hooks.js";
+import PandoraPreserveDetailsOpen from "../../lib/web/hooks/preserve_details_open.hooks.js";
 
 export const PandoraHooks = {
   PlyrInit,
   PandoraMoviePlayer,
   PandoraTimelineStrip,
+  PandoraPreserveDetailsOpen,
 };
 
 export default PandoraHooks;

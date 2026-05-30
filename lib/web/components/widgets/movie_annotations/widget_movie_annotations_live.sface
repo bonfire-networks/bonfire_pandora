@@ -1,4 +1,4 @@
-<details class="movie-annotations-widget">
+<details id={@id} class="movie-annotations-widget" phx-hook="PandoraPreserveDetailsOpen">
   <summary class="font-bold uppercase text-xs text-base-content/50 cursor-pointer flex items-center gap-2 py-1">
     <#Icon
       iconify="ph:caret-right-duotone"
@@ -24,15 +24,17 @@
 
       <div class="flex flex-wrap items-center gap-2">
         <div
-          data-role="annotation-checkpoint"
-          data-in={e(@in_timestamp, "")}
+          id="annotation-form-in"
+          data-role="annotation-form-in"
+          data-in={Bonfire.PanDoRa.Utils.to_attr(@in_timestamp)}
           class="btn btn-xs btn-accent btn-soft"
-        >in: {e(@in_timestamp, "0000") || "00:00:00"}</div>
+        >in: {Bonfire.PanDoRa.Utils.format_annotation_timecode(@in_timestamp)}</div>
         <div
-          data-role="annotation-checkpoint"
-          data-out={e(@out_timestamp, "")}
+          id="annotation-form-out"
+          data-role="annotation-form-out"
+          data-out={Bonfire.PanDoRa.Utils.to_attr(@out_timestamp)}
           class="btn btn-xs btn-accent btn-soft"
-        >out: {e(@out_timestamp, "0000") || "00:00:00"}</div>
+        >out: {Bonfire.PanDoRa.Utils.format_annotation_timecode(@out_timestamp)}</div>
       </div>
 
       <div class="flex justify-end gap-2">
