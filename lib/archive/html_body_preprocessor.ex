@@ -73,7 +73,7 @@ defmodule Bonfire.PanDoRa.Archive.HtmlBodyPreprocessor do
     # Feed preview: no native `controls` — PlyrInit adds UI; native controls + `.prose` break layout (huge icons).
     # Hook sets `src` lazily from `data-pandora-video-src`.
     video_tag =
-      ~s(<video class="pandora-video-preview rounded" preload="none" width="320" height="180" playsinline poster="#{escape_attr(poster_src)}" data-pandora-video-src="#{escape_attr(video_src)}" data-pandora-in="#{escape_attr(in_s)}" data-pandora-out="#{escape_attr(out_s)}"></video>)
+      ~s(<video class="pandora-video-preview" preload="none" playsinline poster="#{escape_attr(poster_src)}" data-pandora-video-src="#{escape_attr(video_src)}" data-pandora-in="#{escape_attr(in_s)}" data-pandora-out="#{escape_attr(out_s)}"></video>)
 
     # Archives.build_annotation_html_body already adds "View full movie" link after the marker - do not duplicate
     ~s(<div class="pandora-video-preview-wrapper" data-pandora-selection-url="#{escape_attr(selection_url)}">#{video_tag}</div>)
