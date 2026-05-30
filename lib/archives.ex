@@ -10,6 +10,11 @@ defmodule Bonfire.PanDoRa.Archives do
   @behaviour Bonfire.Common.ContextModule
   def verb_context_module, do: :annotate
 
+  # No local Ecto schema: this context wraps the remote Pandora API rather than a DB table.
+  # Declared explicitly (optional ContextModule callback) so the framework's schema lookup
+  # doesn't log a "schema_module/0 not defined" warning when probing context modules.
+  def schema_module, do: nil
+
   # @default_per_page 20
   # @filter_per_page 10
   # @default_keys ~w(title id item_id public_id director sezione edizione featuring duration)

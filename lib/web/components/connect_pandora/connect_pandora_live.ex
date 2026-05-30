@@ -14,6 +14,11 @@ defmodule Bonfire.PanDoRa.Components.ConnectPandoraLive do
     scope: :user
   )
 
+  # SettingsModule lists declared_nav/0 as a required callback, but declare_settings_component/2
+  # only injects declared_component/0. This component has no nav entry, so we satisfy the
+  # callback with nil to avoid the (otherwise harmless) compile warning.
+  def declared_nav, do: nil
+
   prop csrf_token, :string, default: nil
 
   def update(assigns, socket) do

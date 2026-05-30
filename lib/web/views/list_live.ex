@@ -3,7 +3,6 @@ defmodule Bonfire.PanDoRa.Web.ListLive do
   alias PanDoRa.API.Client
   alias Bonfire.PanDoRa.Auth
 
-  @behaviour Bonfire.UI.Common.LiveHandler
   @default_per_page 20
 
   on_mount {LivePlugs, [Bonfire.UI.Me.LivePlugs.LoadCurrentUser]}

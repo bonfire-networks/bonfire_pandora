@@ -4,7 +4,6 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
   alias Bonfire.PanDoRa.Auth
   alias Bonfire.PanDoRa.Utils
   alias Bonfire.PanDoRa.Web.SearchLogic
-  @behaviour Bonfire.UI.Common.LiveHandler
 
   declare_extension("Federated Archives",
     icon: "mingcute:microscope-fill",

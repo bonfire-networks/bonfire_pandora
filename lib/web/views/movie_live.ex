@@ -4,8 +4,6 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   alias Bonfire.PanDoRa.Utils
   alias Bonfire.PanDoRa.Archives
 
-  @behaviour Bonfire.UI.Common.LiveHandler
-
   # Pandora `edit` often returns a large item blob; merge only fields we edited so the widget
   # does not gain technical keys (videoRatio, posterFrame, …) into `extra_metadata/1`.
   @pandora_edit_merge_allowlist MapSet.new(

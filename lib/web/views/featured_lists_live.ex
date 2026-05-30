@@ -3,8 +3,6 @@ defmodule Bonfire.PanDoRa.Web.FeaturedListsLive do
   alias PanDoRa.API.Client
   alias Bonfire.PanDoRa.Auth
 
-  @behaviour Bonfire.UI.Common.LiveHandler
-
   on_mount {LivePlugs, [Bonfire.UI.Me.LivePlugs.LoadCurrentUser]}
 
   def mount(_params, _session, socket) do

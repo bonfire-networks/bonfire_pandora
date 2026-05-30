@@ -18,6 +18,11 @@ defmodule Bonfire.PanDoRa.Web.ArchiveFiltersSettingsLive do
     scope: :instance
   )
 
+  # SettingsModule lists declared_nav/0 as a required callback, but declare_settings_component/2
+  # only injects declared_component/0. This component has no nav entry, so we satisfy the
+  # callback with nil to avoid the (otherwise harmless) compile warning.
+  def declared_nav, do: nil
+
   prop scope, :any, default: nil
 
   def update(assigns, socket) do
