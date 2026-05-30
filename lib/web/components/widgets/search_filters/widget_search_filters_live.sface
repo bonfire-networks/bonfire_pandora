@@ -15,10 +15,10 @@
             class="flex flex-col min-w-0 flex-shrink-0 border-b border-base-content/5 last:border-b-0 pb-4 last:pb-0"
             aria-label={section.label}
           >
-            <h2 class="text-xs font-medium uppercase tracking-wider text-base-content/40 mb-2">{section.label}</h2>
+            <h2 class="text-xs font-medium uppercase tracking-wider text-base-content/50 mb-2">{section.label}</h2>
             <div id={"#{section.id}-container"} data-loading={section.loading}>
               <ul
-                class="flex flex-col gap-0.5 overflow-y-auto w-full overscroll-contain"
+                class="flex flex-col gap-1 overflow-y-auto w-full overscroll-contain"
                 style={filters_list_style(@__context__)}
                 id={"#{section.id}-list"}
               >
@@ -28,15 +28,15 @@
                       phx-click={"filter_by_#{section.id}"}
                       phx-value-id={name}
                       phx-throttle="300"
-                      class={"flex items-center gap-2 py-1.5 px-2 rounded-md text-sm transition-colors " <>
+                      class={"flex items-center gap-2 py-1.5 px-2 rounded-md text-sm transition-colors duration-150 " <>
                         if(name in section.selected,
                           do: "bg-primary/10 text-primary font-medium",
-                          else: "text-base-content/80 hover:bg-base-content/5 hover:text-base-content"
+                          else: "text-base-content/70 hover:bg-base-content/5 hover:text-base-content"
                         )}
                       disabled={@loading}
                     >
                       <span class="flex-1 truncate">{name}</span>
-                      <span class="text-xs opacity-60 shrink-0">({count})</span>
+                      <span class="text-xs text-base-content/50 shrink-0">({count})</span>
                       {#if name in section.selected}
                         <span class="text-primary shrink-0">✓</span>
                       {/if}

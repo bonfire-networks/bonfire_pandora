@@ -28,7 +28,7 @@
       <div class="custom-action-bar mt-2 flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
         <button
           type="button"
-          class="btn btn-sm btn-circle btn-soft btn-ghost min-h-8 h-8"
+          class={Bonfire.PanDoRa.Web.UI.player_control_button()}
           data-action="prev-frame"
           aria-label={l("Previous frame")}
           title={l("Previous frame")}
@@ -37,7 +37,7 @@
         </button>
         <button
           type="button"
-          class="btn btn-sm btn-circle btn-soft btn-ghost min-h-8 h-8"
+          class={Bonfire.PanDoRa.Web.UI.player_control_button()}
           data-action="play-pause"
           aria-label={l("Play / Pause")}
           title={l("Play / Pause")}
@@ -47,7 +47,7 @@
         </button>
         <button
           type="button"
-          class="btn btn-sm btn-circle btn-soft btn-ghost min-h-8 h-8"
+          class={Bonfire.PanDoRa.Web.UI.player_control_button()}
           data-action="next-frame"
           aria-label={l("Next frame")}
           title={l("Next frame")}
@@ -55,7 +55,7 @@
           <#Icon iconify="heroicons:forward-16-solid" class="w-4 h-4" />
         </button>
 
-        <div class="w-px h-6 bg-base-content/20 mx-1 self-center" />
+        <div class={Bonfire.PanDoRa.Web.UI.player_divider()} />
 
         <button
           type="button"
@@ -76,7 +76,7 @@
           {l("OUT")}
         </button>
 
-        <div class="w-px h-6 bg-base-content/20 mx-1 self-center" />
+        <div class={Bonfire.PanDoRa.Web.UI.player_divider()} />
 
         <span
           data-role="player-timecode"
@@ -84,11 +84,11 @@
           aria-live="off"
         >00:00:00 / --:--:--</span>
 
-        <div class="w-px h-6 bg-base-content/20 mx-1 self-center" />
+        <div class={Bonfire.PanDoRa.Web.UI.player_divider()} />
 
         <button
           type="button"
-          class="btn btn-sm btn-circle btn-soft btn-ghost min-h-8 h-8"
+          class={Bonfire.PanDoRa.Web.UI.player_control_button()}
           data-action="toggle-mute"
           aria-label={l("Toggle mute")}
           title={l("Toggle mute")}
@@ -112,7 +112,7 @@
 
         <button
           type="button"
-          class="btn btn-sm btn-circle btn-soft btn-ghost min-h-8 h-8"
+          class={Bonfire.PanDoRa.Web.UI.player_control_button()}
           data-action="toggle-fullscreen"
           aria-label={l("Toggle fullscreen")}
           title={l("Toggle fullscreen")}

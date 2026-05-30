@@ -157,7 +157,16 @@ defmodule Bonfire.PanDoRa.Utils do
   def filter_field_icon("keyword"), do: "carbon:tag"
   def filter_field_icon(_), do: "carbon:information"
 
-  @facet_btn_base "btn btn-xs btn-soft h-auto min-h-7 py-0.5 px-1.5 gap-1 font-normal max-w-[min(100%,14rem)]"
+  @facet_btn_base "btn btn-xs btn-soft h-auto min-h-7 py-0.5 px-1.5 gap-1 font-normal max-w-[min(100%,14rem)] whitespace-normal break-all text-left"
+
+  @doc """
+  Single source of truth for facet chip button classes (without the semantic
+  `btn-<variant>` suffix). Shared by the Search cards and the Movie Info widget
+  (via `Bonfire.PanDoRa.Web.UI.facet_link/1`) so the chip language can't diverge.
+  """
+  def facet_btn_base, do: @facet_btn_base
+
+  @facet_badge_base "badge badge-sm gap-1 max-w-[min(100%,14rem)] whitespace-normal break-all text-left"
 
   @doc "DaisyUI button classes for a facet chip (archive card, filter links on)."
   def filter_field_button_class(type) when is_binary(type) do
@@ -170,10 +179,10 @@ defmodule Bonfire.PanDoRa.Utils do
   @doc "DaisyUI badge classes for a facet chip (archive card, filter links off)."
   def filter_field_badge_class(type) when is_binary(type) do
     variant = type |> normalize_filter_type() |> facet_badge_variant()
-    "badge badge-sm #{variant} gap-1 max-w-[min(100%,14rem)]"
+    "#{@facet_badge_base} #{variant}"
   end
 
-  def filter_field_badge_class(_), do: "badge badge-sm badge-ghost gap-1 max-w-[min(100%,14rem)]"
+  def filter_field_badge_class(_), do: "#{@facet_badge_base} badge-ghost"
 
   @doc "Tailwind classes for the Iconify glyph on a facet row (semantic tint)."
   def filter_field_icon_class(type) when is_binary(type) do

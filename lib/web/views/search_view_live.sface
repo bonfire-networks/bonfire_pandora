@@ -17,8 +17,8 @@
 
   <div class="min-w-0 max-w-full flex-1 overflow-x-auto relative">
     {#if @loading && @page == 0}
-      <div class="bg-base-200/50 p-20 flex items-center justify-center z-10">
-        <div class="loading loading-spinner loading-lg text-primary" />
+      <div class="bg-base-200/50 py-16 flex items-center justify-center z-10">
+        <div class="loading loading-spinner loading-md text-base-content/60" />
       </div>
     {/if}
     <div
@@ -49,7 +49,7 @@
         {/for}
       </ul>
       {#if not @loading and (@current_count || 0) == 0}
-        <div class="p-10 text-center text-base-content/50">
+        <div class="py-16 text-center text-base-content/50">
           {l("No items found. Make sure you are connected to Pandora.")}
         </div>
       {/if}
@@ -65,11 +65,13 @@
           <button
             :if={not @loading}
             phx-click="load_more_search_results"
-            class="btn btn-secondary btn-wide btn-soft gap-2"
+            class="btn btn-sm btn-soft btn-secondary gap-2"
           >
+            <#Icon iconify="ph:plus-bold" class="w-4 h-4" />
             {l("Load more")}
           </button>
-          <button :if={@loading} class="btn btn-secondary btn-wide btn-soft gap-2" disabled>
+          <button :if={@loading} class="btn btn-sm btn-soft btn-secondary gap-2" disabled>
+            <span class="loading loading-spinner loading-xs" />
             {l("Loading...")}
           </button>
         </div>

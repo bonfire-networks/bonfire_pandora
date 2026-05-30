@@ -126,7 +126,7 @@
             {#for name <- director_list(@movie)}
               <a
                 href={"/archive?director=#{URI.encode(name)}"}
-                class="btn btn-xs btn-soft btn-neutral max-w-full whitespace-normal break-all text-left h-auto min-h-7 py-0.5"
+                class={Bonfire.PanDoRa.Web.UI.facet_link("neutral")}
               >{name}</a>
             {/for}
           </div>
@@ -138,7 +138,7 @@
           <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Year")}</span>
           <a
             href={"/archive?year=#{URI.encode(to_attr(@movie["year"]))}"}
-            class="btn btn-xs btn-soft btn-neutral"
+            class={Bonfire.PanDoRa.Web.UI.facet_link("neutral")}
           >{to_attr(@movie["year"])}</a>
         </li>
       {/if}
@@ -157,7 +157,7 @@
             {#for name <- featuring_list(@movie)}
               <a
                 href={"/archive?featuring=#{URI.encode(name)}"}
-                class="btn btn-xs btn-soft btn-success max-w-full whitespace-normal break-all text-left h-auto min-h-7 py-0.5"
+                class={Bonfire.PanDoRa.Web.UI.facet_link("success")}
               >{name}</a>
             {/for}
           </div>
@@ -169,7 +169,7 @@
           <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Country")}</span>
           <a
             href={"/archive?country=#{URI.encode(to_attr(@movie["country"]))}"}
-            class="btn btn-xs btn-soft btn-neutral max-w-full whitespace-normal break-all text-left h-auto min-h-7 py-0.5"
+            class={Bonfire.PanDoRa.Web.UI.facet_link("neutral")}
           >{to_attr(@movie["country"])}</a>
         </li>
       {/if}
@@ -179,7 +179,7 @@
           <span class="text-sm text-base-content/50 font-medium shrink-0">{l("Language")}</span>
           <a
             href={"/archive?language=#{URI.encode(to_attr(@movie["language"]))}"}
-            class="btn btn-xs btn-soft btn-neutral max-w-full whitespace-normal break-all text-left h-auto min-h-7 py-0.5"
+            class={Bonfire.PanDoRa.Web.UI.facet_link("neutral")}
           >{to_attr(@movie["language"])}</a>
         </li>
       {/if}
@@ -191,7 +191,7 @@
             {#for kw <- keywords_list(@movie)}
               <a
                 href={"/archive?keywords=#{URI.encode(kw)}"}
-                class="btn btn-xs btn-soft btn-accent max-w-full whitespace-normal break-all text-left h-auto min-h-7 py-0.5"
+                class={Bonfire.PanDoRa.Web.UI.facet_link("accent")}
               >{kw}</a>
             {/for}
           </div>
@@ -203,7 +203,7 @@
           <span class="text-sm text-base-content/50 font-medium capitalize shrink-0">{field}</span>
           <a
             href={"/archive?#{URI.encode(field)}=#{URI.encode(value)}"}
-            class="btn btn-xs btn-soft btn-neutral max-w-full whitespace-normal break-all text-left h-auto min-h-7 py-0.5"
+            class={Bonfire.PanDoRa.Web.UI.facet_link("neutral")}
           >{value}</a>
         </li>
       {/for}
