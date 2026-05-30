@@ -1,0 +1,39 @@
+{#case @mode}
+  {#match :filter}
+    {#if @phx_click_director}
+      <button
+        type="button"
+        class={filter_button_class(assigns)}
+        phx-click="filter_by_director"
+        phx-target={@event_target || false}
+        phx-value-id={@value}
+        phx-throttle="300"
+      >
+        <span class="truncate">{@value}</span>
+      </button>
+    {#else}
+      <button
+        type="button"
+        class={filter_button_class(assigns)}
+        phx-click={@phx_click}
+        phx-target={@event_target || false}
+        phx-value-field={@api_key || @field}
+        phx-value-id={@value}
+        phx-throttle="300"
+      >
+        {#if @icon}
+          <Bonfire.PanDoRa.Components.FacetIconInlineLive iconify={@icon} class={@icon_class} />
+        {/if}
+        <span class="truncate">{@value}</span>
+      </button>
+    {/if}
+  {#match :display}
+    <div class={filter_badge_class(assigns)}>
+      {#if @icon}
+        <Bonfire.PanDoRa.Components.FacetIconInlineLive iconify={@icon} class={@icon_class} />
+      {/if}
+      <span class="truncate">{@value}</span>
+    </div>
+  {#match :link}
+    <a href={@href} class={Bonfire.PanDoRa.Web.UI.facet_link(@variant)}>{@value}</a>
+{/case}

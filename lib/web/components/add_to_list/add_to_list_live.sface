@@ -25,7 +25,7 @@
             {#if icon_url = Map.get(list, "icon_url") || Client.list_icon_url(list, @pandora_opts || [])}
               <img src={icon_url} alt="" class="object-cover w-full h-full rounded">
             {#else}
-              <#Icon iconify="heroicons:folder-16-solid" class="w-6 h-6 text-base-content/30" />
+              <#Icon iconify="ph:folder-fill" class="w-6 h-6 text-base-content/30" />
             {/if}
           </div>
           <div>

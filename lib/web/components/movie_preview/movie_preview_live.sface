@@ -1,43 +1,47 @@
-<li id={@movie_id} class="list-row min-w-0 items-stretch gap-3">
-  <div class="shrink-0 self-start">
+<li id={@movie_id} class={Bonfire.PanDoRa.Web.UI.archive_card_row()}>
+  <LinkLive
+    to={~p"/archive/movies/#{to_attr(e(@movie, "id", ""))}"}
+    class="block shrink-0 self-start overflow-hidden rounded-lg"
+  >
     {#if @image_src}
-      <img class="size-24 rounded-box" src={@image_src}>
+      <img class={Bonfire.PanDoRa.Web.UI.archive_card_thumb()} src={@image_src} alt="">
     {#else}
       <img
-        class="size-24 rounded-box"
+        class={Bonfire.PanDoRa.Web.UI.archive_card_thumb()}
         src={@media_url || Client.media_proxy_url(to_attr(e(@movie, "id", "")), "icon128.jpg")}
         data-movie-id={to_attr(e(@movie, "id", ""))}
         loading="lazy"
+        alt=""
       />
     {/if}
-  </div>
-  <div class="min-w-0 flex-1">
+  </LinkLive>
+
+  <div class="flex min-w-0 flex-1 flex-col gap-2">
     <LinkLive
       to={~p"/archive/movies/#{to_attr(e(@movie, "id", ""))}"}
-      class="link link-hover inline-block max-w-full min-w-0 align-top text-base font-semibold break-all [overflow-wrap:anywhere]"
+      class="link link-hover line-clamp-2 text-base font-semibold leading-snug break-all [overflow-wrap:anywhere]"
     >{rich(insert_line_break_hints(to_attr(e(@movie, "title", ""))))}</LinkLive>
 
     {#if @movie["director"]}
-      <div class="mt-1">
+      <div class="flex flex-wrap gap-x-2 gap-y-0.5">
         {#for director <- List.wrap(@movie["director"]) |> Enum.filter(&is_binary/1)}
           {#if @filter_links_enabled}
-            <span
-              phx-click="filter_by_director"
-              phx-target={@event_target || false}
-              phx-value-id={director}
-              phx-throttle="300"
-              class="link link-hover text-xs uppercase font-semibold text-base-content/70"
-            >{director}</span>
+            <Bonfire.PanDoRa.Components.FacetChipLive
+              mode={:filter}
+              value={director}
+              phx_click_director
+              event_target={@event_target}
+              button_class="link link-hover p-0 h-auto min-h-0 border-0 bg-transparent text-xs font-semibold uppercase text-base-content/70 hover:text-base-content"
+            />
           {#else}
-            <span class="text-xs uppercase font-semibold text-base-content/70">{director}</span>
+            <span class="text-xs font-semibold uppercase text-base-content/70">{director}</span>
           {/if}
         {/for}
       </div>
     {/if}
 
     {#if summary_text(@movie)}
-      {!-- `<details>` chiuso di default; toggle nativo (no checkbox/LiveView). `[&[open]>summary>span]` non dipende da `group-open`. --}
-      <details class="mt-1.5 max-w-full [&[open]>summary>span]:line-clamp-none">
+      <details class="max-w-full [&[open]>summary>span]:line-clamp-none">
         <summary class="cursor-pointer list-none text-xs text-base-content/70 marker:content-none [&::-webkit-details-marker]:hidden">
           <span class="block line-clamp-2 leading-snug hover:underline">
             {summary_text(@movie)}
@@ -45,61 +49,46 @@
         </summary>
       </details>
     {/if}
-    <div class="list-col-wrap mt-2 text-xs">
-      <div class="flex items-center flex-wrap gap-2">
-        {#if @filter_links_enabled}
-          {#for row <- filter_facets_for_card(@movie, @filter_types, @effective_api_keys)}
-            <button
-              type="button"
-              phx-click="filter_by_field"
-              phx-target={@event_target || false}
-              phx-value-field={Map.get(row, :api_key)}
-              phx-value-id={Map.get(row, :value)}
-              phx-throttle="300"
-              class={Map.get(row, :button_class)}
-            >
-              <Bonfire.PanDoRa.Components.FacetIconInlineLive
-                iconify={Map.get(row, :icon)}
-                class={Map.get(row, :icon_class)}
-              />
-              <span class="truncate">{Map.get(row, :value)}</span>
-            </button>
-          {/for}
-        {#else}
-          {#for row <- filter_facets_for_card(@movie, @filter_types, @effective_api_keys)}
-            <div class={Map.get(row, :badge_class)}>
-              <Bonfire.PanDoRa.Components.FacetIconInlineLive
-                iconify={Map.get(row, :icon)}
-                class={Map.get(row, :icon_class)}
-              />
-              <span class="truncate">{Map.get(row, :value)}</span>
-            </div>
-          {/for}
-        {/if}
 
-        {#if @filter_links_enabled}
-          {#for {field, value} <- extra_metadata_excluding_filters(@movie, @filter_types, @effective_api_keys)}
-            <button
-              type="button"
-              class={Utils.filter_field_button_class(field)}
-              phx-click="filter_by_field"
-              phx-target={@event_target || false}
-              phx-value-field={field}
-              phx-value-id={value}
-              phx-throttle="300"
-            >
-              {value}
-            </button>
-          {/for}
-        {#else}
-          {#for {field, value} <- extra_metadata_excluding_filters(@movie, @filter_types, @effective_api_keys)}
-            <span class={Utils.filter_field_badge_class(field)}>{value}</span>
-          {/for}
-        {/if}
-      </div>
+    <div class="flex flex-wrap items-center gap-1.5 text-xs">
+      {#if @filter_links_enabled}
+        {#for row <- filter_facets_for_card(@movie, @filter_types, @effective_api_keys)}
+          <Bonfire.PanDoRa.Components.FacetChipLive
+            mode={:filter}
+            value={Map.get(row, :value)}
+            api_key={Map.get(row, :api_key)}
+            icon={Map.get(row, :icon)}
+            icon_class={Map.get(row, :icon_class)}
+            button_class={Map.get(row, :button_class)}
+            event_target={@event_target}
+          />
+        {/for}
+        {#for {field, value} <- extra_metadata_excluding_filters(@movie, @filter_types, @effective_api_keys)}
+          <Bonfire.PanDoRa.Components.FacetChipLive
+            mode={:filter}
+            value={value}
+            field={field}
+            event_target={@event_target}
+          />
+        {/for}
+      {#else}
+        {#for row <- filter_facets_for_card(@movie, @filter_types, @effective_api_keys)}
+          <Bonfire.PanDoRa.Components.FacetChipLive
+            mode={:display}
+            value={Map.get(row, :value)}
+            icon={Map.get(row, :icon)}
+            icon_class={Map.get(row, :icon_class)}
+            badge_class={Map.get(row, :badge_class)}
+          />
+        {/for}
+        {#for {field, value} <- extra_metadata_excluding_filters(@movie, @filter_types, @effective_api_keys)}
+          <Bonfire.PanDoRa.Components.FacetChipLive mode={:display} value={value} field={field} />
+        {/for}
+      {/if}
     </div>
   </div>
-  {!-- Colonna destra: meta in alto, Add to list in basso (justify-between); stesso bordo destro. --}
+
+  {!-- Colonna destra: meta in alto, Add to list in basso (justify-between). --}
   <div class="flex min-h-0 min-w-0 shrink-0 flex-col items-end justify-between gap-3 self-stretch">
     <div class="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs font-normal leading-none text-base-content/60">
       {#for line <- country_facets_for_card(@movie, @filter_types, @effective_api_keys)}
@@ -111,16 +100,13 @@
             phx-value-field={Map.get(line, :api_key)}
             phx-value-id={Map.get(line, :value)}
             phx-throttle="300"
-            class="btn btn-xs btn-ghost inline-flex h-6 max-w-[9rem] min-h-0 items-center gap-0.5 px-1 py-0 text-xs font-normal leading-none"
+            class={Bonfire.PanDoRa.Web.UI.meta_chip_button()}
           >
             <Bonfire.PanDoRa.Components.GlobeIconLive class="w-3 h-3 shrink-0 text-base-content/60" />
             <span class="min-w-0 truncate">{Map.get(line, :value)}</span>
           </button>
         {#else}
-          <span
-            class="inline-flex max-w-[9rem] items-center gap-0.5 text-xs leading-none"
-            title={Map.get(line, :value)}
-          >
+          <span class={Bonfire.PanDoRa.Web.UI.meta_chip_static()} title={Map.get(line, :value)}>
             <Bonfire.PanDoRa.Components.GlobeIconLive class="w-3 h-3 shrink-0 text-base-content/60" />
             <span class="min-w-0 truncate tabular-nums">{Map.get(line, :value)}</span>
           </span>
@@ -135,16 +121,13 @@
             phx-value-field={Map.get(line, :api_key)}
             phx-value-id={Map.get(line, :value)}
             phx-throttle="300"
-            class="btn btn-xs btn-ghost inline-flex h-6 max-w-[5rem] min-h-0 items-center gap-0.5 px-1 py-0 font-normal"
+            class={Bonfire.PanDoRa.Web.UI.meta_chip_button()}
           >
             <#Icon iconify="carbon:calendar" class="w-3 h-3 shrink-0 text-base-content/60" />
             <span class="min-w-0 truncate tabular-nums">{Map.get(line, :value)}</span>
           </button>
         {#else}
-          <span
-            class="inline-flex max-w-[5rem] items-center gap-0.5 text-xs leading-none"
-            title={Map.get(line, :value)}
-          >
+          <span class={Bonfire.PanDoRa.Web.UI.meta_chip_static()} title={Map.get(line, :value)}>
             <#Icon iconify="carbon:calendar" class="w-3 h-3 shrink-0 text-base-content/60" />
             <span class="min-w-0 truncate tabular-nums">{Map.get(line, :value)}</span>
           </span>
@@ -152,20 +135,21 @@
       {/for}
       {#if @movie["duration"]}
         <span
-          class="inline-flex h-6 max-w-[6rem] items-center gap-0.5 tabular-nums text-xs font-normal leading-none"
+          class={Bonfire.PanDoRa.Web.UI.meta_chip_static()}
           title={Bonfire.Common.DatesTimes.format_duration(e(@movie, "duration", ""))}
         >
           <#Icon iconify="carbon:time" class="w-3 h-3 shrink-0 text-base-content/60" />
-          <span class="min-w-0 truncate">{Bonfire.Common.DatesTimes.format_duration(e(@movie, "duration", ""))}</span>
+          <span class="min-w-0 truncate tabular-nums">{Bonfire.Common.DatesTimes.format_duration(e(@movie, "duration", ""))}</span>
         </span>
       {/if}
     </div>
+
     <div class="flex flex-col items-end pt-1">
       <Bonfire.UI.Common.OpenModalLive
         id={"add_to_list_#{@movie_id}"}
         title_text={l("Add movie to list")}
         no_actions
-        open_btn_wrapper_class="text-left cursor-pointer"
+        open_btn_wrapper_class="w-auto text-left cursor-pointer"
       >
         <Bonfire.PanDoRa.Components.AddToListLive
           id={"add_to_list_form_#{@movie_id}"}

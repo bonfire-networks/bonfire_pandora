@@ -49,4 +49,49 @@ defmodule Bonfire.PanDoRa.Web.UI do
   """
   def facet_link(variant) when variant in ~w(neutral success accent),
     do: "#{Bonfire.PanDoRa.Utils.facet_btn_base()} btn-#{variant}"
+
+  @doc """
+  Outer row for an archive search result card.
+
+  ## Examples
+
+      iex> String.contains?(Bonfire.PanDoRa.Web.UI.archive_card_row(), "border-b")
+      true
+  """
+  def archive_card_row,
+    do:
+      "group flex gap-4 p-4 border-b border-base-content/10 min-w-0 transition-colors duration-150 hover:bg-base-200/30"
+
+  @doc "Thumbnail image classes for archive search cards."
+  def archive_card_thumb,
+    do: "block h-20 w-[7rem] rounded-lg object-cover ring-1 ring-base-content/10 shadow-sm"
+
+  @doc "Interactive meta chip (country/year) in the card header."
+  def meta_chip_button,
+    do:
+      "btn btn-xs btn-ghost inline-flex h-6 min-h-0 max-w-[9rem] items-center gap-1 px-1.5 py-0 text-xs font-normal leading-none text-base-content/60 hover:text-base-content"
+
+  @doc "Static meta label (duration or filter links off)."
+  def meta_chip_static,
+    do:
+      "inline-flex h-6 max-w-[9rem] items-center gap-1 text-xs font-normal leading-none text-base-content/60"
+
+  @doc "Timeline expand control beside the strip (not design-system: needs data-role for hook)."
+  def timeline_expand_button,
+    do: "btn btn-sm btn-circle btn-ghost shrink-0 self-center min-h-8 h-8 opacity-70 hover:opacity-100"
+
+  @doc """
+  Circle icon-only button for standalone archive actions (chip dismiss, bookmark, edit).
+
+  Matches design-system sizing tiers without wrapping `IconButtonLive` (Phoenix
+  function component — not renderable as a Surface tag).
+  """
+  def icon_button_classes("xs"),
+    do: "btn btn-xs btn-circle btn-ghost min-h-0 h-5 w-5 p-0"
+
+  def icon_button_classes("sm"), do: "btn btn-sm btn-circle btn-ghost"
+  def icon_button_classes(_), do: "btn btn-sm btn-circle btn-ghost"
+
+  def icon_button_icon_classes("xs"), do: "w-3.5 h-3.5"
+  def icon_button_icon_classes(_), do: "w-4 h-4"
 end

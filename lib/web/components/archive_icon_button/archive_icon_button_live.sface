@@ -1,0 +1,14 @@
+<button
+  type="button"
+  id={@id}
+  class={"#{Bonfire.PanDoRa.Web.UI.icon_button_classes(@size)} #{@class || ""}"}
+  title={@tooltip}
+  phx-click={@phx_click}
+  phx-target={@phx_target}
+  phx-value-field={@phx_value_field}
+  phx-value-id={@phx_value_id}
+  disabled={@disabled}
+  aria-label={@aria_label}
+>
+  <Iconify.iconify icon={@icon} mode={:inline} class={Bonfire.PanDoRa.Web.UI.icon_button_icon_classes(@size)} />
+</button>

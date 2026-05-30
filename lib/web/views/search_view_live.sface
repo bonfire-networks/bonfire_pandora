@@ -67,7 +67,7 @@
             phx-click="load_more_search_results"
             class="btn btn-sm btn-soft btn-secondary gap-2"
           >
-            <#Icon iconify="ph:plus-bold" class="w-4 h-4" />
+            <#Icon iconify="ph:plus-duotone" class="w-4 h-4" />
             {l("Load more")}
           </button>
           <button :if={@loading} class="btn btn-sm btn-soft btn-secondary gap-2" disabled>

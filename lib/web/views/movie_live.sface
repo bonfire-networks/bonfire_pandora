@@ -42,8 +42,8 @@
           aria-label={l("Play / Pause")}
           title={l("Play / Pause")}
         >
-          <#Icon iconify="ph:play-fill" class="w-4 h-4 play-icon" />
-          <#Icon iconify="ph:pause-fill" class="w-4 h-4 pause-icon hidden" />
+          <#Icon iconify="ph:play-duotone" class="w-4 h-4 play-icon" />
+          <#Icon iconify="heroicons:pause-16-solid" class="w-4 h-4 pause-icon hidden" />
         </button>
         <button
           type="button"
@@ -93,8 +93,8 @@
           aria-label={l("Toggle mute")}
           title={l("Toggle mute")}
         >
-          <#Icon iconify="ph:speaker-high-fill" class="w-4 h-4 unmuted-icon" />
-          <#Icon iconify="ph:speaker-x-fill" class="w-4 h-4 muted-icon hidden" />
+          <#Icon iconify="heroicons:speaker-wave-16-solid" class="w-4 h-4 unmuted-icon" />
+          <#Icon iconify="heroicons:speaker-x-mark-16-solid" class="w-4 h-4 muted-icon hidden" />
         </button>
 
         <select
@@ -117,8 +117,8 @@
           aria-label={l("Toggle fullscreen")}
           title={l("Toggle fullscreen")}
         >
-          <#Icon iconify="ph:arrows-out-fill" class="w-4 h-4 fs-enter-icon" />
-          <#Icon iconify="ph:arrows-in-fill" class="w-4 h-4 fs-exit-icon hidden" />
+          <#Icon iconify="heroicons:arrows-pointing-out-16-solid" class="w-4 h-4 fs-enter-icon" />
+          <#Icon iconify="heroicons:arrows-pointing-in-16-solid" class="w-4 h-4 fs-exit-icon hidden" />
         </button>
       </div>
     </div>
@@ -173,13 +173,14 @@
       <button
         id="timeline_expand_btn"
         type="button"
-        class="btn btn-sm btn-ghost btn-circle shrink-0 self-center opacity-60 hover:opacity-100 min-h-8 h-8"
+        class={Bonfire.PanDoRa.Web.UI.timeline_expand_button()}
         data-role="timeline-expand"
         aria-expanded="false"
         aria-controls="timeline_strip_expanded"
         title={l("Expand timeline")}
+        aria-label={l("Expand timeline")}
       >
-        <#Icon iconify="ph:arrows-out-fill" class="w-4 h-4" />
+        <#Icon iconify="heroicons:arrows-pointing-out-16-solid" class="w-4 h-4" />
       </button>
     </div>
 
