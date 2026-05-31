@@ -25,30 +25,59 @@ defmodule Bonfire.PanDoRa.Web.UI do
   def player_control_button, do: "btn btn-sm btn-circle btn-soft btn-ghost min-h-8 h-8"
 
   @doc """
-  Wrapper for the Movie custom action bar (below the video monitor).
-
-  Spreads control groups across the full player width (`justify-evenly`) instead
-  of left-clustering. See `player_action_bar_group/0` and MOVIE_PAGE_HARMONIZATION §G.
+  Wrapper for the Movie custom action bar — single row, three zones (Tailwind flex, no wrap).
   """
   def player_action_bar,
     do:
-      "custom-action-bar mt-2 flex w-full min-w-0 max-w-full items-center"
+      "custom-action-bar mt-2 flex h-8 min-h-8 w-full min-w-0 max-w-full flex-nowrap items-center gap-2 sm:gap-3"
 
   @doc """
-  One logical cluster in the Movie action bar (transport, markers, timecode, output).
-
-  Each group grows equally (`flex-1`) and centers its controls so the bar fills the
-  monitor width instead of clustering on the left.
+  Left zone: transport + IN/OUT (anchored start).
   """
-  def player_action_bar_group,
-    do: "flex flex-1 basis-0 min-w-0 items-center justify-center gap-1.5"
+  def player_action_bar_left,
+    do: "flex shrink-0 flex-nowrap items-center gap-1 sm:gap-1.5"
+
+  @doc """
+  Center zone: timecode (flex-1, truncated if tight).
+  """
+  def player_action_bar_center,
+    do: "flex min-w-0 flex-1 basis-0 items-center justify-center overflow-hidden px-0.5 sm:px-1"
+
+  @doc """
+  Right zone: volume, speed, fullscreen (anchored end).
+  """
+  def player_action_bar_right,
+    do: "flex shrink-0 flex-nowrap items-center gap-1 sm:gap-1.5"
+
+  @doc """
+  Default inline cluster inside left/right zones (transport icons, etc.).
+  """
+  def player_action_bar_group, do: "flex shrink-0 items-center gap-1.5"
+
+  @doc "Deprecated alias — use `player_action_bar_center/0`."
+  def player_action_bar_timecode_group, do: player_action_bar_center()
+
+  @doc "Deprecated alias — use `player_action_bar_right/0`."
+  def player_action_bar_output_group, do: player_action_bar_right()
 
   @doc """
   Timecode readout in the Movie action bar (monospaced, same vertical band as h-8 controls).
   """
   def player_timecode,
     do:
-      "font-mono text-sm tabular-nums text-base-content/80 select-none px-1 flex items-center min-h-8 h-8 leading-none tracking-tight whitespace-nowrap"
+      "font-mono text-[11px] sm:text-sm tabular-nums text-base-content/80 select-none flex items-center h-8 leading-none tracking-tight whitespace-nowrap truncate max-w-full"
+
+  @doc """
+  Mute button + volume range grouped in the Movie action bar output cluster.
+  """
+  def player_volume_group, do: "flex shrink-0 items-center gap-1"
+
+  @doc """
+  Compact volume slider for the Movie custom action bar (pairs with toggle-mute).
+
+  Plain native range — no DaisyUI `.range` (avoids oversized pill control).
+  """
+  def player_volume_slider, do: "player-volume-slider"
 
   @doc """
   Vertical separator between control groups in the Movie player action bar.

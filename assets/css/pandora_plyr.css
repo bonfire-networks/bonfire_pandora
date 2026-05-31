@@ -176,6 +176,63 @@
   height: var(--plyr-video-control-icon-size, 64px);
 }
 
+/* Custom action bar: compact volume slider only (layout = Tailwind on .custom-action-bar) */
+
+.pandora-movie-player .custom-action-bar .player-volume-slider,
+.pandora-movie-player .custom-action-bar input[type="range"][data-role="volume-slider"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 4.5rem;
+  min-width: 4.5rem;
+  max-width: 4.5rem;
+  height: 0.25rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--color-base-content) 25%, transparent);
+  cursor: pointer;
+  accent-color: var(--color-primary, oklch(var(--p)));
+  flex-shrink: 0;
+}
+
+.pandora-movie-player .custom-action-bar .player-volume-slider::-webkit-slider-thumb,
+.pandora-movie-player .custom-action-bar input[type="range"][data-role="volume-slider"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  background: var(--color-base-100, #fff);
+  border: 2px solid var(--color-primary, oklch(var(--p)));
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--color-base-content) 15%, transparent);
+}
+
+.pandora-movie-player .custom-action-bar .player-volume-slider::-moz-range-track,
+.pandora-movie-player .custom-action-bar input[type="range"][data-role="volume-slider"]::-moz-range-track {
+  height: 0.25rem;
+  border: none;
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--color-base-content) 25%, transparent);
+}
+
+.pandora-movie-player .custom-action-bar .player-volume-slider::-moz-range-thumb,
+.pandora-movie-player .custom-action-bar input[type="range"][data-role="volume-slider"]::-moz-range-thumb {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  background: var(--color-base-100, #fff);
+  border: 2px solid var(--color-primary, oklch(var(--p)));
+}
+
+@media (min-width: 640px) {
+  .pandora-movie-player .custom-action-bar .player-volume-slider,
+  .pandora-movie-player .custom-action-bar input[type="range"][data-role="volume-slider"] {
+    width: 5.5rem;
+    min-width: 5.5rem;
+    max-width: 5.5rem;
+  }
+}
+
 /*
  * Timeline strip (Pandora `oxtimelines` antialias 16p preview rendered under
  * the player). The native height of the JPEG is 16px; we scale it 2-3x to keep

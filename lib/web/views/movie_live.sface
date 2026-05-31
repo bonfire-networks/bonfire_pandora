@@ -27,7 +27,7 @@
       />
 
       <div class={Bonfire.PanDoRa.Web.UI.player_action_bar()}>
-        <div class={Bonfire.PanDoRa.Web.UI.player_action_bar_group()}>
+        <div class={Bonfire.PanDoRa.Web.UI.player_action_bar_left()}>
           <button
             type="button"
             class={Bonfire.PanDoRa.Web.UI.player_control_button()}
@@ -56,9 +56,9 @@
           >
             <#Icon iconify="heroicons:forward-16-solid" class="w-4 h-4" />
           </button>
-        </div>
 
-        <div class={Bonfire.PanDoRa.Web.UI.player_action_bar_group()}>
+          <div class={Bonfire.PanDoRa.Web.UI.player_divider()} />
+
           <button
             type="button"
             class="btn btn-sm btn-soft btn-accent min-h-8 h-8"
@@ -79,7 +79,7 @@
           </button>
         </div>
 
-        <div class={Bonfire.PanDoRa.Web.UI.player_action_bar_group()}>
+        <div class={Bonfire.PanDoRa.Web.UI.player_action_bar_center()}>
           <span
             data-role="player-timecode"
             class={Bonfire.PanDoRa.Web.UI.player_timecode()}
@@ -87,17 +87,34 @@
           >00:00:00:00 / --:--:--:--</span>
         </div>
 
-        <div class={Bonfire.PanDoRa.Web.UI.player_action_bar_group()}>
-          <button
-            type="button"
-            class={Bonfire.PanDoRa.Web.UI.player_control_button()}
-            data-action="toggle-mute"
-            aria-label={l("Toggle mute")}
-            title={l("Toggle mute")}
+        <div class={Bonfire.PanDoRa.Web.UI.player_action_bar_right()}>
+          <div
+            class={Bonfire.PanDoRa.Web.UI.player_volume_group()}
+            role="group"
+            aria-label={l("Volume")}
           >
-            <#Icon iconify="heroicons:speaker-wave-16-solid" class="w-4 h-4 unmuted-icon" />
-            <#Icon iconify="heroicons:speaker-x-mark-16-solid" class="w-4 h-4 muted-icon hidden" />
-          </button>
+            <button
+              type="button"
+              class={Bonfire.PanDoRa.Web.UI.player_control_button()}
+              data-action="toggle-mute"
+              aria-label={l("Toggle mute")}
+              title={l("Toggle mute")}
+            >
+              <#Icon iconify="heroicons:speaker-wave-16-solid" class="w-4 h-4 unmuted-icon" />
+              <#Icon iconify="heroicons:speaker-x-mark-16-solid" class="w-4 h-4 muted-icon hidden" />
+            </button>
+            <input
+              type="range"
+              data-role="volume-slider"
+              class={"#{Bonfire.PanDoRa.Web.UI.player_volume_slider()} hidden sm:inline-block"}
+              min="0"
+              max="1"
+              step="0.05"
+              value="1"
+              aria-label={l("Volume")}
+              title={l("Volume")}
+            />
+          </div>
 
           <select
             data-role="speed-select"
