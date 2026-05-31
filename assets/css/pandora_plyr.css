@@ -295,6 +295,7 @@
   width: 100%;
   max-width: 100%;
   max-height: 480px;
+  overflow-x: hidden;
   overflow-y: auto;
   border-radius: 0.375rem;
   background: var(--color-base-300, #1a1a1a);
@@ -373,6 +374,12 @@
   align-items: center;
   gap: 4px;
   min-width: 160px;
+}
+
+/* `.hidden` alone loses to `.timeline-frame-preview { display:flex }` in bundle order */
+.timeline-frame-preview.hidden,
+.timeline-frame-preview[hidden] {
+  display: none !important;
 }
 
 .timeline-frame-img {
