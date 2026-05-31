@@ -16,6 +16,7 @@
       data-role="movie-player-shell"
       data-seek-in={if @in_timestamp, do: to_string(@in_timestamp), else: ""}
       data-seek-out={if @out_timestamp, do: to_string(@out_timestamp), else: ""}
+      data-fps={if @movie_fps, do: to_string(@movie_fps), else: ""}
     >
       <video
         id="movie_player_video"
@@ -25,101 +26,103 @@
         playsinline
       />
 
-      <div class="custom-action-bar mt-2 flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
-        <button
-          type="button"
-          class={Bonfire.PanDoRa.Web.UI.player_control_button()}
-          data-action="prev-frame"
-          aria-label={l("Previous frame")}
-          title={l("Previous frame")}
-        >
-          <#Icon iconify="heroicons:backward-16-solid" class="w-4 h-4" />
-        </button>
-        <button
-          type="button"
-          class={Bonfire.PanDoRa.Web.UI.player_control_button()}
-          data-action="play-pause"
-          aria-label={l("Play / Pause")}
-          title={l("Play / Pause")}
-        >
-          <#Icon iconify="ph:play-duotone" class="w-4 h-4 play-icon" />
-          <#Icon iconify="heroicons:pause-16-solid" class="w-4 h-4 pause-icon hidden" />
-        </button>
-        <button
-          type="button"
-          class={Bonfire.PanDoRa.Web.UI.player_control_button()}
-          data-action="next-frame"
-          aria-label={l("Next frame")}
-          title={l("Next frame")}
-        >
-          <#Icon iconify="heroicons:forward-16-solid" class="w-4 h-4" />
-        </button>
+      <div class={Bonfire.PanDoRa.Web.UI.player_action_bar()}>
+        <div class={Bonfire.PanDoRa.Web.UI.player_action_bar_group()}>
+          <button
+            type="button"
+            class={Bonfire.PanDoRa.Web.UI.player_control_button()}
+            data-action="prev-frame"
+            aria-label={l("Previous frame")}
+            title={l("Previous frame")}
+          >
+            <#Icon iconify="heroicons:backward-16-solid" class="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            class={Bonfire.PanDoRa.Web.UI.player_control_button()}
+            data-action="play-pause"
+            aria-label={l("Play / Pause")}
+            title={l("Play / Pause")}
+          >
+            <#Icon iconify="ph:play-duotone" class="w-4 h-4 play-icon" />
+            <#Icon iconify="heroicons:pause-16-solid" class="w-4 h-4 pause-icon hidden" />
+          </button>
+          <button
+            type="button"
+            class={Bonfire.PanDoRa.Web.UI.player_control_button()}
+            data-action="next-frame"
+            aria-label={l("Next frame")}
+            title={l("Next frame")}
+          >
+            <#Icon iconify="heroicons:forward-16-solid" class="w-4 h-4" />
+          </button>
+        </div>
 
-        <div class={Bonfire.PanDoRa.Web.UI.player_divider()} />
+        <div class={Bonfire.PanDoRa.Web.UI.player_action_bar_group()}>
+          <button
+            type="button"
+            class="btn btn-sm btn-soft btn-accent min-h-8 h-8"
+            data-action="mark-in"
+            aria-label={l("Mark IN at current position")}
+            title={l("Mark IN at current position")}
+          >
+            {l("IN")}
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm btn-soft btn-accent min-h-8 h-8"
+            data-action="mark-out"
+            aria-label={l("Mark OUT at current position")}
+            title={l("Mark OUT at current position")}
+          >
+            {l("OUT")}
+          </button>
+        </div>
 
-        <button
-          type="button"
-          class="btn btn-sm btn-soft btn-accent min-h-8 h-8"
-          data-action="mark-in"
-          aria-label={l("Mark IN at current position")}
-          title={l("Mark IN at current position")}
-        >
-          {l("IN")}
-        </button>
-        <button
-          type="button"
-          class="btn btn-sm btn-soft btn-accent min-h-8 h-8"
-          data-action="mark-out"
-          aria-label={l("Mark OUT at current position")}
-          title={l("Mark OUT at current position")}
-        >
-          {l("OUT")}
-        </button>
+        <div class={Bonfire.PanDoRa.Web.UI.player_action_bar_group()}>
+          <span
+            data-role="player-timecode"
+            class={Bonfire.PanDoRa.Web.UI.player_timecode()}
+            aria-live="off"
+          >00:00:00:00 / --:--:--:--</span>
+        </div>
 
-        <div class={Bonfire.PanDoRa.Web.UI.player_divider()} />
+        <div class={Bonfire.PanDoRa.Web.UI.player_action_bar_group()}>
+          <button
+            type="button"
+            class={Bonfire.PanDoRa.Web.UI.player_control_button()}
+            data-action="toggle-mute"
+            aria-label={l("Toggle mute")}
+            title={l("Toggle mute")}
+          >
+            <#Icon iconify="heroicons:speaker-wave-16-solid" class="w-4 h-4 unmuted-icon" />
+            <#Icon iconify="heroicons:speaker-x-mark-16-solid" class="w-4 h-4 muted-icon hidden" />
+          </button>
 
-        <span
-          data-role="player-timecode"
-          class="font-mono text-xs tabular-nums text-base-content/60 select-none px-1 self-center leading-none"
-          aria-live="off"
-        >00:00:00 / --:--:--</span>
+          <select
+            data-role="speed-select"
+            class="select select-xs select-ghost text-xs font-mono w-16 h-8 min-h-8"
+            aria-label={l("Playback speed")}
+            title={l("Playback speed")}
+          >
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="1.25">1.25×</option>
+            <option value="1.5">1.5×</option>
+            <option value="2">2×</option>
+          </select>
 
-        <div class={Bonfire.PanDoRa.Web.UI.player_divider()} />
-
-        <button
-          type="button"
-          class={Bonfire.PanDoRa.Web.UI.player_control_button()}
-          data-action="toggle-mute"
-          aria-label={l("Toggle mute")}
-          title={l("Toggle mute")}
-        >
-          <#Icon iconify="heroicons:speaker-wave-16-solid" class="w-4 h-4 unmuted-icon" />
-          <#Icon iconify="heroicons:speaker-x-mark-16-solid" class="w-4 h-4 muted-icon hidden" />
-        </button>
-
-        <select
-          data-role="speed-select"
-          class="select select-xs select-ghost text-xs font-mono w-16 h-8 min-h-8"
-          aria-label={l("Playback speed")}
-          title={l("Playback speed")}
-        >
-          <option value="0.5">0.5×</option>
-          <option value="1" selected>1×</option>
-          <option value="1.25">1.25×</option>
-          <option value="1.5">1.5×</option>
-          <option value="2">2×</option>
-        </select>
-
-        <button
-          type="button"
-          class={Bonfire.PanDoRa.Web.UI.player_control_button()}
-          data-action="toggle-fullscreen"
-          aria-label={l("Toggle fullscreen")}
-          title={l("Toggle fullscreen")}
-        >
-          <#Icon iconify="heroicons:arrows-pointing-out-16-solid" class="w-4 h-4 fs-enter-icon" />
-          <#Icon iconify="heroicons:arrows-pointing-in-16-solid" class="w-4 h-4 fs-exit-icon hidden" />
-        </button>
+          <button
+            type="button"
+            class={Bonfire.PanDoRa.Web.UI.player_control_button()}
+            data-action="toggle-fullscreen"
+            aria-label={l("Toggle fullscreen")}
+            title={l("Toggle fullscreen")}
+          >
+            <#Icon iconify="heroicons:arrows-pointing-out-16-solid" class="w-4 h-4 fs-enter-icon" />
+            <#Icon iconify="heroicons:arrows-pointing-in-16-solid" class="w-4 h-4 fs-exit-icon hidden" />
+          </button>
+        </div>
       </div>
     </div>
   </div>

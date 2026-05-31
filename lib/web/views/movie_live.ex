@@ -54,6 +54,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       |> assign(:tile_url_template_16, nil)
       |> assign(:tile_url_template_64, nil)
       |> assign(:movie_duration, nil)
+      |> assign(:movie_fps, nil)
       |> assign(:movie_heading_full, nil)
       |> assign(:movie_heading_truncated, false)
 
@@ -157,6 +158,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         |> assign(:tile_url_template_64, tile_url_template_64)
         |> assign(:timeline_mode, mode)
         |> assign(:movie_duration, parse_movie_duration(movie))
+        |> assign(:movie_fps, parse_movie_fps(movie))
         |> assign(:in_timestamp, in_ts)
         |> assign(:out_timestamp, out_ts)
         # Initialize note_content
@@ -180,6 +182,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
           |> assign(:timeline_strip_url, nil)
           |> assign(:timeline_mode, @default_timeline_mode)
           |> assign(:movie_duration, nil)
+          |> assign(:movie_fps, nil)
           |> assign(:public_notes, [])
           |> assign(:in_timestamp, nil)
           |> assign(:out_timestamp, nil)
@@ -215,6 +218,27 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   end
 
   defp parse_movie_duration(_), do: nil
+
+  # Pandora exposes frame rate as `fps` or `framerate` depending on the endpoint.
+  defp parse_movie_fps(movie) when is_map(movie) do
+    fps = movie["fps"] || movie["framerate"] || movie["frameRate"]
+
+    case fps do
+      n when is_number(n) and n > 0 ->
+        n * 1.0
+
+      s when is_binary(s) ->
+        case Float.parse(String.trim(s)) do
+          {n, _} when n > 0 -> n
+          _ -> nil
+        end
+
+      _ ->
+        nil
+    end
+  end
+
+  defp parse_movie_fps(_), do: nil
 
   # Short header label keeps PageHeaderLive flex row within viewport (bonfire_ui_common is unchanged).
   # Full title is shown in the template when truncated.

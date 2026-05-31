@@ -25,6 +25,32 @@ defmodule Bonfire.PanDoRa.Web.UI do
   def player_control_button, do: "btn btn-sm btn-circle btn-soft btn-ghost min-h-8 h-8"
 
   @doc """
+  Wrapper for the Movie custom action bar (below the video monitor).
+
+  Spreads control groups across the full player width (`justify-evenly`) instead
+  of left-clustering. See `player_action_bar_group/0` and MOVIE_PAGE_HARMONIZATION §G.
+  """
+  def player_action_bar,
+    do:
+      "custom-action-bar mt-2 flex w-full min-w-0 max-w-full items-center"
+
+  @doc """
+  One logical cluster in the Movie action bar (transport, markers, timecode, output).
+
+  Each group grows equally (`flex-1`) and centers its controls so the bar fills the
+  monitor width instead of clustering on the left.
+  """
+  def player_action_bar_group,
+    do: "flex flex-1 basis-0 min-w-0 items-center justify-center gap-1.5"
+
+  @doc """
+  Timecode readout in the Movie action bar (monospaced, same vertical band as h-8 controls).
+  """
+  def player_timecode,
+    do:
+      "font-mono text-sm tabular-nums text-base-content/80 select-none px-1 flex items-center min-h-8 h-8 leading-none tracking-tight whitespace-nowrap"
+
+  @doc """
   Vertical separator between control groups in the Movie player action bar.
 
   ## Examples
