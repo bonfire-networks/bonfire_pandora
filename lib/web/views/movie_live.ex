@@ -123,8 +123,8 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
       # hour. Concatenating tiles is out of scope for now.
       mode = default_timeline_mode()
 
-      {timeline_strip_url, timeline_strip_fallback_url, frame_url_template,
-       tile_url_template_16, tile_url_template_64} =
+      {timeline_strip_url, timeline_strip_fallback_url, frame_url_template, tile_url_template_16,
+       tile_url_template_64} =
         if movie_id_str != "" do
           opts_user = [current_user: current_user(socket), position: 0]
 

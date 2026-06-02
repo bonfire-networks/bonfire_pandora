@@ -145,11 +145,7 @@
 
       <div class="flex flex-col items-center gap-2 py-4 border-t border-base-content/10">
         {#if @has_more_items}
-          <button
-            :if={not @loading}
-            phx-click="load_more"
-            class="btn btn-sm btn-soft btn-secondary gap-2"
-          >
+          <button :if={not @loading} phx-click="load_more" class="btn btn-sm btn-soft btn-secondary gap-2">
             <#Icon iconify="ph:plus-duotone" class="w-4 h-4" />
             {l("Load more")}
           </button>

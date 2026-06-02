@@ -10,5 +10,9 @@
   disabled={@disabled}
   aria-label={@aria_label}
 >
-  <Iconify.iconify icon={@icon} mode={:inline} class={Bonfire.PanDoRa.Web.UI.icon_button_icon_classes(@size)} />
+  <Iconify.iconify
+    icon={@icon}
+    mode={:inline}
+    class={Bonfire.PanDoRa.Web.UI.icon_button_icon_classes(@size)}
+  />
 </button>

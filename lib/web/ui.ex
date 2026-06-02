@@ -133,7 +133,8 @@ defmodule Bonfire.PanDoRa.Web.UI do
 
   @doc "Timeline expand control beside the strip (not design-system: needs data-role for hook)."
   def timeline_expand_button,
-    do: "btn btn-sm btn-circle btn-ghost shrink-0 self-center min-h-8 h-8 opacity-70 hover:opacity-100"
+    do:
+      "btn btn-sm btn-circle btn-ghost shrink-0 self-center min-h-8 h-8 opacity-70 hover:opacity-100"
 
   @doc """
   Circle icon-only button for standalone archive actions (chip dismiss, bookmark, edit).

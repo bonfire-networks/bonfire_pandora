@@ -88,11 +88,7 @@
         </div>
 
         <div class={Bonfire.PanDoRa.Web.UI.player_action_bar_right()}>
-          <div
-            class={Bonfire.PanDoRa.Web.UI.player_volume_group()}
-            role="group"
-            aria-label={l("Volume")}
-          >
+          <div class={Bonfire.PanDoRa.Web.UI.player_volume_group()} role="group" aria-label={l("Volume")}>
             <button
               type="button"
               class={Bonfire.PanDoRa.Web.UI.player_control_button()}
