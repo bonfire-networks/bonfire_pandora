@@ -18,6 +18,6 @@ defmodule Bonfire.PanDoRa.RuntimeConfig do
 
     config :bonfire_pandora, PanDoRa.API.Client,
       username: System.get_env("PANDORA_USER"),
-      password: System.get_env("PANDORA_PW")
+      password: Bonfire.Common.EnvSecrets.env_or_file("PANDORA_PW")
   end
 end
