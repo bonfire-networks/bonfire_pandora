@@ -5,10 +5,10 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
   alias Bonfire.PanDoRa.Utils
   alias Bonfire.PanDoRa.Web.SearchLogic
 
-  declare_extension("Federated Archives",
+  declare_extension(l("Federated Archives"),
     icon: "mingcute:microscope-fill",
     emoji: "🔬",
-    description: "Federated archives alliance",
+    description: l("Federated archives alliance"),
     default_nav: [__MODULE__]
   )
 
