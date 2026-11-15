@@ -201,9 +201,11 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
   defp query_value_empty?(_), do: false
 
   defp apply_query_filters_search(socket) do
+    current_user = current_user(socket)
+
     socket =
       socket
-      |> assign(:filter_types, SearchLogic.load_filter_types(current_user: current_user(socket)))
+      |> assign(:filter_types, SearchLogic.load_filter_types(current_user: current_user))
       |> track_loading(:global_load, true)
 
     conditions = SearchLogic.build_search_conditions(socket.assigns)
@@ -214,7 +216,7 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
            range: [0, SearchLogic.default_per_page()],
            keys: keys,
            total: true,
-           current_user: current_user(socket)
+           current_user: current_user
          ) do
       {:ok, %{items: items} = data} when is_list(items) ->
         {items_to_show, has_more} =
@@ -304,13 +306,14 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
   end
 
   defp fetch_initial_data(socket) do
+    current_user = current_user(socket)
     socket = track_loading(socket, :initial_load, true)
 
     socket =
       assign(
         socket,
         :filter_types,
-        SearchLogic.load_filter_types(current_user: current_user(socket))
+        SearchLogic.load_filter_types(current_user: current_user)
       )
 
     keys = SearchLogic.build_request_keys(socket.assigns[:filter_types])
@@ -320,7 +323,7 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
            range: [0, SearchLogic.default_per_page()],
            keys: keys,
            total: true,
-           current_user: current_user(socket)
+           current_user: current_user
          ) do
       {:ok, %{items: items} = data} when is_list(items) ->
         {items_to_show, has_more} =
@@ -346,13 +349,14 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
   end
 
   defp do_initial_search(socket, term) do
+    current_user = current_user(socket)
     socket = track_loading(socket, :search_load, true)
 
     socket =
       assign(
         socket,
         :filter_types,
-        SearchLogic.load_filter_types(current_user: current_user(socket))
+        SearchLogic.load_filter_types(current_user: current_user)
       )
 
     conditions = SearchLogic.build_search_conditions(Map.merge(socket.assigns, %{term: term}))
@@ -363,7 +367,7 @@ defmodule Bonfire.PanDoRa.Web.SearchViewLive do
            range: [0, SearchLogic.default_per_page()],
            keys: keys,
            total: true,
-           current_user: current_user(socket)
+           current_user: current_user
          ) do
       {:ok, %{items: items} = data} when is_list(items) ->
         {items_to_show, has_more} =

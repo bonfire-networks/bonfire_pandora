@@ -23,7 +23,7 @@
         src={@video_url}
         preload="auto"
         playsinline
-      ></video>
+      />
 
       <div class="custom-action-bar mt-2 flex min-w-0 max-w-full flex-wrap items-center gap-2">
         <button
@@ -72,7 +72,9 @@
     phx-hook="PandoraTimelineStrip"
     class="timeline-strip-root"
     data-mode={@timeline_mode}
-    data-duration={if is_number(@movie_duration) && @movie_duration > 0, do: :erlang.float_to_binary(@movie_duration * 1.0, decimals: 3), else: ""}
+    data-duration={if is_number(@movie_duration) && @movie_duration > 0,
+      do: :erlang.float_to_binary(@movie_duration * 1.0, decimals: 3),
+      else: ""}
     data-target-player="movie_player_root"
     data-fallback-src={@timeline_strip_fallback_url || ""}
     role="slider"
@@ -90,11 +92,8 @@
       phx-update="ignore"
       class="timeline-strip-position"
       aria-hidden="true"
-    ></div>
-    <div
-      :if={is_number(@movie_duration) && @movie_duration > 0}
-      class="timeline-strip-markers"
-    >
+    />
+    <div :if={is_number(@movie_duration) && @movie_duration > 0} class="timeline-strip-markers">
       <button
         :for={note <- @public_notes}
         type="button"
@@ -105,7 +104,7 @@
         title={e(note, "value", "")}
         aria-label={e(note, "value", "")}
         style={Bonfire.PanDoRa.Utils.timeline_marker_style(note, @movie_duration)}
-      ></button>
+      />
     </div>
   </div>
 

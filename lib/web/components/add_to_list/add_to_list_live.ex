@@ -18,9 +18,10 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
 
   def update(assigns, socket) do
     socket = assign(socket, assigns)
+    current_user = current_user(socket)
 
     # Initial load: fetch lists, then fetch items sync so movie_in_lists is ready at first render
-    lists_result = Client.my_lists(current_user: current_user(socket), per_page: 200)
+    lists_result = Client.my_lists(current_user: current_user, per_page: 200)
 
     socket =
       socket
@@ -28,7 +29,7 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
 
     socket =
       if socket.assigns.lists != [] and socket.assigns.error == nil do
-        opts = [current_user: current_user(socket), per_page: 1000]
+        opts = [current_user: current_user, per_page: 1000]
         payload = fetch_list_items_async(socket.assigns.lists, opts, socket.assigns.movie_id)
         lists_with_icons = Enum.map(payload.lists_with_items, &add_icon_url(&1, opts))
 
@@ -70,11 +71,12 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
 
   def handle_event("toggle_in_list", %{"id" => list_id}, socket) do
     current_presence = get_in(socket.assigns.movie_in_lists, [list_id]) || false
+    current_user = current_user(socket)
 
     if current_presence do
       case Client.remove_list_items(list_id,
              items: [socket.assigns.movie_id],
-             current_user: current_user(socket)
+             current_user: current_user
            ) do
         {:ok, _} ->
           {:noreply,
@@ -90,7 +92,7 @@ defmodule Bonfire.PanDoRa.Components.AddToListLive do
     else
       case Client.add_list_items(list_id,
              items: [socket.assigns.movie_id],
-             current_user: current_user(socket)
+             current_user: current_user
            ) do
         {:ok, _} ->
           {:noreply,

@@ -61,7 +61,8 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
   def handle_params(%{"id" => id}, uri, socket) do
     # Seek from link: ?in=&out= (seconds, same format as annotation-checkpoint badge)
     {in_ts, out_ts} = parse_seek_params(uri)
-    opts = [current_user: current_user(socket)]
+    current_user = current_user(socket)
+    opts = [current_user: current_user]
 
     movie_task = Task.async(fn -> Client.get_movie(id, opts) end)
     notes_task = Task.async(fn -> Client.fetch_annotations(id, opts) end)
@@ -103,7 +104,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
         Client.video_url(
           movie_id_str,
           Client.best_video_filename(movie),
-          current_user: current_user(socket)
+          current_user: current_user
         )
 
       # The full-strip "no position" file (`timeline{mode}{16|64}p.jpg`) is
@@ -122,7 +123,7 @@ defmodule Bonfire.PanDoRa.Web.MovieLive do
 
       {timeline_strip_url, timeline_strip_fallback_url} =
         if movie_id_str != "" do
-          opts_user = [current_user: current_user(socket), position: 0]
+          opts_user = [current_user: current_user, position: 0]
 
           {
             Client.timeline_url(movie_id_str, mode, 16, opts_user),
