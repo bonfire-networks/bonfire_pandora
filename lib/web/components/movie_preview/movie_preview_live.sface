@@ -15,7 +15,7 @@
     <LinkLive
       to={~p"/archive/movies/#{to_attr(e(@movie, "id", ""))}"}
       class="link link-hover inline-block max-w-full min-w-0 align-top text-base font-semibold break-all [overflow-wrap:anywhere]"
-    >{rich(insert_line_break_hints(to_attr(e(@movie, "title", ""))))}</LinkLive>
+    >{insert_line_break_hints(to_attr(e(@movie, "title", "")))}</LinkLive>
 
     {#if @movie["director"]}
       <div class="mt-1">
