@@ -78,7 +78,7 @@
                 <textarea name="list[description]" class="textarea w-full h-24" placeholder="Bio">{e(@list, "description", "")}</textarea>
               </fieldset>
 
-              <button class="btn mt-3 btn-primary btn-soft w-full" type="submit">{l("Save")}</button>
+              <button class="btn mt-3 btn-primary w-full" type="submit">{l("Save")}</button>
             </form>
           </div>
           <:open_btn>
